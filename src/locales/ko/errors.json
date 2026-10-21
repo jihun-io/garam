@@ -1,0 +1,6 @@
+{
+  "git_not_found": "Git이 설치되어 있지 않거나, 가람이 Git을 찾지 못했습니다.",
+  "git_too_old": "Git {{found}} 버전은 지원하지 않습니다. Git {{required}} 이상이 필요합니다.",
+  "not_a_repository": "이 폴더는 Git 저장소가 아닙니다.",
+  "unknown": "Git을 실행하는 중에 문제가 생겼습니다."
+}

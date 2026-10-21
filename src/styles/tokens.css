@@ -1,0 +1,75 @@
+/* Design tokens. Named after the app's river theme (가람 = river). */
+:root {
+  color-scheme: light;
+
+  --color-ink: #1e272d;
+  --color-ink-muted: #56636b;
+  --color-ink-faint: #8a969c;
+  --color-bg: #f1f4f2;
+  --color-surface: #fbfcfb;
+  --color-line: #d5dcd8;
+  --color-river: #2c7a6b;
+  --color-river-strong: #1f5f53;
+  --color-link: #336a9e;
+  --color-danger: #a8452c;
+  --color-danger-bg: #f7e9e4;
+  --color-focus: #2c7a6b;
+
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Apple SD Gothic Neo",
+    "Malgun Gothic", "Noto Sans KR", "Noto Sans", Ubuntu, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", D2Coding, "Noto Sans Mono CJK KR",
+    Menlo, Consolas, monospace;
+
+  /* Type scale: 13px base, as is usual for dense desktop tools. */
+  --text-sm: 0.8462rem; /* 11px */
+  --text-md: 1rem; /* 13px */
+  --text-lg: 1.3846rem; /* 18px */
+  --text-xl: 2.1538rem; /* 28px */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-ink: #e1e8e4;
+    --color-ink-muted: #a3b0aa;
+    --color-ink-faint: #6f7d78;
+    --color-bg: #141a1d;
+    --color-surface: #1c2428;
+    --color-line: #2c373c;
+    --color-river: #5db3a0;
+    --color-river-strong: #84cbbb;
+    --color-link: #7fb1de;
+    --color-danger: #e58a72;
+    --color-danger-bg: #3a2420;
+    --color-focus: #5db3a0;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-ink: #e1e8e4;
+  --color-ink-muted: #a3b0aa;
+  --color-ink-faint: #6f7d78;
+  --color-bg: #141a1d;
+  --color-surface: #1c2428;
+  --color-line: #2c373c;
+  --color-river: #5db3a0;
+  --color-river-strong: #84cbbb;
+  --color-link: #7fb1de;
+  --color-danger: #e58a72;
+  --color-danger-bg: #3a2420;
+  --color-focus: #5db3a0;
+}

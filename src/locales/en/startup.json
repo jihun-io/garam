@@ -1,0 +1,16 @@
+{
+  "checking": "Looking for Git…",
+  "tagline": "Every branch of your work, in one calm stream.",
+  "gitReady": "Using Git {{version}}",
+  "missing": {
+    "title": "Install Git to continue",
+    "updateTitle": "Update Git to continue",
+    "checkFailedTitle": "Garam couldn't check Git",
+    "macos": "Install the Xcode Command Line Tools by running <code>xcode-select --install</code> in Terminal, or install Git with Homebrew.",
+    "windows": "Download and run the Git for Windows installer.",
+    "linux": "Install Git with your distribution's package manager, for example <code>sudo apt install git</code>.",
+    "download": "Open Git download page",
+    "retry": "Check again",
+    "customPath": "If Git is installed in an unusual place, set the <code>GARAM_GIT_PATH</code> environment variable to its full path."
+  }
+}

@@ -1,0 +1,66 @@
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+
+import enCommon from "../locales/en/common.json";
+import enErrors from "../locales/en/errors.json";
+import enStartup from "../locales/en/startup.json";
+import koCommon from "../locales/ko/common.json";
+import koErrors from "../locales/ko/errors.json";
+import koStartup from "../locales/ko/startup.json";
+
+export const resources = {
+  en: { common: enCommon, errors: enErrors, startup: enStartup },
+  ko: { common: koCommon, errors: koErrors, startup: koStartup },
+} as const;
+
+export type Language = keyof typeof resources;
+
+/** Languages shown in the picker, each labelled in its own language. */
+export const LANGUAGES: { code: Language; label: string }[] = [
+  { code: "ko", label: "한국어" },
+  { code: "en", label: "English" },
+];
+
+// TODO(M8): move to the persisted settings store once it exists.
+const STORAGE_KEY = "garam.language";
+
+function isLanguage(value: unknown): value is Language {
+  return typeof value === "string" && value in resources;
+}
+
+export function detectLanguage(): Language {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (isLanguage(saved)) return saved;
+  } catch {
+    // Storage unavailable; fall through to the system language.
+  }
+  const system = navigator.language.split("-")[0];
+  return isLanguage(system) ? system : "en";
+}
+
+export function changeLanguage(language: Language) {
+  try {
+    localStorage.setItem(STORAGE_KEY, language);
+  } catch {
+    // Not persisted; the choice still applies for this session.
+  }
+  return i18n.changeLanguage(language);
+}
+
+i18n.on("languageChanged", (language) => {
+  document.documentElement.lang = language;
+});
+
+void i18n.use(initReactI18next).init({
+  resources,
+  lng: detectLanguage(),
+  fallbackLng: "en",
+  defaultNS: "common",
+  ns: ["common", "errors", "startup"],
+  interpolation: { escapeValue: false },
+  contextSeparator: "#",
+  returnNull: false,
+});
+
+export default i18n;

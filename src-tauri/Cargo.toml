@@ -1,0 +1,31 @@
+[package]
+name = "garam"
+description = "Garam, a friendly cross-platform Git client"
+authors = ["Garam contributors"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "garam_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+garam-git = { workspace = true, features = ["specta"] }
+serde.workspace = true
+serde_json.workspace = true
+specta.workspace = true
+specta-typescript = "0.0.12"
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
+
+[lints]
+workspace = true

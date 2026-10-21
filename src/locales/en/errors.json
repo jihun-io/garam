@@ -1,0 +1,6 @@
+{
+  "git_not_found": "Git isn't installed, or Garam can't find it.",
+  "git_too_old": "Git {{found}} is too old. Garam needs Git {{required}} or later.",
+  "not_a_repository": "This folder isn't a Git repository.",
+  "unknown": "Something went wrong while running Git."
+}

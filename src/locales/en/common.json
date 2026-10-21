@@ -1,0 +1,10 @@
+{
+  "appName": "Garam",
+  "language": {
+    "label": "Language"
+  },
+  "error": {
+    "showDetails": "Show details",
+    "hideDetails": "Hide details"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "checking": "Git을 찾는 중…",
+  "tagline": "갈라지고 합쳐지는 작업의 흐름을 한눈에.",
+  "gitReady": "Git {{version}} 사용 중",
+  "missing": {
+    "title": "계속하려면 Git을 설치하세요",
+    "updateTitle": "계속하려면 Git을 업데이트하세요",
+    "checkFailedTitle": "Git을 확인하지 못했습니다",
+    "macos": "터미널에서 <code>xcode-select --install</code>을 실행해 Xcode 명령줄 도구를 설치하거나, Homebrew로 Git을 설치하세요.",
+    "windows": "Git for Windows 설치 프로그램을 내려받아 실행하세요.",
+    "linux": "배포판의 패키지 관리자로 Git을 설치하세요. 예: <code>sudo apt install git</code>",
+    "download": "Git 다운로드 페이지 열기",
+    "retry": "다시 확인",
+    "customPath": "Git을 특이한 위치에 설치했다면 <code>GARAM_GIT_PATH</code> 환경 변수에 전체 경로를 지정하세요."
+  }
+}

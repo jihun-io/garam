@@ -1,0 +1,25 @@
+[package]
+name = "garam-git"
+description = "Git engine for Garam: runs the git CLI and parses its output"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+# Derive specta::Type so the Tauri layer can export TypeScript bindings.
+specta = ["dep:specta"]
+# Test helpers (TestRepo) for this crate and its dependents.
+testing = ["dep:tempfile"]
+
+[dependencies]
+serde.workspace = true
+specta = { workspace = true, optional = true }
+tempfile = { workspace = true, optional = true }
+thiserror.workspace = true
+
+[dev-dependencies]
+garam-git = { path = ".", features = ["testing"] }
+
+[lints]
+workspace = true
