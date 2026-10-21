@@ -16,3 +16,8 @@
 .root > :first-child {
   flex: 1;
 }
+
+.info {
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--color-river);
+}

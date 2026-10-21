@@ -5,6 +5,7 @@
 //! terminal prompts, unquoted paths, ...).
 
 pub mod blob;
+pub mod branch;
 mod cancel;
 mod command;
 pub mod commit;

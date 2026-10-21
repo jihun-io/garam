@@ -14,6 +14,12 @@ export const changesKeys = {
   identity: (repo: string) => ["repo", repo, "identity"] as const,
 };
 
+/**
+ * Index writes must not overlap (git takes index.lock), so mutations that
+ * touch the index or HEAD run one after another per repository.
+ */
+export const indexScope = (repo: string) => ({ id: `index:${repo}` });
+
 export function useStatus(repo: string) {
   return useQuery({
     queryKey: changesKeys.status(repo),
@@ -61,9 +67,7 @@ export function useIdentity(repo: string) {
 export function useChangeActions(repo: string) {
   const client = useQueryClient();
   const onSettled = () => client.invalidateQueries({ queryKey: changesKeys.all(repo) });
-  // Index writes must not overlap (git takes index.lock), so run them one
-  // after another per repository.
-  const scope = { id: `index:${repo}` };
+  const scope = indexScope(repo);
 
   return {
     stage: useMutation({

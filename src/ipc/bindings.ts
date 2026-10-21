@@ -50,6 +50,27 @@ export const commands = {
 } | null, AppError>(__TAURI_INVOKE("commit_head", { repo })),
 	identityGet: (repo: string) => typedError<Identity, AppError>(__TAURI_INVOKE("identity_get", { repo })),
 	identitySet: (name: string, email: string) => typedError<null, AppError>(__TAURI_INVOKE("identity_set", { name, email })),
+	branchList: (repo: string) => typedError<Branch[], AppError>(__TAURI_INVOKE("branch_list", { repo })),
+	/**  Creates a branch from HEAD and switches to it. */
+	branchCreate: (repo: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("branch_create", { repo, name })),
+	/**
+	 *  Switches branches. `current` names the branch being left, used to label
+	 *  a stash when `mode` is `leave_changes`.
+	 */
+	branchSwitch: (repo: string, target: Branch, mode: SwitchMode, current: string | null) => typedError<null, AppError>(__TAURI_INVOKE("branch_switch", { repo, target, mode, current })),
+	branchRename: (repo: string, from: string, to: string) => typedError<null, AppError>(__TAURI_INVOKE("branch_rename", { repo, from, to })),
+	branchDelete: (repo: string, name: string, force: boolean) => typedError<null, AppError>(__TAURI_INVOKE("branch_delete", { repo, name, force })),
+	/**  How many commits merging `branch` would bring into HEAD. */
+	branchMergePreview: (repo: string, branch: string) => typedError<number, AppError>(__TAURI_INVOKE("branch_merge_preview", { repo, branch })),
+	branchMerge: (repo: string, branch: string) => typedError<MergeOutcome, AppError>(__TAURI_INVOKE("branch_merge", { repo, branch })),
+	/**  The stash Garam made when the user last left `branch`, if any. */
+	stashFindAuto: (repo: string, branch: string) => typedError<{
+	/**  Commit id of the stash entry; stable while `stash@{n}` indexes shift. */
+	oid: string,
+	branch: string,
+} | null, AppError>(__TAURI_INVOKE("stash_find_auto", { repo, branch })),
+	stashPop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_pop", { repo, oid })),
+	stashDrop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_drop", { repo, oid })),
 	externalEditors: () => typedError<ExternalEditor[], AppError>(__TAURI_INVOKE("external_editors")),
 	externalOpenEditor: (editorId: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_editor", { editorId, path })),
 	externalOpenTerminal: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_terminal", { path })),
@@ -71,6 +92,36 @@ export type AppError = {
 
 /**  Errors that come from the app layer rather than from git. */
 export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "external_app_not_found" | "external_app_failed" | "trash_failed" | "watch_failed";
+
+export type AutoStash = {
+	/**  Commit id of the stash entry; stable while `stash@{n}` indexes shift. */
+	oid: string,
+	branch: string,
+};
+
+export type Branch = {
+	/**  Short name: `main` or `origin/main`. */
+	name: string,
+	kind: BranchKind,
+	/**  For remote branches, the remote's name (`origin`). */
+	remote: string | null,
+	oid: string,
+	isHead: boolean,
+	/**  For local branches, the tracked remote branch (`origin/main`). */
+	upstream: string | null,
+	/**  The upstream branch was deleted on the remote. */
+	upstreamGone: boolean,
+	ahead: number,
+	behind: number,
+	/**
+	 *  Seconds since the Unix epoch of the tip commit. (u32 so it maps to a
+	 *  plain TypeScript number; good until 2106.)
+	 */
+	committedAt: number,
+	subject: string,
+};
+
+export type BranchKind = "local" | "remote";
 
 export type BranchStatus = {
 	/**  Current branch name; `None` when HEAD is detached. */
@@ -114,7 +165,7 @@ export type ErrorCode = ErrorKind | AppErrorKind;
  *  `errors:<kind>` i18n key, so adding a variant requires adding that key to
  *  every locale.
  */
-export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "identity_missing" | "cancelled" | "unknown";
+export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "invalid_branch_name" | "branch_exists" | "branch_not_merged" | "local_changes_would_be_overwritten" | "merge_conflict" | "unrelated_histories" | "identity_missing" | "cancelled" | "unknown";
 
 export type ExternalEditor = {
 	id: string,
@@ -182,6 +233,8 @@ export type LineRef = {
 	line: number,
 };
 
+export type MergeOutcome = "up_to_date" | "fast_forward" | "merged";
+
 export type Progress = {
 	phase: ProgressPhase,
 	/**  Percent of the current phase, when git reports one. */
@@ -213,6 +266,13 @@ export type RepositoryList = {
 	/**  Path of the repository that was open last. */
 	selected: string | null,
 };
+
+/**  How to treat uncommitted changes when switching branches. */
+export type SwitchMode = 
+/**  Take the changes to the other branch (fails if they'd be overwritten). */
+"bring_changes" | 
+/**  Stash the changes on the current branch first. */
+"leave_changes";
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

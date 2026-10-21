@@ -1,11 +1,13 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
+import enBranches from "../locales/en/branches.json";
 import enChanges from "../locales/en/changes.json";
 import enCommon from "../locales/en/common.json";
 import enErrors from "../locales/en/errors.json";
 import enRepos from "../locales/en/repos.json";
 import enStartup from "../locales/en/startup.json";
+import koBranches from "../locales/ko/branches.json";
 import koChanges from "../locales/ko/changes.json";
 import koCommon from "../locales/ko/common.json";
 import koErrors from "../locales/ko/errors.json";
@@ -14,6 +16,7 @@ import koStartup from "../locales/ko/startup.json";
 
 export const resources = {
   en: {
+    branches: enBranches,
     changes: enChanges,
     common: enCommon,
     errors: enErrors,
@@ -21,6 +24,7 @@ export const resources = {
     startup: enStartup,
   },
   ko: {
+    branches: koBranches,
     changes: koChanges,
     common: koCommon,
     errors: koErrors,
@@ -73,7 +77,7 @@ void i18n.use(initReactI18next).init({
   lng: detectLanguage(),
   fallbackLng: "en",
   defaultNS: "common",
-  ns: ["changes", "common", "errors", "repos", "startup"],
+  ns: ["branches", "changes", "common", "errors", "repos", "startup"],
   interpolation: { escapeValue: false },
   contextSeparator: "#",
   returnNull: false,

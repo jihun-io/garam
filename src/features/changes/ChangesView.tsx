@@ -6,6 +6,7 @@ import { ErrorMessage } from "../../components/ErrorMessage";
 import { Checkbox } from "../../components/ui/Checkbox";
 import menu from "../../components/ui/Menu.module.css";
 import { toAppError, type FileChange } from "../../ipc";
+import { AutoStashBanner } from "../branches/AutoStashBanner";
 import { useNotify } from "../notify/notifyStore";
 import { useChangeActions, useStatus } from "./api";
 import styles from "./ChangesView.module.css";
@@ -47,6 +48,7 @@ export function ChangesView({ repo }: { repo: string }) {
   return (
     <div className={styles.root}>
       <aside className={styles.sidebar}>
+        <AutoStashBanner repo={repo} branch={branch.head} />
         <div className={styles.listHeader}>
           <Checkbox
             state={allState}

@@ -1,4 +1,5 @@
 import type { RepositoryEntry } from "../../ipc";
+import { BranchControls } from "../branches/BranchControls";
 import { ChangesView } from "../changes/ChangesView";
 import { useRepoWatcher } from "../changes/useRepoWatcher";
 import { LanguageSelect } from "../settings/LanguageSelect";
@@ -22,6 +23,7 @@ export function Workspace({
     <div className={styles.root}>
       <header className={styles.toolbar}>
         <RepoPicker repositories={repositories} selected={selected} />
+        {active && <BranchControls key={active} repo={active} />}
         <div className={styles.spacer} />
         {selected && <OpenInMenu path={selected.path} disabled={selected.missing} />}
         <LanguageSelect />

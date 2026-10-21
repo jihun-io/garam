@@ -17,5 +17,11 @@
   "identity_missing": "Git doesn't know who you are yet. Set your name and email.",
   "trash_failed": "The files couldn't be moved to the Trash, so nothing was discarded.",
   "watch_failed": "Garam can't watch this folder for changes. Changes appear when you return to the window.",
+  "invalid_branch_name": "That isn't a valid branch name. Avoid spaces and characters like ~ ^ : ? * [ \\.",
+  "branch_exists": "A branch with that name already exists.",
+  "branch_not_merged": "This branch has commits that aren't merged anywhere else.",
+  "local_changes_would_be_overwritten": "Your uncommitted changes would be overwritten. Commit them, or choose to leave them on the current branch.",
+  "merge_conflict": "The merge stopped because of conflicts. Resolve the conflicted files, then commit.",
+  "unrelated_histories": "These branches don't share any history, so Git won't merge them.",
   "unknown": "Something went wrong while running Git."
 }

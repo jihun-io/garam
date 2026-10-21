@@ -1,3 +1,4 @@
+pub mod branches;
 pub mod changes;
 pub mod external;
 pub mod git;

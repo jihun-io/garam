@@ -1,0 +1,113 @@
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { ErrorMessage } from "../../components/ErrorMessage";
+import { Button } from "../../components/ui/Button";
+import { FormDialog } from "../../components/ui/Dialog";
+import { toAppError, type AppError, type Branch, type MergeOutcome } from "../../ipc";
+import { useMergePreview } from "./api";
+import styles from "./branches.module.css";
+
+/** Picks a branch (unless given) and merges it into the current branch. */
+export function MergeDialog({
+  repo,
+  current,
+  branches,
+  initial,
+  onMerge,
+  onClose,
+}: {
+  repo: string;
+  current: string;
+  branches: Branch[];
+  initial?: Branch;
+  onMerge: (branch: string) => Promise<MergeOutcome>;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation("branches");
+  const [query, setQuery] = useState("");
+  const [chosen, setChosen] = useState<string | null>(initial?.name ?? null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<AppError>();
+  const preview = useMergePreview(repo, chosen);
+
+  const candidates = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase();
+    return branches.filter((b) => !b.isHead && (!q || b.name.toLocaleLowerCase().includes(q)));
+  }, [branches, query]);
+
+  const submit = async () => {
+    if (!chosen || busy) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await onMerge(chosen);
+      onClose();
+    } catch (e) {
+      setError(toAppError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const count = preview.data;
+  return (
+    <FormDialog
+      open
+      onOpenChange={(open) => !open && !busy && onClose()}
+      title={t("merge.title", { branch: current })}
+      onSubmit={() => void submit()}
+      dismissible={!busy}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={busy}>
+            {t("form.cancel")}
+          </Button>
+          <Button type="submit" variant="primary" disabled={!chosen || busy || count === 0}>
+            {chosen
+              ? t("merge.submit", { from: chosen, into: current })
+              : t("merge.title", { branch: current })}
+          </Button>
+        </>
+      }
+    >
+      {!initial && (
+        <>
+          <p>{t("merge.choose", { branch: current })}</p>
+          <input
+            type="search"
+            className={styles.search}
+            placeholder={t("picker.search")}
+            aria-label={t("picker.search")}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            autoFocus
+          />
+          <ul className={styles.mergeList} role="listbox" aria-label={t("picker.local")}>
+            {candidates.map((b) => (
+              <li key={b.name}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={b.name === chosen}
+                  className={styles.mergeItem}
+                  onClick={() => setChosen(b.name)}
+                >
+                  {b.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {chosen && count !== undefined && (
+        <p className={styles.preview}>
+          {count === 0
+            ? t("merge.upToDate", { from: chosen, into: current })
+            : t("merge.preview", { count, from: chosen, into: current })}
+        </p>
+      )}
+      {error && <ErrorMessage error={error} />}
+    </FormDialog>
+  );
+}

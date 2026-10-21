@@ -1,0 +1,71 @@
+{
+  "picker": {
+    "label": "Current branch: {{name}}",
+    "detached": "Detached HEAD",
+    "search": "Filter branches",
+    "local": "Branches",
+    "remote": "Remote branches",
+    "noMatches": "No branches match “{{query}}”.",
+    "new": "New branch…",
+    "merge": "Merge into {{branch}}…",
+    "rename": "Rename…",
+    "delete": "Delete…",
+    "mergeThis": "Merge into {{branch}}…",
+    "ahead": "{{count}} to push",
+    "behind": "{{count}} to pull",
+    "gone": "Deleted on remote"
+  },
+  "switch": {
+    "title": "Switch to {{branch}}?",
+    "body": "You have uncommitted changes. What should happen to them?",
+    "leave": "Leave my changes on {{branch}}",
+    "leaveHint": "They're set aside and offered back when you return to {{branch}}.",
+    "bring": "Bring my changes to {{branch}}",
+    "bringHint": "Git refuses if they clash with files on the other branch.",
+    "submit": "Switch branch",
+    "cancel": "Cancel"
+  },
+  "create": {
+    "title": "Create a branch",
+    "name": "Name",
+    "from": "Starts from {{branch}}. Your uncommitted changes come along.",
+    "willBe": "Will be created as {{name}}",
+    "submit": "Create branch"
+  },
+  "rename": {
+    "title": "Rename {{branch}}",
+    "name": "New name",
+    "submit": "Rename"
+  },
+  "delete": {
+    "title": "Delete {{branch}}?",
+    "body": "The branch is deleted from this computer. Commits that are on other branches stay.",
+    "unmergedTitle": "{{branch}} has unmerged commits",
+    "unmergedBody": "These commits aren't on any other branch. Deleting the branch may lose them.",
+    "submit": "Delete branch",
+    "forceSubmit": "Delete anyway",
+    "cancel": "Cancel"
+  },
+  "merge": {
+    "title": "Merge into {{branch}}",
+    "choose": "Choose a branch to merge into {{branch}}.",
+    "preview_one": "This will bring {{count}} commit from {{from}} into {{into}}.",
+    "preview_other": "This will bring {{count}} commits from {{from}} into {{into}}.",
+    "upToDate": "{{into}} already has everything from {{from}}.",
+    "submit": "Merge {{from}} into {{into}}",
+    "resultUpToDate": "{{into}} is already up to date.",
+    "resultMerged": "Merged {{from}} into {{into}}."
+  },
+  "stash": {
+    "banner": "You left changes on this branch earlier.",
+    "restore": "Restore changes",
+    "discard": "Discard…",
+    "discardTitle": "Discard the saved changes?",
+    "discardBody": "The changes you left on {{branch}} will be deleted. This can't be undone.",
+    "discardConfirm": "Discard saved changes",
+    "keep": "Keep them"
+  },
+  "form": {
+    "cancel": "Cancel"
+  }
+}

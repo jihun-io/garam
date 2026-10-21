@@ -23,6 +23,12 @@ pub enum ErrorKind {
     AuthenticationFailed,
     NetworkError,
     NothingToCommit,
+    InvalidBranchName,
+    BranchExists,
+    BranchNotMerged,
+    LocalChangesWouldBeOverwritten,
+    MergeConflict,
+    UnrelatedHistories,
     IdentityMissing,
     Cancelled,
     Unknown,
@@ -64,6 +70,9 @@ pub enum GitError {
     #[error("destination is not an empty directory: {}", .0.display())]
     DestinationNotEmpty(PathBuf),
 
+    #[error("invalid branch name: {0}")]
+    InvalidBranchName(String),
+
     #[error("operation cancelled")]
     Cancelled,
 }
@@ -88,6 +97,7 @@ impl GitError {
             Self::BareRepository(_) => ErrorKind::BareRepository,
             Self::DestinationNotEmpty(_) => ErrorKind::DestinationNotEmpty,
             Self::Cancelled => ErrorKind::Cancelled,
+            Self::InvalidBranchName(_) => ErrorKind::InvalidBranchName,
             Self::Io(_) | Self::Parse(_) => ErrorKind::Unknown,
         }
     }
@@ -108,6 +118,22 @@ fn classify(stderr: &str) -> ErrorKind {
     // lowercase.
     const PATTERNS: &[(&str, ErrorKind)] = &[
         ("not a git repository", ErrorKind::NotARepository),
+        (
+            "would be overwritten by",
+            ErrorKind::LocalChangesWouldBeOverwritten,
+        ),
+        (
+            "please commit your changes or stash them",
+            ErrorKind::LocalChangesWouldBeOverwritten,
+        ),
+        (
+            "refusing to merge unrelated histories",
+            ErrorKind::UnrelatedHistories,
+        ),
+        ("automatic merge failed", ErrorKind::MergeConflict),
+        ("conflict (", ErrorKind::MergeConflict),
+        ("is not fully merged", ErrorKind::BranchNotMerged),
+        ("a branch named", ErrorKind::BranchExists),
         ("nothing to commit", ErrorKind::NothingToCommit),
         ("no changes added to commit", ErrorKind::NothingToCommit),
         ("please tell me who you are", ErrorKind::IdentityMissing),

@@ -113,6 +113,13 @@ garam-git/src/
 
 프론트의 diff 쿼리 키에는 파일의 staged/unstaged 상태가 들어간다. 상태가 바뀌면 줄 표시도 새로 계산해야 하기 때문이다. index를 쓰는 요청(스테이지, 줄 스테이지, 변경 취소, 커밋)은 `index.lock` 충돌을 피하려고 저장소마다 순서대로 실행한다(TanStack Query mutation `scope`).
 
+### 2.6 브랜치 전환과 자동 보관
+
+- "현재 브랜치에 보관하기"를 고르면 `git stash push --include-untracked --message garam-auto-stash:<브랜치>`로 보관한 뒤 전환한다. 그 브랜치로 돌아오면 메시지로 stash를 찾아 복원 배너를 띄운다.
+- stash는 `stash@{n}` 대신 커밋 id로 가리킨다. 다른 stash가 생기면 번호가 밀리기 때문이다. 작업 직전에 id로 현재 번호를 다시 찾는다.
+- 전환이 실패하면 **이번에 만든 stash만** 되돌린다. 보관할 변경이 없으면 git이 stash를 만들지 않으므로, 전후 `refs/stash`를 비교해 새로 생겼는지 확인한다.
+- 원격 브랜치를 고르면 같은 이름의 로컬 브랜치가 있을 때는 그쪽으로, 없으면 `git switch --track`으로 추적 브랜치를 만들어 전환한다.
+
 ## 3. IPC 설계
 
 - 프론트↔Rust 통신은 **Tauri 명령(`invoke`)** 으로 한다. 명령 이름은 `도메인_동작`(예: `status_get`, `branch_create`).
