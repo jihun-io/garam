@@ -22,6 +22,8 @@ pub enum ErrorKind {
     RemoteNotFound,
     AuthenticationFailed,
     NetworkError,
+    NothingToCommit,
+    IdentityMissing,
     Cancelled,
     Unknown,
 }
@@ -106,6 +108,10 @@ fn classify(stderr: &str) -> ErrorKind {
     // lowercase.
     const PATTERNS: &[(&str, ErrorKind)] = &[
         ("not a git repository", ErrorKind::NotARepository),
+        ("nothing to commit", ErrorKind::NothingToCommit),
+        ("no changes added to commit", ErrorKind::NothingToCommit),
+        ("please tell me who you are", ErrorKind::IdentityMissing),
+        ("empty ident name", ErrorKind::IdentityMissing),
         (
             "already exists and is not an empty directory",
             ErrorKind::DestinationNotEmpty,

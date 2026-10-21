@@ -1,0 +1,49 @@
+/* Drawn by hand: native checkboxes look different on every platform, and
+   WebKit drops the box entirely once checked. */
+.checkbox {
+  flex: none;
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 1.5px solid var(--color-ink-faint);
+  border-radius: 3px;
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.checkbox::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  transform: scale(0);
+  background: #fff;
+}
+
+.checkbox:checked,
+.checkbox:indeterminate {
+  border-color: var(--color-river);
+  background: var(--color-river);
+}
+
+.checkbox:checked::before {
+  transform: scale(1);
+  clip-path: polygon(12% 52%, 0 66%, 38% 100%, 100% 22%, 87% 9%, 37% 72%);
+}
+
+.checkbox:indeterminate::before {
+  height: 2px;
+  transform: scale(1);
+}
+
+.checkbox:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.checkbox:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}

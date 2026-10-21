@@ -11,6 +11,8 @@ pub enum AppErrorKind {
     StorageFailed,
     ExternalAppNotFound,
     ExternalAppFailed,
+    TrashFailed,
+    WatchFailed,
 }
 
 /// Either kind of error code; serialized as a plain string, so the frontend

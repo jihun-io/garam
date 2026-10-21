@@ -169,3 +169,17 @@ mod tests {
         }
     }
 }
+
+/// Starts watching `path` for changes (or stops with `None`). The frontend
+/// receives `repo-changed` events and refreshes.
+#[tauri::command]
+#[specta::specta]
+pub fn repo_watch(
+    app: tauri::AppHandle,
+    watcher: State<'_, crate::watcher::RepoWatcher>,
+    path: Option<String>,
+) -> AppResult<()> {
+    watcher
+        .watch(&app, path)
+        .map_err(|e| AppError::app(AppErrorKind::WatchFailed, Some(e.to_string())))
+}

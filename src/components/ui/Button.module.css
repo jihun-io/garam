@@ -43,3 +43,13 @@
 .ghost:hover:not(:disabled) {
   background: var(--color-hover);
 }
+
+.danger {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}

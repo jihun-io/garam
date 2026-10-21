@@ -13,5 +13,9 @@
   "storage_failed": "Garam couldn't save its repository list.",
   "external_app_not_found": "The app couldn't be found.",
   "external_app_failed": "The app couldn't be opened.",
+  "nothing_to_commit": "There's nothing to commit. Select files to include first.",
+  "identity_missing": "Git doesn't know who you are yet. Set your name and email.",
+  "trash_failed": "The files couldn't be moved to the Trash, so nothing was discarded.",
+  "watch_failed": "Garam can't watch this folder for changes. Changes appear when you return to the window.",
   "unknown": "Something went wrong while running Git."
 }

@@ -1,0 +1,71 @@
+{
+  "list": {
+    "title_one": "변경된 파일 {{count}}개",
+    "title_other": "변경된 파일 {{count}}개",
+    "selectAll": "모든 파일을 커밋에 포함",
+    "include": "{{path}}을(를) 커밋에 포함",
+    "discardAll": "모든 변경 취소…"
+  },
+  "kind": {
+    "added": "추가됨",
+    "modified": "수정됨",
+    "deleted": "삭제됨",
+    "renamed": "이름 바뀜",
+    "conflicted": "충돌"
+  },
+  "fileMenu": {
+    "discard": "변경 취소…",
+    "copyPath": "경로 복사",
+    "reveal_macos": "Finder에서 보기",
+    "reveal_windows": "탐색기에서 보기",
+    "reveal_linux": "파일 관리자에서 보기"
+  },
+  "empty": {
+    "title": "변경 사항이 없습니다",
+    "body": "작업 폴더가 마지막 커밋과 같습니다. 파일을 수정하면 여기에 나타납니다."
+  },
+  "diff": {
+    "renamedFrom": "{{path}}에서 이름이 바뀜",
+    "noContent": "내용은 바뀌지 않았습니다. 파일 권한이나 메타데이터만 바뀌었습니다.",
+    "emptyFile": "빈 파일입니다.",
+    "binary": "바이너리 파일이라 내용을 표시할 수 없습니다.",
+    "tooLarge": "변경 내용이 너무 커서 표시하지 않습니다.",
+    "before": "이전",
+    "after": "이후",
+    "noImage": "없음",
+    "selectFile": "파일을 선택하면 변경 내용이 보입니다."
+  },
+  "commit": {
+    "summary": "요약",
+    "summaryPlaceholder": "요약 (필수)",
+    "description": "설명",
+    "descriptionPlaceholder": "설명",
+    "summaryLong": "요약이 72자를 넘으면 일부 도구에서 잘려 보일 수 있습니다.",
+    "amend": "마지막 커밋 수정",
+    "coAuthors": "공동 작성자",
+    "coAuthorsPlaceholder": "이름 <email@example.com>, 한 줄에 한 명씩",
+    "coAuthorsInvalid": "공동 작성자는 이름 <email@example.com> 형식으로 쓰세요.",
+    "submit": "{{branch}}에 커밋",
+    "submitDetached": "커밋",
+    "submitAmend": "마지막 커밋 수정",
+    "nothingStaged": "커밋에 포함할 파일을 선택하세요.",
+    "shortcut": "{{key}}+Enter로 커밋"
+  },
+  "discard": {
+    "title": "변경 사항을 취소할까요?",
+    "single": "{{name}}의 변경 사항을 취소합니다.",
+    "multiple_one": "파일 {{count}}개의 변경 사항을 취소합니다.",
+    "multiple_other": "파일 {{count}}개의 변경 사항을 취소합니다.",
+    "trash": "현재 내용은 휴지통으로 옮겨지므로 필요하면 되살릴 수 있습니다.",
+    "confirm": "변경 취소",
+    "keep": "그대로 두기"
+  },
+  "identity": {
+    "title": "커밋 작성자 정보를 입력하세요",
+    "body": "Git은 커밋마다 이름과 이메일을 기록합니다. 입력한 정보는 전역 Git 설정에 저장됩니다.",
+    "name": "이름",
+    "email": "이메일",
+    "save": "저장하고 커밋",
+    "cancel": "취소"
+  }
+}

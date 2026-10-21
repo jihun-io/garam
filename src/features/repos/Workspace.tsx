@@ -1,4 +1,6 @@
 import type { RepositoryEntry } from "../../ipc";
+import { ChangesView } from "../changes/ChangesView";
+import { useRepoWatcher } from "../changes/useRepoWatcher";
 import { LanguageSelect } from "../settings/LanguageSelect";
 import { OpenInMenu } from "./OpenInMenu";
 import { RepoPicker } from "./RepoPicker";
@@ -13,6 +15,9 @@ export function Workspace({
   repositories: RepositoryEntry[];
   selected: RepositoryEntry | null;
 }) {
+  const active = selected && !selected.missing ? selected.path : null;
+  useRepoWatcher(active);
+
   return (
     <div className={styles.root}>
       <header className={styles.toolbar}>
@@ -22,7 +27,12 @@ export function Workspace({
         <LanguageSelect />
       </header>
       <main className={styles.main}>
-        {selected && <RepositoryOverview key={selected.path} repository={selected} />}
+        {selected &&
+          (selected.missing ? (
+            <RepositoryOverview key={selected.path} repository={selected} />
+          ) : (
+            <ChangesView key={selected.path} repo={selected.path} />
+          ))}
       </main>
     </div>
   );

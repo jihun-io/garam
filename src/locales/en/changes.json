@@ -1,0 +1,71 @@
+{
+  "list": {
+    "title_one": "{{count}} changed file",
+    "title_other": "{{count}} changed files",
+    "selectAll": "Include all files in the commit",
+    "include": "Include {{path}} in the commit",
+    "discardAll": "Discard all changes…"
+  },
+  "kind": {
+    "added": "Added",
+    "modified": "Modified",
+    "deleted": "Deleted",
+    "renamed": "Renamed",
+    "conflicted": "Conflicted"
+  },
+  "fileMenu": {
+    "discard": "Discard changes…",
+    "copyPath": "Copy path",
+    "reveal_macos": "Show in Finder",
+    "reveal_windows": "Show in Explorer",
+    "reveal_linux": "Show in file manager"
+  },
+  "empty": {
+    "title": "No local changes",
+    "body": "Your working folder matches the last commit. Edit files and they'll show up here."
+  },
+  "diff": {
+    "renamedFrom": "Renamed from {{path}}",
+    "noContent": "No content changes. Only file permissions or metadata changed.",
+    "emptyFile": "This file is empty.",
+    "binary": "This is a binary file, so its contents can't be shown.",
+    "tooLarge": "This diff is too large to display.",
+    "before": "Before",
+    "after": "After",
+    "noImage": "None",
+    "selectFile": "Select a file to see its changes."
+  },
+  "commit": {
+    "summary": "Summary",
+    "summaryPlaceholder": "Summary (required)",
+    "description": "Description",
+    "descriptionPlaceholder": "Description",
+    "summaryLong": "Summaries over 72 characters may be cut off in some tools.",
+    "amend": "Amend last commit",
+    "coAuthors": "Co-authors",
+    "coAuthorsPlaceholder": "Name <email@example.com>, one per line",
+    "coAuthorsInvalid": "Write each co-author as Name <email@example.com>.",
+    "submit": "Commit to {{branch}}",
+    "submitDetached": "Commit",
+    "submitAmend": "Amend last commit",
+    "nothingStaged": "Select files to include in the commit.",
+    "shortcut": "{{key}}+Enter to commit"
+  },
+  "discard": {
+    "title": "Discard changes?",
+    "single": "Changes to {{name}} will be discarded.",
+    "multiple_one": "Changes to {{count}} file will be discarded.",
+    "multiple_other": "Changes to {{count}} files will be discarded.",
+    "trash": "Current contents are moved to the Trash, so you can still recover them.",
+    "confirm": "Discard changes",
+    "keep": "Keep changes"
+  },
+  "identity": {
+    "title": "Who's making this commit?",
+    "body": "Git records a name and email with every commit. This is saved in your global Git settings.",
+    "name": "Name",
+    "email": "Email",
+    "save": "Save and commit",
+    "cancel": "Cancel"
+  }
+}

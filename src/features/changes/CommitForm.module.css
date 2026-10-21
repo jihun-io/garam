@@ -1,0 +1,90 @@
+.form {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-line);
+  background: var(--color-surface);
+}
+
+.summary,
+.description {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  user-select: text;
+}
+
+.summary {
+  min-height: 28px;
+  font-weight: 550;
+}
+
+.description {
+  resize: vertical;
+  min-height: 3.5em;
+  line-height: 1.45;
+}
+
+.summary:focus-visible,
+.description:focus-visible {
+  outline-offset: 0;
+  border-color: var(--color-focus);
+}
+
+.description[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+.fieldLabel {
+  font-weight: 550;
+  font-size: var(--text-sm);
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-link);
+  cursor: pointer;
+}
+
+.submit {
+  width: 100%;
+  min-height: 32px;
+}
+
+.submit span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hint {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

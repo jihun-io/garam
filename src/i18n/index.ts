@@ -1,18 +1,32 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
+import enChanges from "../locales/en/changes.json";
 import enCommon from "../locales/en/common.json";
 import enErrors from "../locales/en/errors.json";
 import enRepos from "../locales/en/repos.json";
 import enStartup from "../locales/en/startup.json";
+import koChanges from "../locales/ko/changes.json";
 import koCommon from "../locales/ko/common.json";
 import koErrors from "../locales/ko/errors.json";
 import koRepos from "../locales/ko/repos.json";
 import koStartup from "../locales/ko/startup.json";
 
 export const resources = {
-  en: { common: enCommon, errors: enErrors, repos: enRepos, startup: enStartup },
-  ko: { common: koCommon, errors: koErrors, repos: koRepos, startup: koStartup },
+  en: {
+    changes: enChanges,
+    common: enCommon,
+    errors: enErrors,
+    repos: enRepos,
+    startup: enStartup,
+  },
+  ko: {
+    changes: koChanges,
+    common: koCommon,
+    errors: koErrors,
+    repos: koRepos,
+    startup: koStartup,
+  },
 } as const;
 
 export type Language = keyof typeof resources;
@@ -59,7 +73,7 @@ void i18n.use(initReactI18next).init({
   lng: detectLanguage(),
   fallbackLng: "en",
   defaultNS: "common",
-  ns: ["common", "errors", "repos", "startup"],
+  ns: ["changes", "common", "errors", "repos", "startup"],
   interpolation: { escapeValue: false },
   contextSeparator: "#",
   returnNull: false,

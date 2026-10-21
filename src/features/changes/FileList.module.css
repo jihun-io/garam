@@ -1,0 +1,78 @@
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  outline: none;
+}
+
+.row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 0 var(--space-3);
+  cursor: default;
+}
+
+.row:hover {
+  background: var(--color-hover);
+}
+
+.row[aria-selected="true"] {
+  background: var(--color-selected);
+}
+
+.scroll:focus-visible .row[aria-selected="true"] {
+  background: var(--color-river);
+  color: #fff;
+}
+
+.scroll:focus-visible .row[aria-selected="true"] .dir,
+.scroll:focus-visible .row[aria-selected="true"] .kind {
+  color: inherit;
+}
+
+.path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Keep the file name visible: long folders shrink first. */
+  direction: ltr;
+}
+
+.dir {
+  color: var(--color-ink-muted);
+}
+
+.name {
+  font-weight: 550;
+}
+
+.kind {
+  flex: none;
+  width: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.added {
+  color: var(--color-added-ink);
+}
+
+.modified {
+  color: var(--color-modified-ink);
+}
+
+.deleted,
+.conflicted {
+  color: var(--color-danger);
+}
+
+.renamed {
+  color: var(--color-link);
+}

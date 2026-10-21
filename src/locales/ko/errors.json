@@ -13,5 +13,9 @@
   "storage_failed": "저장소 목록을 저장하지 못했습니다.",
   "external_app_not_found": "앱을 찾을 수 없습니다.",
   "external_app_failed": "앱을 열지 못했습니다.",
+  "nothing_to_commit": "커밋할 내용이 없습니다. 먼저 포함할 파일을 선택하세요.",
+  "identity_missing": "Git에 작성자 정보가 없습니다. 이름과 이메일을 설정하세요.",
+  "trash_failed": "파일을 휴지통으로 옮기지 못해서 아무것도 취소하지 않았습니다.",
+  "watch_failed": "이 폴더의 변경을 감시할 수 없습니다. 창으로 돌아오면 변경 사항이 갱신됩니다.",
   "unknown": "Git을 실행하는 중에 문제가 생겼습니다."
 }

@@ -4,12 +4,18 @@
 //! execution rules described in `docs/ARCHITECTURE.md` (stable locale, no
 //! terminal prompts, unquoted paths, ...).
 
+pub mod blob;
 mod cancel;
 mod command;
+pub mod commit;
+pub mod diff;
 mod error;
 mod git;
+pub mod identity;
+pub mod index;
 mod progress;
 pub mod repo;
+pub mod status;
 mod version;
 
 #[cfg(feature = "testing")]
@@ -21,4 +27,5 @@ pub use error::{ErrorKind, GitError};
 pub use git::Git;
 pub use progress::{Progress, ProgressParser, ProgressPhase};
 pub use repo::RepositoryInfo;
+pub use status::{ChangeKind, FileChange, RepoStatus};
 pub use version::{GitVersion, MIN_GIT_VERSION};

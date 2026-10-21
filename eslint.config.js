@@ -12,6 +12,8 @@ export default tseslint.config(
     plugins: { "react-hooks": reactHooks },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Only matters with the React Compiler, which this project doesn't use.
+      "react-hooks/incompatible-library": "off",
     },
   },
   {

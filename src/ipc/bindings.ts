@@ -27,6 +27,27 @@ export const commands = {
 	repoRemove: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("repo_remove", { path })),
 	repoSelect: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("repo_select", { path })),
 	operationCancel: (operationId: string) => __TAURI_INVOKE<void>("operation_cancel", { operationId }),
+	/**
+	 *  Starts watching `path` for changes (or stops with `None`). The frontend
+	 *  receives `repo-changed` events and refreshes.
+	 */
+	repoWatch: (path: string | null) => typedError<null, AppError>(__TAURI_INVOKE("repo_watch", { path })),
+	statusGet: (repo: string) => typedError<RepoStatus, AppError>(__TAURI_INVOKE("status_get", { repo })),
+	diffGet: (repo: string, file: FileChange) => typedError<FileDiff, AppError>(__TAURI_INVOKE("diff_get", { repo, file })),
+	diffImages: (repo: string, file: FileChange) => typedError<ImageVersions, AppError>(__TAURI_INVOKE("diff_images", { repo, file })),
+	changesStage: (repo: string, files: FileChange[]) => typedError<null, AppError>(__TAURI_INVOKE("changes_stage", { repo, files })),
+	changesUnstage: (repo: string, files: FileChange[]) => typedError<null, AppError>(__TAURI_INVOKE("changes_unstage", { repo, files })),
+	/**  Reverts files to HEAD. Current contents go to the system trash first. */
+	changesDiscard: (repo: string, files: FileChange[]) => typedError<null, AppError>(__TAURI_INVOKE("changes_discard", { repo, files })),
+	/**  Commits the index. Returns the new commit id. */
+	commitCreate: (repo: string, summary: string, description: string, coAuthors: CoAuthor[], amend: boolean) => typedError<string, AppError>(__TAURI_INVOKE("commit_create", { repo, summary, description, coAuthors, amend })),
+	commitHead: (repo: string) => typedError<{
+	oid: string,
+	summary: string,
+	body: string,
+} | null, AppError>(__TAURI_INVOKE("commit_head", { repo })),
+	identityGet: (repo: string) => typedError<Identity, AppError>(__TAURI_INVOKE("identity_get", { repo })),
+	identitySet: (name: string, email: string) => typedError<null, AppError>(__TAURI_INVOKE("identity_set", { name, email })),
 	externalEditors: () => typedError<ExternalEditor[], AppError>(__TAURI_INVOKE("external_editors")),
 	externalOpenEditor: (editorId: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_editor", { editorId, path })),
 	externalOpenTerminal: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_terminal", { path })),
@@ -47,7 +68,34 @@ export type AppError = {
 };
 
 /**  Errors that come from the app layer rather than from git. */
-export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "external_app_not_found" | "external_app_failed";
+export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "external_app_not_found" | "external_app_failed" | "trash_failed" | "watch_failed";
+
+export type BranchStatus = {
+	/**  Current branch name; `None` when HEAD is detached. */
+	head: string | null,
+	/**  HEAD commit; `None` on an unborn branch (no commits yet). */
+	oid: string | null,
+	upstream: string | null,
+	ahead: number,
+	behind: number,
+};
+
+/**  How a file differs on one side (index or working tree). */
+export type ChangeKind = "added" | "modified" | "deleted" | "renamed" | "copied" | "type_changed" | "untracked" | "conflicted";
+
+export type CoAuthor = {
+	name: string,
+	email: string,
+};
+
+export type DiffLine = {
+	kind: LineKind,
+	text: string,
+	oldLine: number | null,
+	newLine: number | null,
+	/**  Followed by `\ No newline at end of file`. */
+	noNewline: boolean,
+};
 
 /**
  *  Either kind of error code; serialized as a plain string, so the frontend
@@ -62,17 +110,62 @@ export type ErrorCode = ErrorKind | AppErrorKind;
  *  `errors:<kind>` i18n key, so adding a variant requires adding that key to
  *  every locale.
  */
-export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "cancelled" | "unknown";
+export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "identity_missing" | "cancelled" | "unknown";
 
 export type ExternalEditor = {
 	id: string,
 	name: string,
 };
 
+export type FileChange = {
+	/**  Path relative to the repository root, with `/` separators. */
+	path: string,
+	/**  Previous path for renames and copies. */
+	origPath: string | null,
+	/**  Change between HEAD and the index (staged), if any. */
+	staged: ChangeKind | null,
+	/**  Change between the index and the working tree (unstaged), if any. */
+	unstaged: ChangeKind | null,
+	isSubmodule: boolean,
+};
+
+export type FileDiff = 
+/**  Text changes. `hunks` may be empty for mode-only changes or empty files. */
+{ type: "text"; hunks: Hunk[] } | { type: "binary" } | { type: "too_large" };
+
 export type GitInfo = {
 	version: string,
 	path: string,
 };
+
+export type HeadCommit = {
+	oid: string,
+	summary: string,
+	body: string,
+};
+
+export type Hunk = {
+	oldStart: number,
+	oldLines: number,
+	newStart: number,
+	newLines: number,
+	/**  Text after the closing `@@`, usually the enclosing function. */
+	section: string,
+	lines: DiffLine[],
+};
+
+export type Identity = {
+	name: string | null,
+	email: string | null,
+};
+
+/**  Before/after versions of an image as data URLs, for side-by-side preview. */
+export type ImageVersions = {
+	before: string | null,
+	after: string | null,
+};
+
+export type LineKind = "context" | "added" | "deleted";
 
 export type Progress = {
 	phase: ProgressPhase,
@@ -84,6 +177,11 @@ export type Progress = {
 
 /**  Stages of a transfer, in the order git reports them. */
 export type ProgressPhase = "counting" | "compressing" | "receiving" | "resolving" | "checking_out";
+
+export type RepoStatus = {
+	branch: BranchStatus,
+	files: FileChange[],
+};
 
 export type RepositoryEntry = {
 	path: string,

@@ -103,10 +103,7 @@ impl<'a> GitCommand<'a> {
         if output.success() {
             Ok(output)
         } else {
-            Err(GitError::failed(
-                output.code,
-                output.stderr_str().into_owned(),
-            ))
+            Err(GitError::failed(output.code, output.failure_text()))
         }
     }
 
@@ -296,6 +293,17 @@ impl GitOutput {
 
     pub fn stderr_str(&self) -> Cow<'_, str> {
         String::from_utf8_lossy(&self.stderr)
+    }
+
+    /// What to report when the command failed: stderr, or stdout if git
+    /// wrote the explanation there (e.g. "nothing to commit").
+    pub fn failure_text(&self) -> String {
+        let stderr = self.stderr_str();
+        if stderr.trim().is_empty() {
+            self.stdout_str().into_owned()
+        } else {
+            stderr.into_owned()
+        }
     }
 }
 

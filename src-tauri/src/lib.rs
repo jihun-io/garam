@@ -3,6 +3,7 @@ mod error;
 mod external;
 mod operations;
 mod repositories;
+mod watcher;
 
 use std::sync::Arc;
 
@@ -15,7 +16,7 @@ use crate::repositories::RepositoryStore;
 /// Single source of truth for the IPC surface. Also used by the
 /// `export_bindings` test to regenerate `src/ipc/bindings.ts`.
 pub fn specta_builder() -> Builder<tauri::Wry> {
-    use commands::{external, git, repo};
+    use commands::{changes, external, git, repo};
     Builder::<tauri::Wry>::new().commands(collect_commands![
         git::git_info,
         repo::repo_list,
@@ -26,6 +27,17 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         repo::repo_remove,
         repo::repo_select,
         repo::operation_cancel,
+        repo::repo_watch,
+        changes::status_get,
+        changes::diff_get,
+        changes::diff_images,
+        changes::changes_stage,
+        changes::changes_unstage,
+        changes::changes_discard,
+        changes::commit_create,
+        changes::commit_head,
+        changes::identity_get,
+        changes::identity_set,
         external::external_editors,
         external::external_open_editor,
         external::external_open_terminal,
@@ -59,6 +71,7 @@ pub fn run() {
                 data_dir.join("repositories.json"),
             )));
             app.manage(Arc::new(Operations::default()));
+            app.manage(watcher::RepoWatcher::default());
             Ok(())
         })
         .run(tauri::generate_context!())
