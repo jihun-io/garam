@@ -2,5 +2,16 @@
   "git_not_found": "Git isn't installed, or Garam can't find it.",
   "git_too_old": "Git {{found}} is too old. Garam needs Git {{required}} or later.",
   "not_a_repository": "This folder isn't a Git repository.",
+  "bare_repository": "This is a bare repository, which has no working files. Choose a repository with a working folder.",
+  "path_not_found": "The folder doesn't exist.",
+  "destination_not_empty": "The destination folder already exists and isn't empty. Choose a different name or location.",
+  "remote_not_found": "The repository wasn't found. Check the URL, and that you have access to it.",
+  "authentication_failed": "Git couldn't sign in to the remote. Check your credentials or SSH key.",
+  "network_error": "Couldn't reach the server. Check your internet connection and the URL.",
+  "cancelled": "The operation was cancelled.",
+  "invalid_repository_name": "Enter a folder name without / \\ : * ? \" < > |.",
+  "storage_failed": "Garam couldn't save its repository list.",
+  "external_app_not_found": "The app couldn't be found.",
+  "external_app_failed": "The app couldn't be opened.",
   "unknown": "Something went wrong while running Git."
 }

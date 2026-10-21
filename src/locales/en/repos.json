@@ -1,0 +1,79 @@
+{
+  "empty": {
+    "title": "Add your first repository",
+    "dropHint": "You can also drag a folder onto this window."
+  },
+  "actions": {
+    "add": "Add existing repository",
+    "addDescription": "Choose a folder on this computer that already uses Git.",
+    "clone": "Clone repository",
+    "cloneDescription": "Copy a repository from a URL, such as one on GitHub or GitLab.",
+    "create": "Create new repository",
+    "createDescription": "Start a new project in an empty folder."
+  },
+  "picker": {
+    "label": "Repository: {{name}}",
+    "placeholder": "Choose a repository",
+    "search": "Filter repositories",
+    "noMatches": "No repositories match “{{query}}”.",
+    "missing": "Missing",
+    "remove": "Remove from list"
+  },
+  "open": {
+    "menu": "Open in",
+    "reveal_macos": "Show in Finder",
+    "reveal_windows": "Show in Explorer",
+    "reveal_linux": "Show in file manager",
+    "terminal": "Open in Terminal",
+    "editor": "Open in {{name}}",
+    "noEditors": "No supported editors found"
+  },
+  "overview": {
+    "copyPath": "Copy path",
+    "copied": "Copied",
+    "missingTitle": "Garam can't find this folder",
+    "missingBody": "It may have been moved, renamed, or deleted.",
+    "locate": "Locate…",
+    "remove": "Remove from list"
+  },
+  "form": {
+    "browse": "Choose…",
+    "cancel": "Cancel",
+    "localPath": "Local path",
+    "willBeCreatedAt": "Will be created at {{path}}"
+  },
+  "add": {
+    "title": "Add existing repository",
+    "path": "Repository folder",
+    "submit": "Add repository",
+    "initOffer": "Create a repository in this folder instead?",
+    "initSubmit": "Create repository here"
+  },
+  "create": {
+    "title": "Create new repository",
+    "name": "Name",
+    "parent": "Location",
+    "submit": "Create repository"
+  },
+  "clone": {
+    "title": "Clone repository",
+    "url": "Repository URL",
+    "urlHint": "HTTPS or SSH, for example https://github.com/owner/repo.git",
+    "name": "Folder name",
+    "parent": "Location",
+    "submit": "Clone",
+    "cancelClone": "Cancel clone",
+    "cloning": "Cloning {{name}}…",
+    "phase": {
+      "starting": "Connecting…",
+      "counting": "Counting objects",
+      "compressing": "Compressing objects",
+      "receiving": "Receiving objects",
+      "resolving": "Resolving deltas",
+      "checking_out": "Checking out files"
+    }
+  },
+  "drop": {
+    "overlay": "Drop to add this repository"
+  }
+}

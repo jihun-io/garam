@@ -1,0 +1,118 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 320px;
+  height: 30px;
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.trigger:hover,
+.trigger[data-state="open"] {
+  background: var(--color-hover);
+}
+
+.triggerName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.content {
+  display: grid;
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
+}
+
+.search {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.searchInput {
+  width: 100%;
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  user-select: text;
+}
+
+.list {
+  max-height: min(360px, 50vh);
+  margin: 0;
+  padding: var(--space-1);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 var(--space-2);
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: start;
+  cursor: pointer;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--color-hover);
+  outline: none;
+}
+
+.item[aria-current="true"] {
+  background: var(--color-selected);
+}
+
+.itemName {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemPath {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.missing {
+  align-self: center;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+.empty {
+  padding: var(--space-4);
+  color: var(--color-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.footer {
+  display: grid;
+  padding: var(--space-1);
+  border-top: 1px solid var(--color-line);
+}
+
+.footer > button {
+  justify-content: flex-start;
+  font-weight: 500;
+}

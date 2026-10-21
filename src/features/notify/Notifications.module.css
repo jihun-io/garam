@@ -1,0 +1,18 @@
+.root {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  max-width: min(420px, calc(100vw - 32px));
+  padding: var(--space-1);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
+}
+
+.root > :first-child {
+  flex: 1;
+}

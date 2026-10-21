@@ -2,5 +2,16 @@
   "git_not_found": "Git이 설치되어 있지 않거나, 가람이 Git을 찾지 못했습니다.",
   "git_too_old": "Git {{found}} 버전은 지원하지 않습니다. Git {{required}} 이상이 필요합니다.",
   "not_a_repository": "이 폴더는 Git 저장소가 아닙니다.",
+  "bare_repository": "작업 파일이 없는 bare 저장소입니다. 작업 폴더가 있는 저장소를 선택하세요.",
+  "path_not_found": "폴더가 존재하지 않습니다.",
+  "destination_not_empty": "대상 폴더가 이미 있고 비어 있지 않습니다. 다른 이름이나 위치를 선택하세요.",
+  "remote_not_found": "저장소를 찾을 수 없습니다. URL과 접근 권한을 확인하세요.",
+  "authentication_failed": "원격 저장소에 로그인하지 못했습니다. 자격 증명이나 SSH 키를 확인하세요.",
+  "network_error": "서버에 연결하지 못했습니다. 인터넷 연결과 URL을 확인하세요.",
+  "cancelled": "작업을 취소했습니다.",
+  "invalid_repository_name": "폴더 이름에는 / \\ : * ? \" < > | 를 쓸 수 없습니다.",
+  "storage_failed": "저장소 목록을 저장하지 못했습니다.",
+  "external_app_not_found": "앱을 찾을 수 없습니다.",
+  "external_app_failed": "앱을 열지 못했습니다.",
   "unknown": "Git을 실행하는 중에 문제가 생겼습니다."
 }

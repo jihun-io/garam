@@ -13,12 +13,14 @@ specta = ["dep:specta"]
 testing = ["dep:tempfile"]
 
 [dependencies]
+dunce = "1"
 serde.workspace = true
 specta = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 
 [dev-dependencies]
+dunce = "1"
 garam-git = { path = ".", features = ["testing"] }
 
 [lints]

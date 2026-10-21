@@ -1,0 +1,79 @@
+{
+  "empty": {
+    "title": "첫 저장소를 추가하세요",
+    "dropHint": "폴더를 이 창으로 끌어다 놓아도 됩니다."
+  },
+  "actions": {
+    "add": "기존 저장소 추가",
+    "addDescription": "이 컴퓨터에서 이미 Git을 쓰고 있는 폴더를 선택합니다.",
+    "clone": "저장소 복제",
+    "cloneDescription": "GitHub, GitLab 같은 곳의 저장소를 URL로 복사해 옵니다.",
+    "create": "새 저장소 만들기",
+    "createDescription": "빈 폴더에서 새 프로젝트를 시작합니다."
+  },
+  "picker": {
+    "label": "저장소: {{name}}",
+    "placeholder": "저장소 선택",
+    "search": "저장소 검색",
+    "noMatches": "“{{query}}”와 일치하는 저장소가 없습니다.",
+    "missing": "찾을 수 없음",
+    "remove": "목록에서 제거"
+  },
+  "open": {
+    "menu": "다른 앱에서 열기",
+    "reveal_macos": "Finder에서 보기",
+    "reveal_windows": "탐색기에서 보기",
+    "reveal_linux": "파일 관리자에서 보기",
+    "terminal": "터미널에서 열기",
+    "editor": "{{name}}에서 열기",
+    "noEditors": "지원하는 에디터를 찾지 못했습니다"
+  },
+  "overview": {
+    "copyPath": "경로 복사",
+    "copied": "복사했습니다",
+    "missingTitle": "이 폴더를 찾을 수 없습니다",
+    "missingBody": "폴더를 옮기거나 이름을 바꿨거나 삭제했을 수 있습니다.",
+    "locate": "위치 다시 지정…",
+    "remove": "목록에서 제거"
+  },
+  "form": {
+    "browse": "선택…",
+    "cancel": "취소",
+    "localPath": "로컬 경로",
+    "willBeCreatedAt": "{{path}}에 만들어집니다"
+  },
+  "add": {
+    "title": "기존 저장소 추가",
+    "path": "저장소 폴더",
+    "submit": "저장소 추가",
+    "initOffer": "대신 이 폴더에 저장소를 만들까요?",
+    "initSubmit": "이 폴더에 저장소 만들기"
+  },
+  "create": {
+    "title": "새 저장소 만들기",
+    "name": "이름",
+    "parent": "위치",
+    "submit": "저장소 만들기"
+  },
+  "clone": {
+    "title": "저장소 복제",
+    "url": "저장소 URL",
+    "urlHint": "HTTPS 또는 SSH 주소. 예: https://github.com/owner/repo.git",
+    "name": "폴더 이름",
+    "parent": "위치",
+    "submit": "복제",
+    "cancelClone": "복제 취소",
+    "cloning": "{{name}} 복제 중…",
+    "phase": {
+      "starting": "연결하는 중…",
+      "counting": "개체 세는 중",
+      "compressing": "개체 압축하는 중",
+      "receiving": "개체 받는 중",
+      "resolving": "델타 처리하는 중",
+      "checking_out": "파일 꺼내는 중"
+    }
+  },
+  "drop": {
+    "overlay": "놓으면 이 저장소를 추가합니다"
+  }
+}

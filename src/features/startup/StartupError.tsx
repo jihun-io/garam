@@ -2,20 +2,13 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { Trans, useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
+import { Button } from "../../components/ui/Button";
 import type { AppError } from "../../ipc";
+import { currentPlatform } from "../../lib/platform";
 import { LanguageSelect } from "../settings/LanguageSelect";
 import styles from "./Startup.module.css";
 
 const DOWNLOAD_URL = "https://git-scm.com/downloads";
-
-type Platform = "macos" | "windows" | "linux";
-
-function currentPlatform(): Platform {
-  const ua = navigator.userAgent;
-  if (ua.includes("Mac")) return "macos";
-  if (ua.includes("Windows")) return "windows";
-  return "linux";
-}
 
 /** Shown when the startup git check fails: missing, outdated, or unusable git. */
 export function StartupError({
@@ -49,17 +42,13 @@ export function StartupError({
         )}
         <div className={styles.actions}>
           {(missing || tooOld) && (
-            <button
-              type="button"
-              className={styles.primary}
-              onClick={() => void openUrl(DOWNLOAD_URL)}
-            >
+            <Button variant="primary" onClick={() => void openUrl(DOWNLOAD_URL)}>
               {t("missing.download")}
-            </button>
+            </Button>
           )}
-          <button type="button" className={styles.secondary} disabled={retrying} onClick={onRetry}>
+          <Button disabled={retrying} onClick={onRetry}>
             {t("missing.retry")}
-          </button>
+          </Button>
         </div>
         {missing && (
           <p className={styles.muted}>

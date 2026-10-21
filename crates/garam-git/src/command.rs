@@ -1,10 +1,13 @@
 use std::borrow::Cow;
 use std::ffi::{OsStr, OsString};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
+use std::sync::mpsc::{self, RecvTimeoutError};
+use std::thread;
+use std::time::Duration;
 
-use crate::{Git, GitError};
+use crate::{CancelToken, Git, GitError};
 
 /// Builder for a single git invocation.
 ///
@@ -111,6 +114,97 @@ impl<'a> GitCommand<'a> {
     /// For commands where a non-zero exit is an expected answer, such as
     /// `git diff --quiet`.
     pub fn run_unchecked(self) -> Result<GitOutput, GitError> {
+        let mut command = self.build();
+        command.stdin(if self.stdin.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        });
+        let mut child = spawn(&mut command)?;
+
+        if let Some(input) = self.stdin {
+            // Write from a separate thread so a large stdin cannot deadlock
+            // against git filling its stdout pipe.
+            let mut pipe = child.stdin.take().expect("stdin was piped");
+            let writer = thread::spawn(move || pipe.write_all(&input));
+            let output = child.wait_with_output()?;
+            writer.join().expect("stdin writer panicked")?;
+            return Ok(GitOutput::from(output));
+        }
+
+        Ok(GitOutput::from(child.wait_with_output()?))
+    }
+
+    /// Runs a long command (clone, fetch, ...) and reports each stderr line,
+    /// which is where git writes `--progress` output, as it arrives.
+    ///
+    /// Progress lines end in `\r` rather than `\n`; both are treated as line
+    /// breaks. If `cancel` is triggered, git is killed and
+    /// [`GitError::Cancelled`] is returned.
+    pub fn run_streaming(
+        self,
+        cancel: &CancelToken,
+        mut on_stderr_line: impl FnMut(&str),
+    ) -> Result<GitOutput, GitError> {
+        if cancel.is_cancelled() {
+            return Err(GitError::Cancelled);
+        }
+        let mut command = self.build();
+        command.stdin(Stdio::null());
+        let mut child = spawn(&mut command)?;
+
+        let mut stdout_pipe = child.stdout.take().expect("stdout was piped");
+        let stdout_reader = thread::spawn(move || {
+            let mut buf = Vec::new();
+            stdout_pipe.read_to_end(&mut buf).map(|_| buf)
+        });
+
+        let stderr_pipe = child.stderr.take().expect("stderr was piped");
+        let (tx, rx) = mpsc::channel::<String>();
+        let stderr_reader = thread::spawn(move || split_lines(stderr_pipe, &tx));
+
+        let mut stderr = String::new();
+        let mut cancelled = false;
+        loop {
+            match rx.recv_timeout(Duration::from_millis(50)) {
+                Ok(line) => {
+                    on_stderr_line(&line);
+                    push_capped(&mut stderr, &line);
+                }
+                Err(RecvTimeoutError::Timeout) => {}
+                // The reader finished: git closed stderr, so it is exiting.
+                Err(RecvTimeoutError::Disconnected) => break,
+            }
+            if !cancelled && cancel.is_cancelled() {
+                cancelled = true;
+                // Killing closes the pipes, which ends the reader threads.
+                let _ = child.kill();
+            }
+        }
+
+        let status = child.wait()?;
+        stderr_reader.join().expect("stderr reader panicked")?;
+        let stdout = stdout_reader.join().expect("stdout reader panicked")?;
+
+        if cancelled || (cancel.is_cancelled() && !status.success()) {
+            return Err(GitError::Cancelled);
+        }
+        let output = GitOutput {
+            code: status.code(),
+            stdout,
+            stderr: stderr.into_bytes(),
+        };
+        if output.success() {
+            Ok(output)
+        } else {
+            Err(GitError::failed(
+                output.code,
+                output.stderr_str().into_owned(),
+            ))
+        }
+    }
+
+    fn build(&self) -> Command {
         let mut command = Command::new(self.git.path());
         command
             .args(&self.global_args)
@@ -120,33 +214,67 @@ impl<'a> GitCommand<'a> {
             .env("GIT_TERMINAL_PROMPT", "0")
             .envs(self.git.envs().iter().map(|(k, v)| (k, v)))
             .envs(self.envs.iter().map(|(k, v)| (k, v)))
-            .stdin(if self.stdin.is_some() {
-                Stdio::piped()
-            } else {
-                Stdio::null()
-            })
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         if let Some(dir) = &self.cwd {
             command.current_dir(dir);
         }
-
-        let mut child = command.spawn().map_err(|e| match e.kind() {
-            std::io::ErrorKind::NotFound => GitError::NotFound,
-            _ => GitError::Io(e),
-        })?;
-
-        if let Some(input) = self.stdin {
-            // Write from a separate thread so a large stdin cannot deadlock
-            // against git filling its stdout pipe.
-            let mut pipe = child.stdin.take().expect("stdin was piped");
-            let writer = std::thread::spawn(move || pipe.write_all(&input));
-            let output = child.wait_with_output()?;
-            writer.join().expect("stdin writer panicked")?;
-            return Ok(GitOutput::from(output));
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // Don't flash a console window for every git call from the GUI.
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            command.creation_flags(CREATE_NO_WINDOW);
         }
+        command
+    }
+}
 
-        Ok(GitOutput::from(child.wait_with_output()?))
+fn spawn(command: &mut Command) -> Result<Child, GitError> {
+    command.spawn().map_err(|e| match e.kind() {
+        std::io::ErrorKind::NotFound => GitError::NotFound,
+        _ => GitError::Io(e),
+    })
+}
+
+/// Reads `pipe` and sends every line, splitting on both `\n` and `\r`.
+fn split_lines(mut pipe: impl Read, tx: &mpsc::Sender<String>) -> std::io::Result<()> {
+    let mut pending = Vec::new();
+    let mut chunk = [0u8; 4096];
+    loop {
+        let n = pipe.read(&mut chunk)?;
+        if n == 0 {
+            break;
+        }
+        for &byte in &chunk[..n] {
+            if byte == b'\n' || byte == b'\r' {
+                if !pending.is_empty() {
+                    let _ = tx.send(String::from_utf8_lossy(&pending).into_owned());
+                    pending.clear();
+                }
+            } else {
+                pending.push(byte);
+            }
+        }
+    }
+    if !pending.is_empty() {
+        let _ = tx.send(String::from_utf8_lossy(&pending).into_owned());
+    }
+    Ok(())
+}
+
+/// Keeps the tail of stderr for error reporting without growing unbounded
+/// on very chatty progress output.
+fn push_capped(buf: &mut String, line: &str) {
+    const MAX: usize = 64 * 1024;
+    buf.push_str(line);
+    buf.push('\n');
+    if buf.len() > MAX {
+        let mut cut = buf.len() - MAX;
+        while !buf.is_char_boundary(cut) {
+            cut += 1;
+        }
+        buf.drain(..cut);
     }
 }
 

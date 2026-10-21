@@ -6,5 +6,8 @@
   "error": {
     "showDetails": "자세히 보기",
     "hideDetails": "자세히 숨기기"
+  },
+  "notify": {
+    "dismiss": "닫기"
   }
 }

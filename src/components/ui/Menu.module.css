@@ -1,0 +1,34 @@
+/* Shared look for Radix dropdown/context menu content and items. */
+.content {
+  min-width: 200px;
+  padding: var(--space-1);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: default;
+}
+
+.item[data-highlighted] {
+  background: var(--color-river);
+  color: #fff;
+}
+
+.item[data-disabled] {
+  color: var(--color-ink-faint);
+}
+
+.separator {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--color-line);
+}

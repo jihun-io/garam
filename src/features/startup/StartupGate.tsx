@@ -1,10 +1,10 @@
 import { useTranslation } from "react-i18next";
 
 import { toAppError } from "../../ipc";
+import { RepositoriesHome } from "../repos/RepositoriesHome";
 import styles from "./Startup.module.css";
 import { StartupError } from "./StartupError";
 import { useGitInfo } from "./useGitInfo";
-import { Welcome } from "./Welcome";
 
 /** Blocks the app until a supported git is available. */
 export function StartupGate() {
@@ -31,5 +31,5 @@ export function StartupGate() {
     );
   }
 
-  return <Welcome gitVersion={gitInfo.data.version} />;
+  return <RepositoriesHome gitVersion={gitInfo.data.version} />;
 }

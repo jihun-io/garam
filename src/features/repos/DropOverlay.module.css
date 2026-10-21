@@ -1,0 +1,14 @@
+.overlay {
+  position: fixed;
+  inset: var(--space-2);
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--color-river);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  color: var(--color-river-strong);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  pointer-events: none;
+}

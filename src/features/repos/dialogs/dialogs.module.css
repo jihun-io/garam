@@ -1,0 +1,37 @@
+.offer {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.progress {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+.progressTitle {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--color-line);
+}
+
+.barFill {
+  height: 100%;
+  background: var(--color-river);
+  transition: width 160ms ease-out;
+}
+
+.progressPhase {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}

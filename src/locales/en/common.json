@@ -6,5 +6,8 @@
   "error": {
     "showDetails": "Show details",
     "hideDetails": "Hide details"
+  },
+  "notify": {
+    "dismiss": "Dismiss"
   }
 }

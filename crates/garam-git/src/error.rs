@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use serde::Serialize;
 
 use crate::GitVersion;
@@ -14,6 +16,13 @@ pub enum ErrorKind {
     GitNotFound,
     GitTooOld,
     NotARepository,
+    BareRepository,
+    PathNotFound,
+    DestinationNotEmpty,
+    RemoteNotFound,
+    AuthenticationFailed,
+    NetworkError,
+    Cancelled,
     Unknown,
 }
 
@@ -40,6 +49,21 @@ pub enum GitError {
 
     #[error("unexpected git output: {0}")]
     Parse(String),
+
+    #[error("path does not exist or is not a directory: {}", .0.display())]
+    PathNotFound(PathBuf),
+
+    #[error("not a git repository: {}", .0.display())]
+    NotARepository(PathBuf),
+
+    #[error("bare repositories are not supported: {}", .0.display())]
+    BareRepository(PathBuf),
+
+    #[error("destination is not an empty directory: {}", .0.display())]
+    DestinationNotEmpty(PathBuf),
+
+    #[error("operation cancelled")]
+    Cancelled,
 }
 
 impl GitError {
@@ -57,6 +81,11 @@ impl GitError {
             Self::NotFound => ErrorKind::GitNotFound,
             Self::TooOld { .. } => ErrorKind::GitTooOld,
             Self::Failed { kind, .. } => *kind,
+            Self::PathNotFound(_) => ErrorKind::PathNotFound,
+            Self::NotARepository(_) => ErrorKind::NotARepository,
+            Self::BareRepository(_) => ErrorKind::BareRepository,
+            Self::DestinationNotEmpty(_) => ErrorKind::DestinationNotEmpty,
+            Self::Cancelled => ErrorKind::Cancelled,
             Self::Io(_) | Self::Parse(_) => ErrorKind::Unknown,
         }
     }
@@ -64,7 +93,7 @@ impl GitError {
     /// Raw technical detail shown behind a "details" toggle in the UI.
     pub fn detail(&self) -> Option<String> {
         match self {
-            Self::NotFound => None,
+            Self::NotFound | Self::Cancelled => None,
             Self::Failed { stderr, .. } => Some(stderr.trim().to_owned()),
             other => Some(other.to_string()),
         }
@@ -73,7 +102,39 @@ impl GitError {
 
 /// Maps git's (English, because of `LC_ALL=C`) stderr to an [`ErrorKind`].
 fn classify(stderr: &str) -> ErrorKind {
-    const PATTERNS: &[(&str, ErrorKind)] = &[("not a git repository", ErrorKind::NotARepository)];
+    // Checked in order; put more specific patterns first. Needles are
+    // lowercase.
+    const PATTERNS: &[(&str, ErrorKind)] = &[
+        ("not a git repository", ErrorKind::NotARepository),
+        (
+            "already exists and is not an empty directory",
+            ErrorKind::DestinationNotEmpty,
+        ),
+        ("could not read username", ErrorKind::AuthenticationFailed),
+        ("could not read password", ErrorKind::AuthenticationFailed),
+        ("authentication failed", ErrorKind::AuthenticationFailed),
+        (
+            "permission denied (publickey",
+            ErrorKind::AuthenticationFailed,
+        ),
+        (
+            "host key verification failed",
+            ErrorKind::AuthenticationFailed,
+        ),
+        ("repository not found", ErrorKind::RemoteNotFound),
+        (
+            "does not appear to be a git repository",
+            ErrorKind::RemoteNotFound,
+        ),
+        // "fatal: repository '<url>' not found" / "... does not exist"
+        ("fatal: repository '", ErrorKind::RemoteNotFound),
+        ("could not resolve host", ErrorKind::NetworkError),
+        ("could not resolve hostname", ErrorKind::NetworkError),
+        ("failed to connect", ErrorKind::NetworkError),
+        ("connection timed out", ErrorKind::NetworkError),
+        ("connection refused", ErrorKind::NetworkError),
+        ("network is unreachable", ErrorKind::NetworkError),
+    ];
 
     let lower = stderr.to_ascii_lowercase();
     PATTERNS
@@ -94,6 +155,39 @@ mod tests {
             GitError::failed(Some(128), stderr).kind(),
             ErrorKind::NotARepository
         );
+    }
+
+    #[test]
+    fn classifies_remote_failures() {
+        let cases = [
+            (
+                "fatal: could not read Username for 'https://github.com': terminal prompts disabled",
+                ErrorKind::AuthenticationFailed,
+            ),
+            (
+                "git@github.com: Permission denied (publickey).\nfatal: Could not read from remote repository.",
+                ErrorKind::AuthenticationFailed,
+            ),
+            (
+                "remote: Repository not found.\nfatal: repository 'https://github.com/a/b.git/' not found",
+                ErrorKind::RemoteNotFound,
+            ),
+            (
+                "fatal: repository '/tmp/nope' does not exist",
+                ErrorKind::RemoteNotFound,
+            ),
+            (
+                "fatal: unable to access 'https://nope.invalid/x.git/': Could not resolve host: nope.invalid",
+                ErrorKind::NetworkError,
+            ),
+            (
+                "fatal: destination path 'x' already exists and is not an empty directory.",
+                ErrorKind::DestinationNotEmpty,
+            ),
+        ];
+        for (stderr, kind) in cases {
+            assert_eq!(classify(stderr), kind, "{stderr}");
+        }
     }
 
     #[test]

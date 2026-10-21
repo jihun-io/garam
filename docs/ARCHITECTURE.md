@@ -104,6 +104,9 @@ garam-git/src/
 - **타입 공유**: `tauri-specta`로 Rust 타입에서 TypeScript 바인딩을 자동 생성한다. 생성 파일은 `src/ipc/bindings.ts`이며 직접 수정하지 않는다. 디버그 실행 시와 `pnpm bindings`(= `export_bindings` 테스트)에서 다시 만들어지고, CI는 커밋된 파일이 최신인지 검사한다. 프론트는 `src/ipc/index.ts`의 `unwrap()`으로 결과를 값 또는 `CommandError`로 바꿔 TanStack Query에 넘긴다.
 - **장시간 작업**(clone, fetch, push): 진행률은 `tauri::ipc::Channel`로 스트리밍하고, 작업 ID를 반환해 취소할 수 있게 한다.
 - **저장소 변경 감지**: Rust에서 `notify`로 작업 트리와 `.git`을 감시하고, 디바운스(약 200ms)한 뒤 `repo-changed` 이벤트를 보낸다. 프론트는 해당 쿼리를 invalidate한다.
+- **취소**: 장시간 작업은 프론트가 만든 `operationId`로 `Operations` 레지스트리에 `CancelToken`을 등록하고, `operation_cancel`로 취소한다. `GitCommand::run_streaming`이 토큰을 확인해 git 프로세스를 종료한다.
+- **앱 상태 저장**: 저장소 목록은 앱 데이터 폴더의 `repositories.json`에 저장한다(`src-tauri/src/repositories.rs`). 임시 파일에 쓴 뒤 이름을 바꾸는 방식으로 원자적으로 저장하고, 손상된 파일은 덮어쓰지 않고 `.corrupt-<시각>.json`으로 옮겨 둔다.
+- **오류 코드**: Git 엔진 오류(`ErrorKind`)와 앱 계층 오류(`AppErrorKind`)는 `ErrorCode`로 합쳐서 하나의 문자열 유니언으로 프론트에 전달한다.
 - **동시성**: 저장소 하나에서 쓰기 작업은 저장소별 큐로 직렬화한다. 읽기 작업은 병렬로 실행해도 된다.
 
 ## 4. 오류 처리와 번역
