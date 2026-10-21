@@ -196,7 +196,8 @@ fn diff_combines_staged_and_unstaged_changes() {
     repo.write("a.txt", "one\nTWO\nthree\nfour\n");
 
     let file = find(&files(&repo), "a.txt").clone();
-    let FileDiff::Text { hunks } = diff::file_diff(repo.git_handle(), repo.path(), &file).unwrap()
+    let FileDiff::Text { hunks, .. } =
+        diff::file_diff(repo.git_handle(), repo.path(), &file).unwrap()
     else {
         panic!("expected text diff");
     };
@@ -221,7 +222,8 @@ fn diff_of_untracked_and_unborn_files() {
     let repo = TestRepo::new();
     repo.write("new.txt", "hello\nworld\n");
     let file = find(&files(&repo), "new.txt").clone();
-    let FileDiff::Text { hunks } = diff::file_diff(repo.git_handle(), repo.path(), &file).unwrap()
+    let FileDiff::Text { hunks, .. } =
+        diff::file_diff(repo.git_handle(), repo.path(), &file).unwrap()
     else {
         panic!("expected text diff");
     };

@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { commands, unwrap, type CoAuthor, type FileChange } from "../../ipc";
+import { commands, unwrap, type CoAuthor, type FileChange, type LineRef } from "../../ipc";
 
 export const changesKeys = {
   all: (repo: string) => ["repo", repo] as const,
   status: (repo: string) => ["repo", repo, "status"] as const,
-  diff: (repo: string, path: string) => ["repo", repo, "diff", path] as const,
+  // The staged/unstaged state is part of the key: the diff marks which
+  // lines are staged, so it must be recomputed whenever that changes.
+  diff: (repo: string, file: FileChange | null) =>
+    ["repo", repo, "diff", file?.path ?? "", file?.staged ?? null, file?.unstaged ?? null] as const,
   images: (repo: string, path: string) => ["repo", repo, "images", path] as const,
   head: (repo: string) => ["repo", repo, "head"] as const,
   identity: (repo: string) => ["repo", repo, "identity"] as const,
@@ -22,7 +25,7 @@ export function useStatus(repo: string) {
 
 export function useDiff(repo: string, file: FileChange | null) {
   return useQuery({
-    queryKey: changesKeys.diff(repo, file?.path ?? ""),
+    queryKey: changesKeys.diff(repo, file),
     queryFn: () => unwrap(commands.diffGet(repo, file!)),
     enabled: file !== null,
     placeholderData: (previous, previousQuery) =>
@@ -58,19 +61,31 @@ export function useIdentity(repo: string) {
 export function useChangeActions(repo: string) {
   const client = useQueryClient();
   const onSettled = () => client.invalidateQueries({ queryKey: changesKeys.all(repo) });
+  // Index writes must not overlap (git takes index.lock), so run them one
+  // after another per repository.
+  const scope = { id: `index:${repo}` };
 
   return {
     stage: useMutation({
       mutationFn: (files: FileChange[]) => unwrap(commands.changesStage(repo, files)),
       onSettled,
+      scope,
     }),
     unstage: useMutation({
       mutationFn: (files: FileChange[]) => unwrap(commands.changesUnstage(repo, files)),
       onSettled,
+      scope,
+    }),
+    stageLines: useMutation({
+      mutationFn: ({ file, selected }: { file: FileChange; selected: LineRef[] }) =>
+        unwrap(commands.changesStageLines(repo, file, selected)),
+      onSettled,
+      scope,
     }),
     discard: useMutation({
       mutationFn: (files: FileChange[]) => unwrap(commands.changesDiscard(repo, files)),
       onSettled,
+      scope,
     }),
     commit: useMutation({
       mutationFn: (input: {
@@ -89,6 +104,7 @@ export function useChangeActions(repo: string) {
           ),
         ),
       onSettled,
+      scope,
     }),
     setIdentity: useMutation({
       mutationFn: ({ name, email }: { name: string; email: string }) =>

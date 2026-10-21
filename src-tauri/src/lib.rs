@@ -33,6 +33,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         changes::diff_images,
         changes::changes_stage,
         changes::changes_unstage,
+        changes::changes_stage_lines,
         changes::changes_discard,
         changes::commit_create,
         changes::commit_head,

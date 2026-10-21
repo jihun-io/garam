@@ -13,6 +13,7 @@ mod error;
 mod git;
 pub mod identity;
 pub mod index;
+pub mod patch;
 mod progress;
 pub mod repo;
 pub mod status;

@@ -99,12 +99,19 @@ garam-git/src/
 - 경로 목록은 `--pathspec-from-file=- --pathspec-file-nul`로 stdin에 넘긴다. 명령줄 길이 제한과 특수 문자 문제를 피하기 위해서다.
 - 변경 취소는 작업 폴더에 있는 파일을 먼저 시스템 휴지통으로 옮긴 뒤 HEAD 상태로 되돌린다. 휴지통 이동이 실패하면 아무것도 되돌리지 않는다.
 
-### 2.5 줄 단위 스테이징
+### 2.5 줄 단위 스테이징 (`patch.rs`)
 
-1. 파일의 diff를 구조화된 hunk/line으로 파싱한다.
-2. 사용자가 선택한 줄만 반영한 패치를 만든다. 선택하지 않은 `+` 줄은 제거하고, 선택하지 않은 `-` 줄은 context(` `)로 바꾼 뒤 hunk 헤더의 줄 수를 다시 계산한다.
-3. `git apply --cached --unidiff-zero=false`로 index에 적용한다(언스테이징은 `--reverse`).
-4. 새 파일, 삭제된 파일, 파일 끝 줄바꿈 없음(`\ No newline at end of file`), CRLF 파일은 테스트 케이스로 반드시 다룬다.
+패치를 만들어 `git apply --cached`로 적용하는 대신, **index가 가져야 할 파일 내용을 직접 만들어 기록**한다.
+
+1. HEAD → 작업 폴더 diff를 구조화한다. 줄은 `LineRef`(추가 줄은 새 줄 번호, 삭제 줄은 이전 줄 번호)로 식별한다.
+2. 프론트는 "스테이지되어야 할 줄 전체 집합"을 보낸다(토글이 아니라 절대 선택). 그래서 같은 요청을 다시 보내도 결과가 같다.
+3. HEAD 내용에 선택된 변경만 적용해 새 내용을 만든다. 문맥 줄과 적용하지 않은 삭제 줄은 HEAD에서 바이트 그대로 복사하므로 CRLF와 파일 끝 줄바꿈 상태가 보존된다.
+4. `git hash-object -w --stdin --no-filters`로 blob을 만들고 `git update-index --cacheinfo`로 index 항목을 바꾼다. 모드는 index → HEAD → 작업 폴더 순으로 가져온다.
+5. 선택이 0개면 파일 단위 언스테이지, 전부면 파일 단위 스테이지로 처리한다(삭제·모드를 정확히 다루기 위해).
+
+각 줄이 이미 스테이지됐는지는 보조 diff 두 개로 계산한다. 삭제 줄은 HEAD → index diff에서 지워졌으면 스테이지된 것이고, 추가 줄은 index → 작업 폴더 diff에서 추가로 나오지 않으면(이미 index에 있으면) 스테이지된 것이다.
+
+프론트의 diff 쿼리 키에는 파일의 staged/unstaged 상태가 들어간다. 상태가 바뀌면 줄 표시도 새로 계산해야 하기 때문이다. index를 쓰는 요청(스테이지, 줄 스테이지, 변경 취소, 커밋)은 `index.lock` 충돌을 피하려고 저장소마다 순서대로 실행한다(TanStack Query mutation `scope`).
 
 ## 3. IPC 설계
 

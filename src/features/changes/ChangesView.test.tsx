@@ -13,6 +13,7 @@ vi.mock("../../ipc/bindings", () => ({
     diffImages: vi.fn(),
     changesStage: vi.fn(),
     changesUnstage: vi.fn(),
+    changesStageLines: vi.fn(),
     changesDiscard: vi.fn(),
     commitCreate: vi.fn(),
     commitHead: vi.fn(),
@@ -49,11 +50,34 @@ function setup(files: FileChange[]) {
           newLines: 1,
           section: "",
           lines: [
-            { kind: "deleted", text: "old line", oldLine: 1, newLine: null, noNewline: false },
-            { kind: "added", text: "new line", oldLine: null, newLine: 1, noNewline: false },
+            {
+              kind: "deleted",
+              text: "old line",
+              oldLine: 1,
+              newLine: null,
+              noNewline: false,
+              staged: false,
+            },
+            {
+              kind: "added",
+              text: "new line",
+              oldLine: null,
+              newLine: 1,
+              noNewline: false,
+              staged: false,
+            },
+            {
+              kind: "added",
+              text: "another line",
+              oldLine: null,
+              newLine: 2,
+              noNewline: false,
+              staged: true,
+            },
           ],
         },
       ],
+      selectable: true,
     }),
   );
   vi.mocked(commands.identityGet).mockResolvedValue(
@@ -62,7 +86,12 @@ function setup(files: FileChange[]) {
   vi.mocked(commands.commitHead).mockResolvedValue(
     ok({ oid: "abc", summary: "Previous summary", body: "Previous body" }),
   );
-  for (const fn of [commands.changesStage, commands.changesUnstage, commands.changesDiscard]) {
+  for (const fn of [
+    commands.changesStage,
+    commands.changesUnstage,
+    commands.changesDiscard,
+    commands.changesStageLines,
+  ]) {
     vi.mocked(fn).mockResolvedValue(ok(null));
   }
   vi.mocked(commands.commitCreate).mockResolvedValue(ok("def"));
@@ -184,6 +213,56 @@ describe("ChangesView", () => {
 
     expect(commands.identitySet).toHaveBeenCalledWith("김가람", "garam@example.com");
     expect(commands.commitCreate).toHaveBeenCalledWith("/repo", "First", "", [], false);
+  });
+
+  it("stages single lines from the margin, keeping lines already staged", async () => {
+    const user = userEvent.setup();
+    setup([change("a.txt", "modified", "modified")]);
+    await screen.findByText("new line");
+    const boxes = screen.getAllByRole("checkbox", { name: "Include this line in the commit" });
+    expect(boxes.map((b) => b.getAttribute("aria-checked"))).toEqual(["false", "false", "true"]);
+
+    await user.click(boxes[1]);
+    expect(commands.changesStageLines).toHaveBeenCalledWith(
+      "/repo",
+      expect.objectContaining({ path: "a.txt" }),
+      expect.arrayContaining([
+        { kind: "added", line: 2 },
+        { kind: "added", line: 1 },
+      ]),
+    );
+    expect(vi.mocked(commands.changesStageLines).mock.calls[0][2]).toHaveLength(2);
+    // Shown as included right away, before git answers.
+    expect(boxes[1]).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("drags across the margin to include several lines at once", async () => {
+    const user = userEvent.setup();
+    setup([change("a.txt", null, "modified")]);
+    await screen.findByText("new line");
+    const [first, second] = screen.getAllByRole("checkbox", {
+      name: "Include this line in the commit",
+    });
+    await user.pointer([
+      { keys: "[MouseLeft>]", target: first },
+      { target: second },
+      { keys: "[/MouseLeft]", target: second },
+    ]);
+    expect(commands.changesStageLines).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(commands.changesStageLines).mock.calls[0][2]).toEqual(
+      expect.arrayContaining([
+        { kind: "deleted", line: 1 },
+        { kind: "added", line: 1 },
+        { kind: "added", line: 2 },
+      ]),
+    );
+  });
+
+  it("toggles a whole block from its header", async () => {
+    const user = userEvent.setup();
+    setup([change("a.txt", "modified", "modified")]);
+    await user.click(await screen.findByRole("button", { name: "Include block" }));
+    expect(vi.mocked(commands.changesStageLines).mock.calls[0][2]).toHaveLength(3);
   });
 
   it("shows an empty state when the working folder is clean", async () => {

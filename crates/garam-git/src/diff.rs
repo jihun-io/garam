@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{FileChange, Git, GitError, status::ChangeKind};
 
@@ -12,7 +12,7 @@ const MAX_DIFF_BYTES: usize = 4 * 1024 * 1024;
 const MAX_UNTRACKED_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_LINES: usize = 100_000;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum LineKind {
@@ -31,6 +31,8 @@ pub struct DiffLine {
     pub new_line: Option<u32>,
     /// Followed by `\ No newline at end of file`.
     pub no_newline: bool,
+    /// For added/deleted lines: whether this change is in the index.
+    pub staged: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -53,6 +55,8 @@ pub enum FileDiff {
     /// Text changes. `hunks` may be empty for mode-only changes or empty files.
     Text {
         hunks: Vec<Hunk>,
+        /// Whether individual lines can be staged (see `patch::stage_lines`).
+        selectable: bool,
     },
     Binary,
     TooLarge,
@@ -108,7 +112,15 @@ pub fn file_diff(git: &Git, repo: &Path, file: &FileChange) -> Result<FileDiff, 
     if output.stdout.len() > MAX_DIFF_BYTES {
         return Ok(FileDiff::TooLarge);
     }
-    Ok(parse(&output.stdout_str()))
+    let mut diff = parse(&output.stdout_str());
+    if let FileDiff::Text { hunks, selectable } = &mut diff {
+        // Line staging rebuilds file contents from this text, so it must be
+        // exact: non-UTF-8 output was lossily decoded and can't be used.
+        *selectable = crate::patch::supports_line_staging(file)
+            && std::str::from_utf8(&output.stdout).is_ok();
+        crate::patch::mark_staged_lines(git, repo, file, hunks)?;
+    }
+    Ok(diff)
 }
 
 /// HEAD's commit id, or the empty tree on a branch with no commits yet.
@@ -132,7 +144,9 @@ pub fn parse(output: &str) -> FileDiff {
     let mut total_lines = 0usize;
     let (mut old_no, mut new_no) = (0u32, 0u32);
 
-    for line in output.lines() {
+    // Split on '\n' only, so a CRLF file keeps its '\r' in each line's text.
+    let body = output.strip_suffix('\n').unwrap_or(output);
+    for line in body.split('\n') {
         if line.starts_with("Binary files ") || line == "GIT binary patch" {
             return FileDiff::Binary;
         }
@@ -183,13 +197,17 @@ pub fn parse(output: &str) -> FileDiff {
             old_line,
             new_line,
             no_newline: false,
+            staged: false,
         });
         total_lines += 1;
         if total_lines > MAX_LINES {
             return FileDiff::TooLarge;
         }
     }
-    FileDiff::Text { hunks }
+    FileDiff::Text {
+        hunks,
+        selectable: false,
+    }
 }
 
 /// Parses `-a,b +c,d @@ section` (the part after the leading `@@ `).
@@ -240,7 +258,7 @@ index 1111111..2222222 100644
 
     fn hunks(diff: FileDiff) -> Vec<Hunk> {
         match diff {
-            FileDiff::Text { hunks } => hunks,
+            FileDiff::Text { hunks, .. } => hunks,
             other => panic!("expected text, got {other:?}"),
         }
     }
@@ -290,6 +308,14 @@ index 1111111..2222222 100644
     }
 
     #[test]
+    fn keeps_carriage_returns() {
+        let out = "@@ -1 +1 @@\n-old\r\n+new\r\n";
+        let hunks = hunks(parse(out));
+        assert_eq!(hunks[0].lines[0].text, "old\r");
+        assert_eq!(hunks[0].lines[1].text, "new\r");
+    }
+
+    #[test]
     fn detects_binary() {
         let out = "diff --git a/a.png b/a.png\nindex 1..2 100644\nBinary files a/a.png and b/a.png differ\n";
         assert_eq!(parse(out), FileDiff::Binary);
@@ -298,6 +324,12 @@ index 1111111..2222222 100644
     #[test]
     fn mode_only_change_has_no_hunks() {
         let out = "diff --git a/run.sh b/run.sh\nold mode 100644\nnew mode 100755\n";
-        assert_eq!(parse(out), FileDiff::Text { hunks: vec![] });
+        assert_eq!(
+            parse(out),
+            FileDiff::Text {
+                hunks: vec![],
+                selectable: false
+            }
+        );
     }
 }

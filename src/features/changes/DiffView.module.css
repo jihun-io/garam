@@ -92,6 +92,7 @@
 
 .hunk {
   display: flex;
+  align-items: center;
   gap: var(--space-3);
   padding: 2px var(--space-3);
   background: var(--color-hunk-bg);
@@ -190,4 +191,74 @@
 
 .imageNone {
   color: var(--color-ink-faint);
+}
+
+/* Line selection (line-level staging). */
+.selectable .line {
+  grid-template-columns: 20px 4.5ch 4.5ch 2ch 1fr;
+}
+
+.select {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+.selectBox {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--color-ink-faint);
+  border-radius: 2px;
+}
+
+.select[aria-checked="true"] .selectBox {
+  border-color: var(--color-river);
+  background: var(--color-river);
+}
+
+/* Changed lines left out of the commit keep their color but lose the
+   strong margin, so included lines stand out. */
+.excluded {
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+}
+
+.excluded.added {
+  background: color-mix(in srgb, var(--color-added-bg) 45%, var(--color-surface));
+}
+
+.excluded.deleted {
+  background: color-mix(in srgb, var(--color-deleted-bg) 45%, var(--color-surface));
+}
+
+.excluded .gutter,
+.excluded .marker {
+  background: transparent;
+}
+
+.excluded .text {
+  color: var(--color-ink-muted);
+}
+
+.hunkToggle {
+  margin-left: auto;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.hunkToggle:hover {
+  border-color: var(--color-ink-faint);
 }

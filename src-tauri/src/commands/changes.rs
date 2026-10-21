@@ -4,6 +4,7 @@ use base64::Engine;
 use garam_git::commit::{self, CoAuthor, HeadCommit};
 use garam_git::diff::{self, FileDiff};
 use garam_git::identity::{self, Identity};
+use garam_git::patch::{self, LineRef};
 use garam_git::{FileChange, Git, RepoStatus, blob, index, status};
 use serde::Serialize;
 
@@ -84,6 +85,25 @@ pub async fn changes_stage(repo: String, files: Vec<FileChange>) -> AppResult<()
 #[specta::specta]
 pub async fn changes_unstage(repo: String, files: Vec<FileChange>) -> AppResult<()> {
     blocking(move || Ok(index::unstage(&Git::locate()?, Path::new(&repo), &files)?)).await
+}
+
+/// Makes the index contain exactly the `selected` changed lines of `file`.
+#[tauri::command]
+#[specta::specta]
+pub async fn changes_stage_lines(
+    repo: String,
+    file: FileChange,
+    selected: Vec<LineRef>,
+) -> AppResult<()> {
+    blocking(move || {
+        Ok(patch::stage_lines(
+            &Git::locate()?,
+            Path::new(&repo),
+            &file,
+            &selected,
+        )?)
+    })
+    .await
 }
 
 /// Reverts files to HEAD. Current contents go to the system trash first.

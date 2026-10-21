@@ -33,7 +33,11 @@
     "before": "Before",
     "after": "After",
     "noImage": "None",
-    "selectFile": "Select a file to see its changes."
+    "selectFile": "Select a file to see its changes.",
+    "stageLine": "Include this line in the commit",
+    "stageHunk": "Include block",
+    "unstageHunk": "Exclude block",
+    "lineHint": "Click or drag in the left margin to choose lines for the commit."
   },
   "commit": {
     "summary": "Summary",

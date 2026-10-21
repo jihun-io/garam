@@ -37,6 +37,8 @@ export const commands = {
 	diffImages: (repo: string, file: FileChange) => typedError<ImageVersions, AppError>(__TAURI_INVOKE("diff_images", { repo, file })),
 	changesStage: (repo: string, files: FileChange[]) => typedError<null, AppError>(__TAURI_INVOKE("changes_stage", { repo, files })),
 	changesUnstage: (repo: string, files: FileChange[]) => typedError<null, AppError>(__TAURI_INVOKE("changes_unstage", { repo, files })),
+	/**  Makes the index contain exactly the `selected` changed lines of `file`. */
+	changesStageLines: (repo: string, file: FileChange, selected: LineRef[]) => typedError<null, AppError>(__TAURI_INVOKE("changes_stage_lines", { repo, file, selected })),
 	/**  Reverts files to HEAD. Current contents go to the system trash first. */
 	changesDiscard: (repo: string, files: FileChange[]) => typedError<null, AppError>(__TAURI_INVOKE("changes_discard", { repo, files })),
 	/**  Commits the index. Returns the new commit id. */
@@ -95,6 +97,8 @@ export type DiffLine = {
 	newLine: number | null,
 	/**  Followed by `\ No newline at end of file`. */
 	noNewline: boolean,
+	/**  For added/deleted lines: whether this change is in the index. */
+	staged: boolean,
 };
 
 /**
@@ -131,7 +135,9 @@ export type FileChange = {
 
 export type FileDiff = 
 /**  Text changes. `hunks` may be empty for mode-only changes or empty files. */
-{ type: "text"; hunks: Hunk[] } | { type: "binary" } | { type: "too_large" };
+{ type: "text"; hunks: Hunk[]; 
+/**  Whether individual lines can be staged (see `patch::stage_lines`). */
+selectable: boolean } | { type: "binary" } | { type: "too_large" };
 
 export type GitInfo = {
 	version: string,
@@ -166,6 +172,15 @@ export type ImageVersions = {
 };
 
 export type LineKind = "context" | "added" | "deleted";
+
+/**
+ *  Identifies a changed line of the HEAD → working tree diff: an added line
+ *  by its new line number, a deleted line by its old line number.
+ */
+export type LineRef = {
+	kind: LineKind,
+	line: number,
+};
 
 export type Progress = {
 	phase: ProgressPhase,
