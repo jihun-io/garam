@@ -42,6 +42,9 @@ pub enum ErrorKind {
     RemoteBranchNotFound,
     NoRemote,
     DetachedHead,
+    /// Continuing needs every conflicted file resolved first.
+    ConflictsRemain,
+    NothingInProgress,
     IdentityMissing,
     Cancelled,
     Unknown,
@@ -98,6 +101,12 @@ pub enum GitError {
     #[error("no such remote")]
     NoRemote,
 
+    #[error("conflicted files remain")]
+    ConflictsRemain,
+
+    #[error("no merge, rebase, revert or cherry-pick is in progress")]
+    NothingInProgress,
+
     #[error("operation cancelled")]
     Cancelled,
 }
@@ -127,6 +136,8 @@ impl GitError {
             Self::NoUpstream => ErrorKind::NoUpstream,
             Self::RemoteBranchNotFound => ErrorKind::RemoteBranchNotFound,
             Self::NoRemote => ErrorKind::NoRemote,
+            Self::ConflictsRemain => ErrorKind::ConflictsRemain,
+            Self::NothingInProgress => ErrorKind::NothingInProgress,
             Self::Io(_) | Self::Parse(_) => ErrorKind::Unknown,
         }
     }
@@ -139,7 +150,9 @@ impl GitError {
             | Self::DetachedHead
             | Self::NoUpstream
             | Self::RemoteBranchNotFound
-            | Self::NoRemote => None,
+            | Self::NoRemote
+            | Self::ConflictsRemain
+            | Self::NothingInProgress => None,
             Self::Failed { stderr, .. } => Some(stderr.trim().to_owned()),
             other => Some(other.to_string()),
         }

@@ -17,7 +17,7 @@ use crate::repositories::RepositoryStore;
 /// Single source of truth for the IPC surface. Also used by the
 /// `export_bindings` test to regenerate `src/ipc/bindings.ts`.
 pub fn specta_builder() -> Builder<tauri::Wry> {
-    use commands::{branches, changes, external, git, history, remote, repo};
+    use commands::{branches, changes, conflicts, external, git, history, remote, repo};
     Builder::<tauri::Wry>::new().commands(collect_commands![
         git::git_info,
         repo::repo_list,
@@ -50,6 +50,11 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         branches::stash_find_auto,
         branches::stash_pop,
         branches::stash_drop,
+        conflicts::conflict_state,
+        conflicts::conflict_resolve,
+        conflicts::conflict_mark_resolved,
+        conflicts::conflict_continue,
+        conflicts::conflict_abort,
         history::history_list,
         history::commit_detail,
         history::commit_file_diff,

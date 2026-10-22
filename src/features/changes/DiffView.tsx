@@ -3,7 +3,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
-import { toAppError, type DiffLine, type FileChange, type Hunk, type LineRef } from "../../ipc";
+import {
+  toAppError,
+  type ConflictFile,
+  type DiffLine,
+  type FileChange,
+  type Hunk,
+  type LineRef,
+} from "../../ipc";
+import { ConflictActions } from "../conflicts/ConflictActions";
 import { useChangeActions, useDiff, useImages } from "./api";
 import { displayKind, isImage } from "./fileState";
 import styles from "./DiffView.module.css";
@@ -11,7 +19,16 @@ import { useNotify } from "../notify/notifyStore";
 
 type Row = { type: "hunk"; hunk: Hunk } | { type: "line"; line: DiffLine };
 
-export function DiffView({ repo, file }: { repo: string; file: FileChange | null }) {
+/** `conflict` adds the ways to resolve a conflicted file above its diff. */
+export function DiffView({
+  repo,
+  file,
+  conflict,
+}: {
+  repo: string;
+  file: FileChange | null;
+  conflict?: ConflictFile;
+}) {
   const { t } = useTranslation("changes");
   const diff = useDiff(repo, file);
   const { stageLines } = useChangeActions(repo);
@@ -73,6 +90,7 @@ export function DiffView({ repo, file }: { repo: string; file: FileChange | null
   return (
     <section className={styles.root} aria-label={file.path}>
       {header}
+      {conflict && <ConflictActions repo={repo} file={conflict} />}
       {body}
     </section>
   );

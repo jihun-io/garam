@@ -163,6 +163,18 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - 히스토리 쿼리 키는 `["history", repo, ...]`로, 파일이 바뀔 때마다 무효화되는 `["repo", repo]` 아래에 두지 않는다. 목록 키에 HEAD 커밋 id를 넣어 HEAD가 움직일 때만 다시 불러오고, 커밋 상세와 diff는 바뀌지 않으므로 계속 캐시한다.
 - revert는 커밋을 만들므로 다른 index 쓰기와 같은 mutation scope에서 실행한다. 충돌하면 `revert_conflict`로 안내하고 해결은 M7에서 한다.
 
+### 2.9 충돌 해결
+
+- **진행 중인 작업 감지**: git 디렉터리(`rev-parse --absolute-git-dir`)의 `rebase-merge`/`rebase-apply`(단 `git am`은 제외), `MERGE_HEAD`, `REVERT_HEAD`, `CHERRY_PICK_HEAD` 순서로 확인한다. stash pop처럼 작업 없이 충돌만 남는 경우도 있으므로 작업과 충돌 파일 목록은 따로 다룬다.
+- **충돌 종류**는 `git ls-files --unmerged -z`의 stage(1 공통 조상, 2 ours, 3 theirs) 조합으로 정한다. 상태 파서의 `FileChange`에는 넣지 않고 `conflict_state` 명령으로 따로 받는다.
+- **"내 변경 / 상대 변경"은 사용자 기준**이다. 병합·되돌리기·체리픽에서는 내 변경 = stage 2(ours)지만, 리베이스에서는 git이 뒤바꾸므로 내 변경 = stage 3(theirs)이다. 충돌 종류 이름(`deleted_by_me` 등)도 같은 기준을 따른다.
+- **한쪽 사용**: 그쪽 stage가 있으면 `git checkout --ours/--theirs` 후 `git add`, 그쪽에서 파일을 지웠다면 `git rm`.
+- **해결 완료로 표시**: `git add --all -- <경로>`(삭제도 반영). 작업 폴더 파일에 `<<<<<<<`…`>>>>>>>` 줄이 남아 있으면 프론트가 한 번 더 확인한다. 충돌 파일의 체크박스는 막아서 표시 없이 해결 처리되는 일을 막는다.
+- **계속**: 충돌이 남아 있으면 `conflicts_remain`으로 거부한다. 병합은 `git commit --no-edit`, 나머지는 `git rebase|revert|cherry-pick --continue`를 `GIT_EDITOR=true`로 실행해 git이 준비한 메시지를 그대로 쓴다. 리베이스는 다음 커밋에서 다시 멈출 수 있다.
+- **중단**: `git <작업> --abort`. 해결한 내용이 사라지므로 확인 대화상자를 거친다.
+- 작업이 진행 중이면 커밋 입력 대신 계속·중단 패널을 보여준다. 리베이스 도중 일반 커밋을 만들면 안 되기 때문이다.
+- 파일 감시는 `REVERT_HEAD`, `CHERRY_PICK_HEAD`, `rebase-merge`, `rebase-apply` 변경에도 반응한다.
+
 ## 3. IPC 설계
 
 - 프론트↔Rust 통신은 **Tauri 명령(`invoke`)** 으로 한다. 명령 이름은 `도메인_동작`(예: `status_get`, `branch_create`).

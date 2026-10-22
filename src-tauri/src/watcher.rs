@@ -85,7 +85,18 @@ fn is_relevant(root: &Path, path: &Path) -> bool {
     }
     matches!(
         rest.first().map(String::as_str),
-        Some("index" | "HEAD" | "MERGE_HEAD" | "ORIG_HEAD" | "packed-refs" | "refs")
+        Some(
+            "index"
+                | "HEAD"
+                | "MERGE_HEAD"
+                | "ORIG_HEAD"
+                | "REVERT_HEAD"
+                | "CHERRY_PICK_HEAD"
+                | "rebase-merge"
+                | "rebase-apply"
+                | "packed-refs"
+                | "refs"
+        )
     )
 }
 
@@ -102,6 +113,8 @@ mod tests {
         assert!(is_relevant(root, Path::new("/repo/.git/index")));
         assert!(is_relevant(root, Path::new("/repo/.git/HEAD")));
         assert!(is_relevant(root, Path::new("/repo/.git/refs/heads/main")));
+        assert!(is_relevant(root, Path::new("/repo/.git/REVERT_HEAD")));
+        assert!(is_relevant(root, Path::new("/repo/.git/rebase-merge/done")));
         assert!(!is_relevant(root, Path::new("/repo/.git/index.lock")));
         assert!(!is_relevant(root, Path::new("/repo/.git/objects/ab/cdef")));
         assert!(!is_relevant(root, Path::new("/repo/.git/logs/HEAD")));

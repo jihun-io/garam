@@ -61,7 +61,11 @@ export function FileList({
       const delta = e.key === "ArrowDown" ? 1 : -1;
       const next = Math.max(0, Math.min(files.length - 1, selectedIndex + delta));
       onSelect(files[next].path);
-    } else if (e.key === " " && selectedIndex >= 0) {
+    } else if (
+      e.key === " " &&
+      selectedIndex >= 0 &&
+      files[selectedIndex].staged !== "conflicted"
+    ) {
       e.preventDefault();
       onToggle(files[selectedIndex]);
     }
@@ -97,6 +101,7 @@ export function FileList({
                 >
                   <Checkbox
                     state={checkState(file)}
+                    disabled={kind === "conflicted"}
                     tabIndex={-1}
                     aria-label={t("list.include", { path: file.path })}
                     onChange={() => onToggle(file)}

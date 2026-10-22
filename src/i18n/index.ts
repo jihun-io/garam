@@ -4,6 +4,7 @@ import { initReactI18next } from "react-i18next";
 import enBranches from "../locales/en/branches.json";
 import enChanges from "../locales/en/changes.json";
 import enCommon from "../locales/en/common.json";
+import enConflicts from "../locales/en/conflicts.json";
 import enCredentials from "../locales/en/credentials.json";
 import enErrors from "../locales/en/errors.json";
 import enHistory from "../locales/en/history.json";
@@ -13,6 +14,7 @@ import enSync from "../locales/en/sync.json";
 import koBranches from "../locales/ko/branches.json";
 import koChanges from "../locales/ko/changes.json";
 import koCommon from "../locales/ko/common.json";
+import koConflicts from "../locales/ko/conflicts.json";
 import koCredentials from "../locales/ko/credentials.json";
 import koErrors from "../locales/ko/errors.json";
 import koHistory from "../locales/ko/history.json";
@@ -25,6 +27,7 @@ export const resources = {
     branches: enBranches,
     changes: enChanges,
     common: enCommon,
+    conflicts: enConflicts,
     credentials: enCredentials,
     errors: enErrors,
     history: enHistory,
@@ -36,6 +39,7 @@ export const resources = {
     branches: koBranches,
     changes: koChanges,
     common: koCommon,
+    conflicts: koConflicts,
     credentials: koCredentials,
     errors: koErrors,
     history: koHistory,

@@ -32,5 +32,7 @@
   "remote_branch_not_found": "The remote branch this branch tracks no longer exists. Publish the branch to create it again.",
   "no_remote": "That remote doesn't exist in this repository.",
   "detached_head": "You aren't on a branch. Switch to a branch first.",
+  "conflicts_remain": "Some files still have conflicts. Resolve them all before continuing.",
+  "nothing_in_progress": "There's no merge, rebase, revert or cherry-pick to continue or abort.",
   "unknown": "Something went wrong while running Git."
 }

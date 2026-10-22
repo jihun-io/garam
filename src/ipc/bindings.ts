@@ -73,6 +73,13 @@ export const commands = {
 } | null, AppError>(__TAURI_INVOKE("stash_find_auto", { repo, branch })),
 	stashPop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_pop", { repo, oid })),
 	stashDrop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_drop", { repo, oid })),
+	conflictState: (repo: string) => typedError<ConflictState, AppError>(__TAURI_INVOKE("conflict_state", { repo })),
+	/**  Keeps one side's version of a conflicted file. */
+	conflictResolve: (repo: string, path: string, side: Side) => typedError<null, AppError>(__TAURI_INVOKE("conflict_resolve", { repo, path, side })),
+	/**  Marks a file resolved as it is in the working folder. */
+	conflictMarkResolved: (repo: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_mark_resolved", { repo, path })),
+	conflictContinue: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_continue", { repo })),
+	conflictAbort: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_abort", { repo })),
 	/**  A page of HEAD's history, newest first. */
 	historyList: (repo: string, skip: number, limit: number) => typedError<CommitSummary[], AppError>(__TAURI_INVOKE("history_list", { repo, skip, limit })),
 	commitDetail: (repo: string, oid: string) => typedError<CommitDetail, AppError>(__TAURI_INVOKE("commit_detail", { repo, oid })),
@@ -190,6 +197,25 @@ export type CommitSummary = {
 	summary: string,
 };
 
+export type ConflictFile = {
+	path: string,
+	kind: ConflictKind,
+	/**  The working tree file still contains `<<<<<<<` / `>>>>>>>` lines. */
+	hasMarkers: boolean,
+};
+
+export type ConflictKind = "both_modified" | "both_added" | "both_deleted" | "deleted_by_me" | "deleted_by_them" | "added_by_me" | "added_by_them";
+
+export type ConflictState = {
+	/**
+	 *  The operation waiting to be continued or aborted, if any. Conflicts
+	 *  can also exist without one, e.g. after a stash pop.
+	 */
+	operation: Operation | null,
+	/**  Files that still conflict. */
+	files: ConflictFile[],
+};
+
 export type CredentialPrompt = {
 	kind: PromptKind,
 	/**  What the prompt is for: a URL, a key file, `user@host` or a host. */
@@ -238,7 +264,9 @@ export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "
 /**  The branch was configured to only fast-forward, but it diverged. */
 "cannot_fast_forward" | "no_upstream" | 
 /**  The upstream branch no longer exists on the remote. */
-"remote_branch_not_found" | "no_remote" | "detached_head" | "identity_missing" | "cancelled" | "unknown";
+"remote_branch_not_found" | "no_remote" | "detached_head" | 
+/**  Continuing needs every conflicted file resolved first. */
+"conflicts_remain" | "nothing_in_progress" | "identity_missing" | "cancelled" | "unknown";
 
 export type ExternalEditor = {
 	id: string,
@@ -307,6 +335,8 @@ export type LineRef = {
 };
 
 export type MergeOutcome = "up_to_date" | "fast_forward" | "merged";
+
+export type Operation = "merge" | "rebase" | "revert" | "cherry_pick";
 
 export type Progress = {
 	phase: ProgressPhase,
@@ -383,6 +413,9 @@ export type RepositoryList = {
 	/**  Path of the repository that was open last. */
 	selected: string | null,
 };
+
+/**  Which version to keep for a conflicted file. */
+export type Side = "mine" | "theirs";
 
 /**  How to treat uncommitted changes when switching branches. */
 export type SwitchMode = 
