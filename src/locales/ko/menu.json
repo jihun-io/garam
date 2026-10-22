@@ -1,6 +1,6 @@
 {
   "menus": {
-    "app": "가람",
+    "app": "Garam",
     "file": "파일",
     "edit": "편집",
     "view": "보기",
@@ -41,12 +41,12 @@
     }
   },
   "native": {
-    "about": "가람에 관하여",
+    "about": "Garam에 관하여",
     "services": "서비스",
-    "hide": "가람 가리기",
+    "hide": "Garam 가리기",
     "hideOthers": "기타 가리기",
     "showAll": "모두 보기",
-    "quit": "가람 종료",
+    "quit": "Garam 종료",
     "undo": "실행 취소",
     "redo": "실행 복귀",
     "cut": "오려두기",

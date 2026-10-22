@@ -5,7 +5,7 @@
   "sections": "설정 항목",
   "general": {
     "title": "일반",
-    "restartHint": "macOS가 직접 넣는 일부 메뉴 항목(글쓰기 도구, 이모지 및 기호 등)은 가람을 다시 시작해야 언어가 바뀝니다.",
+    "restartHint": "macOS가 직접 넣는 일부 메뉴 항목(글쓰기 도구, 이모지 및 기호 등)은 Garam을 다시 시작해야 언어가 바뀝니다.",
     "restart": "지금 다시 시작"
   },
   "appearance": {
@@ -18,7 +18,7 @@
     },
     "accent": "강조색",
     "accents": {
-      "garam": "가람 초록",
+      "garam": "Garam 초록",
       "blue": "파랑",
       "purple": "보라",
       "pink": "분홍",
@@ -26,7 +26,7 @@
       "system": "시스템"
     },
     "accentSystemHint": "시스템 강조색을 쓰되, 글자가 잘 읽히도록 명도를 맞춥니다.",
-    "accentSystemUnavailable": "이 시스템에서는 강조색을 읽을 수 없어 가람 초록을 씁니다.",
+    "accentSystemUnavailable": "이 시스템에서는 강조색을 읽을 수 없어 Garam 초록을 씁니다.",
     "diffFontSize": "변경 내용 글자 크기",
     "diffFontSizes": {
       "small": "작게",
@@ -67,13 +67,13 @@
     "signOut": "로그아웃",
     "signOutLabel": "@{{login}}에서 로그아웃",
     "pendingTitle": "GitHub에 로그인하는 중",
-    "codeCopied": "코드를 복사했습니다. 브라우저에 열린 GitHub 페이지에 붙여 넣고 가람을 승인하세요.",
-    "codeManual": "브라우저에 열린 GitHub 페이지에 이 코드를 입력하고 가람을 승인하세요.",
+    "codeCopied": "코드를 복사했습니다. 브라우저에 열린 GitHub 페이지에 붙여 넣고 Garam을 승인하세요.",
+    "codeManual": "브라우저에 열린 GitHub 페이지에 이 코드를 입력하고 Garam을 승인하세요.",
     "codeLabel": "일회용 코드",
     "waiting": "브라우저에서 승인하기를 기다리는 중…",
     "copyCode": "코드 복사",
     "openBrowser": "브라우저 다시 열기",
     "cancel": "취소",
-    "revokeHint": "로그아웃하면 이 컴퓨터에서 토큰이 지워집니다. 가람의 접근 권한까지 취소하려면 <settings>GitHub 설정</settings>에서 취소하세요."
+    "revokeHint": "로그아웃하면 이 컴퓨터에서 토큰이 지워집니다. Garam의 접근 권한까지 취소하려면 <settings>GitHub 설정</settings>에서 취소하세요."
   }
 }
