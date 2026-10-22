@@ -71,7 +71,8 @@
     },
     "noResults": "조건에 맞는 커밋이 없습니다.",
     "noResultsBody": "검색어나 필터를 바꿔 보세요.",
-    "clear": "검색과 필터 지우기"
+    "clear": "검색과 필터 지우기",
+    "compareBranches": "브랜치 비교…"
   },
   "filter": {
     "label": "필터",
@@ -108,8 +109,8 @@
     "revertedMany_other": "커밋 {{count}}개를 되돌리는 새 커밋을 만들었습니다.",
     "squashed_one": "커밋 {{count}}개를 하나로 합쳤습니다.",
     "squashed_other": "커밋 {{count}}개를 하나로 합쳤습니다.",
-    "cherryPickedOnto_one": "{{branch}}로 전환해서 커밋 {{count}}개를 체리픽했습니다.",
-    "cherryPickedOnto_other": "{{branch}}로 전환해서 커밋 {{count}}개를 체리픽했습니다."
+    "cherryPickedOnto_one": "{{branch}} 브랜치로 전환해서 커밋 {{count}}개를 체리픽했습니다.",
+    "cherryPickedOnto_other": "{{branch}} 브랜치로 전환해서 커밋 {{count}}개를 체리픽했습니다."
   },
   "reset": {
     "title": "이 커밋으로 리셋",
@@ -183,12 +184,19 @@
     "ahead_other": "{{target}}에만 있는 커밋 {{count}}개",
     "behind_one": "{{base}}에만 있는 커밋 {{count}}개",
     "behind_other": "{{base}}에만 있는 커밋 {{count}}개",
-    "more": "외 {{count}}개"
+    "more": "외 {{count}}개",
+    "swap": "기준과 대상 바꾸기",
+    "mode": "비교 방식",
+    "threeDotShort": "갈라진 뒤의 변경",
+    "twoDotShort": "두 쪽의 차이"
   },
   "compareBranch": {
-    "title": "현재 브랜치와 비교",
-    "body": "고른 브랜치가 {{current}}에서 갈라진 뒤 바꾼 내용을 보여줍니다.",
-    "branch": "비교할 브랜치",
+    "title": "브랜치 비교",
+    "base": "기준",
+    "target": "대상",
+    "threeDotHint": "{{target}}이(가) {{base}}에서 갈라진 뒤 바꾼 내용만 봅니다(세 점, PR과 같음).",
+    "twoDotHint": "기준({{base}})과 대상({{target}})의 지금 상태를 그대로 비교합니다(두 점).",
+    "same": "기준과 대상이 같습니다. 다른 브랜치를 고르세요.",
     "detached": "분리된 HEAD",
     "cancel": "취소",
     "submit": "비교"

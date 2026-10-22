@@ -251,7 +251,14 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
       />
     );
   } else if (pane?.kind === "compare") {
-    main = <CompareView repo={repo} pane={pane} onClose={() => closePane(repo)} />;
+    main = (
+      <CompareView
+        repo={repo}
+        pane={pane}
+        onChange={(next) => showPane(repo, next)}
+        onClose={() => closePane(repo)}
+      />
+    );
   } else if (pane?.kind === "commit") {
     main = (
       <div className={styles.peek}>

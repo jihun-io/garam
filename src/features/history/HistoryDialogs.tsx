@@ -11,19 +11,20 @@ import { Select, type SelectOption } from "../../components/ui/Select";
 import {
   toAppError,
   type AppError,
-  type Branch,
   type CommitSummary,
+  type CompareMode,
   type ResetMode,
 } from "../../ipc";
 import { shortHash } from "../../lib/hash";
 import { useRelativeTime } from "../../lib/time";
-import { useBranches } from "../branches/api";
+import { refName, useBranches } from "../branches/api";
 import branchStyles from "../branches/branches.module.css";
 import { useBranchDialog } from "../branches/branchDialogStore";
 import { useStatus } from "../changes/api";
 import { useNotify } from "../notify/notifyStore";
 import { useCommitActions, useHistoryMarkers, useLostCommits } from "./api";
 import { CommitTitle } from "./CommitTitle";
+import { CompareModeSwitch } from "./CompareView";
 import styles from "./History.module.css";
 import { useHistoryDialog } from "./historyDialogStore";
 import { useHistoryPane } from "./historyPaneStore";
@@ -232,30 +233,40 @@ function TagDialog({ repo, commit, onClose }: DialogProps) {
 }
 
 /** Picks a branch to compare with the current one, three-dot. */
+/** Picks two branches to compare, and how. */
 function CompareBranchDialog({ repo, onClose }: { repo: string; onClose: () => void }) {
   const { t } = useTranslation("history");
-  const id = useId();
+  const ids = { base: useId(), target: useId() };
   const status = useStatus(repo);
   const branches = useBranches(repo);
   const showPane = useHistoryPane((s) => s.show);
   const current = status.data?.branch.head ?? null;
-  const options: SelectOption<string>[] = (branches.data ?? [])
-    .filter((b) => !(b.kind === "local" && b.name === current))
-    .map((b) => ({ value: refName(b), label: b.name }));
-  const [choice, setChoice] = useState<string | null>(null);
-  const target = choice ?? options[0]?.value ?? null;
-  const currentLabel = current ?? t("compareBranch.detached");
+  const head = status.data?.branch.oid ?? null;
+
+  // A detached HEAD can be compared too, under its own name.
+  const options: SelectOption<string>[] = [
+    ...(current === null && head ? [{ value: head, label: t("compareBranch.detached") }] : []),
+    ...(branches.data ?? []).map((b) => ({ value: refName(b), label: b.name })),
+  ];
+  const fallbackBase = current ? `refs/heads/${current}` : (head ?? options[0]?.value ?? null);
+  const [base, setBase] = useState<string | null>(null);
+  const [target, setTarget] = useState<string | null>(null);
+  const [mode, setMode] = useState<CompareMode>("three_dot");
+  const baseValue = base ?? fallbackBase;
+  const targetValue = target ?? options.find((o) => o.value !== baseValue)?.value ?? null;
+  const label = (value: string) => options.find((o) => o.value === value)?.label ?? value;
+  const same = baseValue !== null && baseValue === targetValue;
+  const ready = baseValue !== null && targetValue !== null && !same;
 
   const submit = () => {
-    const head = status.data?.branch.oid;
-    if (!target || !head) return;
+    if (!ready) return;
     showPane(repo, {
       kind: "compare",
-      base: current ? `refs/heads/${current}` : head,
-      target,
-      mode: "three_dot",
-      baseLabel: currentLabel,
-      targetLabel: options.find((o) => o.value === target)?.label ?? target,
+      base: baseValue,
+      target: targetValue,
+      mode,
+      baseLabel: label(baseValue),
+      targetLabel: label(targetValue),
     });
     onClose();
   };
@@ -269,27 +280,38 @@ function CompareBranchDialog({ repo, onClose }: { repo: string; onClose: () => v
       footer={
         <>
           <Button onClick={onClose}>{t("compareBranch.cancel")}</Button>
-          <Button type="submit" variant="primary" disabled={!target || !status.data?.branch.oid}>
+          <Button type="submit" variant="primary" disabled={!ready}>
             {t("compareBranch.submit")}
           </Button>
         </>
       }
     >
-      <p>{t("compareBranch.body", { current: currentLabel })}</p>
-      {target && (
-        <div className={styles.filterRow}>
-          <label className={styles.filterLabel} htmlFor={id}>
-            {t("compareBranch.branch")}
-          </label>
-          <Select id={id} value={target} options={options} onChange={setChoice} />
-        </div>
+      {baseValue && targetValue && (
+        <>
+          <div className={styles.filterRow}>
+            <label className={styles.filterLabel} htmlFor={ids.base}>
+              {t("compareBranch.base")}
+            </label>
+            <Select id={ids.base} value={baseValue} options={options} onChange={setBase} />
+          </div>
+          <div className={styles.filterRow}>
+            <label className={styles.filterLabel} htmlFor={ids.target}>
+              {t("compareBranch.target")}
+            </label>
+            <Select id={ids.target} value={targetValue} options={options} onChange={setTarget} />
+          </div>
+          <CompareModeSwitch value={mode} onChange={setMode} />
+          <p className={styles.dialogNote}>
+            {t(mode === "three_dot" ? "compareBranch.threeDotHint" : "compareBranch.twoDotHint", {
+              base: label(baseValue),
+              target: label(targetValue),
+            })}
+          </p>
+          {same && <p>{t("compareBranch.same")}</p>}
+        </>
       )}
     </FormDialog>
   );
-}
-
-function refName(branch: Branch): string {
-  return `refs/${branch.kind === "local" ? "heads" : "remotes"}/${branch.name}`;
 }
 
 /** Commits HEAD left behind, each one a branch away from coming back. */

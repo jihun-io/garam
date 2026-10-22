@@ -35,7 +35,7 @@
       "create": "New Branch…",
       "rename": "Rename Branch…",
       "merge": "Merge into Current Branch…",
-      "compare": "Compare with Current Branch…"
+      "compare": "Compare Branches…"
     },
     "help": {
       "shortcuts": "Keyboard Shortcuts",

@@ -71,7 +71,8 @@
     },
     "noResults": "No commits match.",
     "noResultsBody": "Try a different search or filter.",
-    "clear": "Clear search and filters"
+    "clear": "Clear search and filters",
+    "compareBranches": "Compare Branches…"
   },
   "filter": {
     "label": "Filter",
@@ -183,13 +184,20 @@
     "ahead_other": "{{count}} commits only on {{target}}",
     "behind_one": "{{count}} commit only on {{base}}",
     "behind_other": "{{count}} commits only on {{base}}",
-    "more": "and {{count}} more"
+    "more": "and {{count}} more",
+    "swap": "Swap base and target",
+    "mode": "Comparison",
+    "threeDotShort": "Changes since split",
+    "twoDotShort": "Difference"
   },
   "compareBranch": {
-    "title": "Compare with Current Branch",
-    "body": "Shows what the chosen branch changed since it split from {{current}}.",
-    "branch": "Branch to compare",
-    "detached": "the detached HEAD",
+    "title": "Compare Branches",
+    "base": "Base",
+    "target": "Target",
+    "threeDotHint": "Only what {{target}} changed since it split from {{base}} (three-dot, as a pull request shows).",
+    "twoDotHint": "{{base}} and {{target}} as they are now, side by side (two-dot).",
+    "same": "Base and target are the same. Pick another branch.",
+    "detached": "Detached HEAD",
     "cancel": "Cancel",
     "submit": "Compare"
   },

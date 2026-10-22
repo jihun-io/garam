@@ -6,12 +6,13 @@ import { Button } from "../../components/ui/Button";
 import menu from "../../components/ui/Menu.module.css";
 import type { Branch, BranchStatus } from "../../ipc";
 import { useRelativeTime } from "../../lib/time";
-import { useBranches } from "./api";
+import { useHistoryPane } from "../history/historyPaneStore";
+import { refName, useBranches } from "./api";
 import { useBranchDialog } from "./branchDialogStore";
 import { CommitCounts } from "./CommitCounts";
 import styles from "./branches.module.css";
 import { Icon } from "../../components/Icon";
-import { shortcutFor, useCommand } from "../../lib/commands";
+import { runCommand, shortcutFor, useCommand } from "../../lib/commands";
 import { ToolbarButton } from "../../components/ui/ToolbarButton";
 import { Tooltip } from "../../components/ui/Tooltip";
 
@@ -29,6 +30,7 @@ export function BranchPicker({
   const relativeTime = useRelativeTime();
   const branches = useBranches(repo);
   const openDialog = useBranchDialog((s) => s.open);
+  const showPane = useHistoryPane((s) => s.show);
   const [open, setOpen] = useState(false);
   useCommand("view.branches", () => setOpen(true));
   const [query, setQuery] = useState("");
@@ -59,6 +61,20 @@ export function BranchPicker({
     if (!branch.isHead) onChoose(branch);
   };
 
+  /** Shows what `branch` changed since it split from the current one. */
+  const compareWithCurrent = (branch: Branch) => {
+    if (!status.oid) return;
+    showPane(repo, {
+      kind: "compare",
+      base: current ? `refs/heads/${current}` : status.oid,
+      target: refName(branch),
+      mode: "three_dot",
+      baseLabel: current ?? t("picker.detached"),
+      targetLabel: branch.name,
+    });
+    runCommand("view.history");
+  };
+
   const fromPicker = (action: () => void) => {
     setOpen(false);
     action();
@@ -79,7 +95,7 @@ export function BranchPicker({
   const row = (branch: Branch) => (
     <li key={branch.name}>
       <ContextMenu.Root>
-        <ContextMenu.Trigger asChild disabled={branch.kind === "remote"}>
+        <ContextMenu.Trigger asChild>
           <button
             type="button"
             data-branch-item
@@ -97,28 +113,41 @@ export function BranchPicker({
         </ContextMenu.Trigger>
         <ContextMenu.Portal>
           <ContextMenu.Content className={menu.content}>
-            <ContextMenu.Item
-              className={menu.item}
-              onSelect={() => fromPicker(() => openDialog({ kind: "rename", branch }))}
-            >
-              {t("picker.rename")}
-            </ContextMenu.Item>
-            {!branch.isHead && current && (
+            {!branch.isHead && status.oid && (
               <ContextMenu.Item
                 className={menu.item}
-                onSelect={() => fromPicker(() => openDialog({ kind: "merge", branch }))}
+                onSelect={() => fromPicker(() => compareWithCurrent(branch))}
               >
-                {t("picker.mergeThis", { branch: current })}
+                {t("picker.compareThis", { branch: current ?? t("picker.detached") })}
               </ContextMenu.Item>
             )}
-            <ContextMenu.Separator className={menu.separator} />
-            <ContextMenu.Item
-              className={menu.item}
-              disabled={branch.isHead}
-              onSelect={() => fromPicker(() => openDialog({ kind: "delete", branch }))}
-            >
-              {t("picker.delete")}
-            </ContextMenu.Item>
+            {branch.kind === "local" && (
+              <>
+                <ContextMenu.Separator className={menu.separator} />
+                <ContextMenu.Item
+                  className={menu.item}
+                  onSelect={() => fromPicker(() => openDialog({ kind: "rename", branch }))}
+                >
+                  {t("picker.rename")}
+                </ContextMenu.Item>
+                {!branch.isHead && current && (
+                  <ContextMenu.Item
+                    className={menu.item}
+                    onSelect={() => fromPicker(() => openDialog({ kind: "merge", branch }))}
+                  >
+                    {t("picker.mergeThis", { branch: current })}
+                  </ContextMenu.Item>
+                )}
+                <ContextMenu.Separator className={menu.separator} />
+                <ContextMenu.Item
+                  className={menu.item}
+                  disabled={branch.isHead}
+                  onSelect={() => fromPicker(() => openDialog({ kind: "delete", branch }))}
+                >
+                  {t("picker.delete")}
+                </ContextMenu.Item>
+              </>
+            )}
           </ContextMenu.Content>
         </ContextMenu.Portal>
       </ContextMenu.Root>
@@ -207,6 +236,9 @@ export function BranchPicker({
                 {t("picker.merge", { branch: current })}
               </Button>
             )}
+            <Button variant="ghost" onClick={() => fromPicker(() => runCommand("branch.compare"))}>
+              {t("picker.compare")}
+            </Button>
           </div>
         </Popover.Content>
       </Popover.Portal>

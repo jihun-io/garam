@@ -867,7 +867,7 @@ describe("HistoryView", () => {
     ).toBeVisible();
   });
 
-  it("compares a branch with the current one since they split", async () => {
+  it("compares any two branches, either way and in both modes", async () => {
     const user = userEvent.setup();
     vi.mocked(commands.compareGet).mockResolvedValue(ok(comparison));
     vi.mocked(commands.compareFileDiff).mockResolvedValue(
@@ -877,19 +877,52 @@ describe("HistoryView", () => {
     await screen.findByRole("heading", { name: "Add login screen" });
     useHistoryDialog.setState({ dialog: { kind: "compareBranch" } });
 
-    const dialog = await screen.findByRole("dialog", { name: "Compare with Current Branch" });
-    expect(
-      await within(dialog).findByRole("combobox", { name: "Branch to compare" }),
-    ).toHaveTextContent("origin/main");
+    const dialog = await screen.findByRole("dialog", { name: "Compare Branches" });
+    const base = await within(dialog).findByRole("combobox", { name: "Base" });
+    const target = within(dialog).getByRole("combobox", { name: "Target" });
+    // The current branch is the base; the first other branch the target.
+    expect(base).toHaveTextContent("main");
+    expect(target).toHaveTextContent("origin/main");
+    expect(within(dialog).getByRole("radio", { name: "Changes since split" })).toBeChecked();
+    expect(await axeViolations(dialog)).toEqual([]);
+
+    // The same branch on both sides can't be compared.
+    await user.click(target);
+    await user.click(await screen.findByRole("option", { name: "main" }));
+    expect(within(dialog).getByText(/Base and target are the same/)).toBeVisible();
+    expect(within(dialog).getByRole("button", { name: "Compare" })).toBeDisabled();
+    await user.click(base);
+    await user.click(await screen.findByRole("option", { name: "origin/main" }));
+
+    await user.click(within(dialog).getByRole("radio", { name: "Difference" }));
     await user.click(within(dialog).getByRole("button", { name: "Compare" }));
-    expect(commands.compareGet).toHaveBeenCalledWith(
+    expect(commands.compareGet).toHaveBeenLastCalledWith(
+      "/repo",
+      "refs/remotes/origin/main",
+      "refs/heads/main",
+      "two_dot",
+    );
+    expect(await screen.findByRole("heading", { name: "origin/main ↔ main" })).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Swap base and target" }));
+    expect(commands.compareGet).toHaveBeenLastCalledWith(
+      "/repo",
+      "refs/heads/main",
+      "refs/remotes/origin/main",
+      "two_dot",
+    );
+    expect(await screen.findByRole("heading", { name: "main ↔ origin/main" })).toBeVisible();
+
+    await user.click(screen.getByRole("radio", { name: "Changes since split" }));
+    expect(commands.compareGet).toHaveBeenLastCalledWith(
       "/repo",
       "refs/heads/main",
       "refs/remotes/origin/main",
       "three_dot",
     );
-    expect(await screen.findByRole("heading", { name: "main ↔ origin/main" })).toBeVisible();
-    expect(screen.getByText("What origin/main changed since it split from main.")).toBeVisible();
+    expect(
+      await screen.findByText("What origin/main changed since it split from main."),
+    ).toBeVisible();
   });
 
   it("lists lost commits to view or bring back", async () => {

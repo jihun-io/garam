@@ -6,6 +6,7 @@ import { commands, type Branch, type FileChange } from "../../ipc";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { Notifications } from "../notify/Notifications";
 import { useNotify } from "../notify/notifyStore";
+import { useHistoryPane } from "../history/historyPaneStore";
 import { useBranchDialog } from "./branchDialogStore";
 import { AutoStashBanner } from "./AutoStashBanner";
 import { BranchControls } from "./BranchControls";
@@ -97,6 +98,33 @@ describe("BranchControls", () => {
     const remote = screen.getByRole("region", { name: "Remote branches" });
     expect(within(remote).getByText("origin/review")).toBeVisible();
     expect(within(remote).queryByText("origin/main")).not.toBeInTheDocument();
+  });
+
+  it("compares a branch, remote ones too, with the current one", async () => {
+    const user = userEvent.setup();
+    useHistoryPane.setState({ panes: {} });
+    setup();
+    await openPicker(user);
+    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("origin/review") });
+    const menu = await screen.findByRole("menu");
+    // Remote branches can't be renamed or deleted from here.
+    expect(within(menu).queryByRole("menuitem", { name: "Rename…" })).toBeNull();
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "Compare with Current Branch (main)" }),
+    );
+    expect(useHistoryPane.getState().panes["/repo"]).toEqual({
+      kind: "compare",
+      base: "refs/heads/main",
+      target: "refs/remotes/origin/review",
+      mode: "three_dot",
+      baseLabel: "main",
+      targetLabel: "origin/review",
+    });
+
+    await openPicker(user);
+    await user.pointer({ keys: "[MouseRight]", target: screen.getAllByText("main")[1] });
+    const own = await screen.findByRole("menu");
+    expect(within(own).queryByRole("menuitem", { name: /Compare with/ })).toBeNull();
   });
 
   it("switches straight away when there are no changes", async () => {

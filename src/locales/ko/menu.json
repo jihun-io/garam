@@ -35,7 +35,7 @@
       "create": "새 브랜치…",
       "rename": "브랜치 이름 바꾸기…",
       "merge": "현재 브랜치에 병합…",
-      "compare": "현재 브랜치와 비교…"
+      "compare": "브랜치 비교…"
     },
     "help": {
       "shortcuts": "키보드 단축키",

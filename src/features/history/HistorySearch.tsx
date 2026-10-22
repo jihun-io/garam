@@ -10,8 +10,8 @@ import { IconButton } from "../../components/ui/IconButton";
 import segmented from "../../components/ui/Segmented.module.css";
 import { Select, type SelectOption } from "../../components/ui/Select";
 import type { HistoryScope, SearchField } from "../../ipc";
-import { shortcutFor, useCommand } from "../../lib/commands";
-import { useBranches } from "../branches/api";
+import { runCommand, shortcutFor, useCommand } from "../../lib/commands";
+import { refName, useBranches } from "../branches/api";
 import { hasFilters, isUnfiltered, useHistoryFilter, useHistoryFilters } from "./filterStore";
 import styles from "./History.module.css";
 
@@ -55,6 +55,12 @@ export function HistorySearch({ repo }: { repo: string }) {
           }}
         />
       </div>
+      <IconButton
+        icon="compare"
+        size={16}
+        label={t("search.compareBranches")}
+        onClick={() => runCommand("branch.compare")}
+      />
       <Popover.Root>
         <Popover.Trigger asChild>
           <IconButton
@@ -96,7 +102,7 @@ function FilterOptions({ repo }: { repo: string }) {
     { value: "head", label: t("filter.scopes.head") },
     { value: "all", label: t("filter.scopes.all") },
     ...(branches.data ?? []).map((b) => ({
-      value: `refs/${b.kind === "local" ? "heads" : "remotes"}/${b.name}`,
+      value: refName(b),
       label: b.name,
     })),
   ];

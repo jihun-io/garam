@@ -6,6 +6,7 @@ import { ArrowCircleRight } from "@phosphor-icons/react/dist/csr/ArrowCircleRigh
 import { ArrowDown } from "@phosphor-icons/react/dist/csr/ArrowDown";
 import { ArrowSquareOut } from "@phosphor-icons/react/dist/csr/ArrowSquareOut";
 import { ArrowUp } from "@phosphor-icons/react/dist/csr/ArrowUp";
+import { ArrowsLeftRight } from "@phosphor-icons/react/dist/csr/ArrowsLeftRight";
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
 import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
 import { Check } from "@phosphor-icons/react/dist/csr/Check";
@@ -22,6 +23,7 @@ import { Funnel } from "@phosphor-icons/react/dist/csr/Funnel";
 import { GearSix } from "@phosphor-icons/react/dist/csr/GearSix";
 import { GitBranch } from "@phosphor-icons/react/dist/csr/GitBranch";
 import { GitCommit } from "@phosphor-icons/react/dist/csr/GitCommit";
+import { GitDiff } from "@phosphor-icons/react/dist/csr/GitDiff";
 import { Info } from "@phosphor-icons/react/dist/csr/Info";
 import { MagnifyingGlass } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
 import { MinusCircle } from "@phosphor-icons/react/dist/csr/MinusCircle";
@@ -57,6 +59,8 @@ export const Icons = {
   copy: Copy,
   loading: CircleNotch,
   search: MagnifyingGlass,
+  swap: ArrowsLeftRight,
+  compare: GitDiff,
   filter: Funnel,
 
   // Notices and empty states

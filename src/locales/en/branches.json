@@ -16,7 +16,9 @@
     "behind_one": "{{count}} commit to pull",
     "behind_other": "{{count}} commits to pull",
     "gone": "Deleted on remote",
-    "tooltip": "Switch branch"
+    "tooltip": "Switch branch",
+    "compareThis": "Compare with Current Branch ({{branch}})",
+    "compare": "Compare Branches…"
   },
   "switch": {
     "title": "Switch to {{branch}}?",
