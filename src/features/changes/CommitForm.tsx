@@ -1,15 +1,20 @@
-import { useId, useState, type KeyboardEvent } from "react";
-import { useTranslation } from "react-i18next";
+import { useEffect, useId, useState, type KeyboardEvent } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
 import { Checkbox } from "../../components/ui/Checkbox";
-import { toAppError, type AppError, type BranchStatus } from "../../ipc";
+import { Tooltip } from "../../components/ui/Tooltip";
+import { toAppError, type AppError, type BranchStatus, type Identity } from "../../ipc";
 import { currentPlatform } from "../../lib/platform";
+import { useRepoAccount } from "../accounts/api";
+import { emailBelongsTo } from "../accounts/repoAccount";
 import { useChangeActions, useHeadCommit, useIdentity } from "./api";
+import { useCommitDrafts } from "./commitDraftStore";
 import styles from "./CommitForm.module.css";
 import { parseCoAuthors } from "./fileState";
 import { IdentityDialog } from "./IdentityDialog";
+import { formatIdentity, RepoIdentityDialog } from "./RepoIdentityDialog";
 
 const LONG_SUMMARY = 72;
 
@@ -26,14 +31,22 @@ export function CommitForm({
   const ids = { summary: useId(), description: useId(), coAuthors: useId(), amend: useId() };
   const { commit } = useChangeActions(repo);
   const identity = useIdentity(repo);
-  const [summary, setSummary] = useState("");
-  const [description, setDescription] = useState("");
+  const repoAccount = useRepoAccount(repo, identity.data?.effective.email ?? null);
+  // A waiting draft (from an undone commit) fills the form once.
+  const draft = useCommitDrafts((s) => s.drafts[repo]);
+  const clearDraft = useCommitDrafts((s) => s.clear);
+  const [summary, setSummary] = useState(draft?.summary ?? "");
+  const [description, setDescription] = useState(draft?.description ?? "");
+  useEffect(() => {
+    if (draft) clearDraft(repo);
+  }, [draft, clearDraft, repo]);
   const [coAuthorsText, setCoAuthorsText] = useState("");
   const [showCoAuthors, setShowCoAuthors] = useState(false);
   const [amend, setAmend] = useState(false);
   const [prefill, setPrefill] = useState<{ summary: string; description: string } | null>(null);
   const [error, setError] = useState<AppError>();
   const [askIdentity, setAskIdentity] = useState(false);
+  const [editRepoIdentity, setEditRepoIdentity] = useState(false);
   const head = useHeadCommit(repo, amend);
   const canAmend = branch.oid !== null;
 
@@ -74,7 +87,7 @@ export function CommitForm({
   // saved, before the identity query has refetched.
   const submit = (identityConfirmed = false) => {
     if (!ready || !coAuthors.ok) return;
-    if (!identityConfirmed && identity.data && !(identity.data.name && identity.data.email)) {
+    if (!identityConfirmed && identity.data && !isComplete(identity.data.effective)) {
       setAskIdentity(true);
       return;
     }
@@ -107,11 +120,20 @@ export function CommitForm({
     }
   };
 
-  const label = amend
-    ? t("commit.submitAmend")
-    : branch.head
-      ? t("commit.submit", { branch: branch.head })
-      : t("commit.submitDetached");
+  // Only the branch name shrinks (with an ellipsis), so "Commit to" stays.
+  const label = amend ? (
+    t("commit.submitAmend")
+  ) : branch.head ? (
+    <Trans
+      t={t}
+      i18nKey="commit.submit"
+      values={{ branch: branch.head }}
+      components={{ branch: <span className={styles.branch} /> }}
+    />
+  ) : (
+    t("commit.submitDetached")
+  );
+  const shortcut = t("commit.shortcut", { key: currentPlatform() === "macos" ? "⌘" : "Ctrl" });
 
   return (
     <form
@@ -190,22 +212,41 @@ export function CommitForm({
         </button>
       </div>
 
+      {identity.data && (
+        <AuthorLine
+          author={formatIdentity(identity.data.effective)}
+          overridden={identity.data.local.name !== null || identity.data.local.email !== null}
+          login={repoAccount.account?.login ?? null}
+          mismatch={
+            repoAccount.account !== null &&
+            identity.data.effective.email !== null &&
+            !emailBelongsTo(repoAccount.account, identity.data.effective.email)
+          }
+          onEdit={() => setEditRepoIdentity(true)}
+        />
+      )}
+
       {error && <ErrorMessage error={error} />}
-      <Button
-        type="submit"
-        variant="primary"
-        className={styles.submit}
-        disabled={!ready}
-        title={t("commit.shortcut", { key: currentPlatform() === "macos" ? "⌘" : "Ctrl" })}
+      <Tooltip
+        content={
+          <>
+            {label}
+            <br />
+            {shortcut}
+          </>
+        }
+        side="top"
       >
-        {label}
-      </Button>
+        <Button type="submit" variant="primary" className={styles.submit} disabled={!ready}>
+          <span className={styles.label}>{label}</span>
+        </Button>
+      </Tooltip>
       {stagedCount === 0 && !amend && <p className={styles.hint}>{t("commit.nothingStaged")}</p>}
 
       {askIdentity && (
         <IdentityDialog
           repo={repo}
-          current={identity.data}
+          current={identity.data?.effective}
           onClose={() => setAskIdentity(false)}
           onSaved={() => {
             setAskIdentity(false);
@@ -213,6 +254,54 @@ export function CommitForm({
           }}
         />
       )}
+      {editRepoIdentity && identity.data && (
+        <RepoIdentityDialog
+          repo={repo}
+          identity={identity.data}
+          repoAccount={repoAccount}
+          onClose={() => setEditRepoIdentity(false)}
+        />
+      )}
     </form>
+  );
+}
+
+const isComplete = (identity: Identity) => Boolean(identity.name && identity.email);
+
+/**
+ * Who the commit will be recorded as and which GitHub account pushes it;
+ * opens the per-repository choice.
+ */
+function AuthorLine({
+  author,
+  overridden,
+  login,
+  mismatch,
+  onEdit,
+}: {
+  author: string | null;
+  overridden: boolean;
+  login: string | null;
+  /** The author email isn't one of the account's, so GitHub won't link it. */
+  mismatch: boolean;
+  onEdit: () => void;
+}) {
+  const { t } = useTranslation("changes");
+  return (
+    <>
+      <Tooltip content={t("commit.authorEdit")} side="top">
+        <button type="button" className={styles.author} onClick={onEdit}>
+          <span className={styles.authorLabel}>{t("commit.author")}</span>
+          <span className={styles.authorValue}>{author ?? t("commit.authorMissing")}</span>
+          {overridden && <span className={styles.authorScope}>{t("commit.authorRepo")}</span>}
+          {login && <span className={styles.authorAccount}>@{login}</span>}
+        </button>
+      </Tooltip>
+      {mismatch && login && (
+        <p className={styles.mismatch} role="status">
+          {t("commit.authorMismatch", { login })}
+        </p>
+      )}
+    </>
   );
 }

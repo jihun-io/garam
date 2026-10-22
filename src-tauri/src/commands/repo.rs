@@ -1,20 +1,44 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use garam_git::{Git, GitError, Progress, repo};
-use tauri::State;
+use garam_git::{Git, GitError, repo};
 use tauri::ipc::Channel;
+use tauri::{State, WebviewWindow};
 
+use crate::askpass::Askpass;
+use crate::commands::remote::{NetworkContext, RemoteEvent};
 use crate::error::{AppError, AppErrorKind, AppResult, blocking};
 use crate::operations::Operations;
 use crate::repositories::{RepositoryEntry, RepositoryList, RepositoryStore};
+use crate::windows::RepoWindows;
 
 type Store<'a> = State<'a, Arc<RepositoryStore>>;
+type Windows<'a> = State<'a, Arc<RepoWindows>>;
 
+/// All repositories, with `selected` set to the one the calling window
+/// shows. A window that hasn't chosen one yet (the first window at launch)
+/// takes the repository open last, unless another window shows it.
 #[tauri::command]
 #[specta::specta]
-pub fn repo_list(store: Store<'_>) -> RepositoryList {
-    store.list()
+pub fn repo_list(window: WebviewWindow, store: Store<'_>, windows: Windows<'_>) -> RepositoryList {
+    let mut list = store.list();
+    let label = window.label();
+    let listed = |path: &String| list.repositories.iter().any(|r| &r.path == path);
+    let selected = match windows.get(label).filter(listed) {
+        Some(path) => Some(path),
+        None => {
+            let last = list
+                .selected
+                .take()
+                .filter(|path| windows.find(path, Some(label)).is_none());
+            if let Some(path) = &last {
+                windows.set(label, path.clone());
+            }
+            last
+        }
+    };
+    list.selected = selected;
+    list
 }
 
 /// Adds an existing repository. `path` may be any folder inside it.
@@ -65,36 +89,40 @@ pub async fn repo_create(
     .await
 }
 
-/// Clones `url` into `parent/name`, streaming progress to `on_progress`.
-/// Cancel with [`operation_cancel`] using the same `operation_id`.
+/// Clones `url` into `parent/name`, streaming progress and credential
+/// prompts to `on_event`. Cancel with [`operation_cancel`] using the same
+/// `operation_id`.
 #[tauri::command]
 #[specta::specta]
+#[allow(clippy::too_many_arguments)]
 pub async fn repo_clone(
     store: Store<'_>,
     operations: State<'_, Arc<Operations>>,
+    askpass: State<'_, Arc<Askpass>>,
     operation_id: String,
     url: String,
     parent: String,
     name: String,
-    on_progress: Channel<Progress>,
+    on_event: Channel<RemoteEvent>,
 ) -> AppResult<RepositoryEntry> {
     let store = Arc::clone(&store);
-    let operations = Arc::clone(&operations);
-    blocking(move || {
-        let dest = destination(&parent, &name)?;
-        let guard = operations.start(operation_id);
-        let info = repo::clone(&Git::locate()?, url.trim(), &dest, &guard.token, |p| {
-            let _ = on_progress.send(p);
-        })?;
-        store.add(info)
-    })
-    .await
+    let dest = destination(&parent, &name)?;
+    let info = NetworkContext::new(&operations, &askpass, operation_id, true, on_event)
+        .run(move |git, cancel, progress| repo::clone(git, url.trim(), &dest, cancel, progress))
+        .await?;
+    blocking(move || store.add(info)).await
 }
 
+/// Cancels a running operation, declining any credential prompt it shows.
 #[tauri::command]
 #[specta::specta]
-pub fn operation_cancel(operations: State<'_, Arc<Operations>>, operation_id: String) {
+pub fn operation_cancel(
+    operations: State<'_, Arc<Operations>>,
+    askpass: State<'_, Arc<Askpass>>,
+    operation_id: String,
+) {
     operations.cancel(&operation_id);
+    askpass.decline_all(&operation_id);
 }
 
 /// Removes a repository from Garam's list. Files on disk are untouched.
@@ -105,11 +133,31 @@ pub async fn repo_remove(store: Store<'_>, path: String) -> AppResult<()> {
     blocking(move || store.remove(&path)).await
 }
 
+/// Shows the repository at `path` in the calling window.
 #[tauri::command]
 #[specta::specta]
-pub async fn repo_select(store: Store<'_>, path: String) -> AppResult<()> {
+pub async fn repo_select(
+    window: WebviewWindow,
+    store: Store<'_>,
+    windows: Windows<'_>,
+    path: String,
+) -> AppResult<()> {
+    windows.set(window.label(), path.clone());
     let store = Arc::clone(&store);
     blocking(move || store.select(&path)).await
+}
+
+/// Chooses the GitHub account git uses for the repository's HTTPS
+/// remotes; `None` goes back to the user's own git setup.
+#[tauri::command]
+#[specta::specta]
+pub async fn repo_set_account(
+    store: Store<'_>,
+    path: String,
+    account: Option<String>,
+) -> AppResult<()> {
+    let store = Arc::clone(&store);
+    blocking(move || store.set_account(&path, account)).await
 }
 
 fn destination(parent: &str, name: &str) -> AppResult<PathBuf> {
@@ -170,16 +218,17 @@ mod tests {
     }
 }
 
-/// Starts watching `path` for changes (or stops with `None`). The frontend
-/// receives `repo-changed` events and refreshes.
+/// Starts watching `path` for the calling window (or stops with `None`).
+/// The frontend receives `repo-changed` events and refreshes.
 #[tauri::command]
 #[specta::specta]
 pub fn repo_watch(
     app: tauri::AppHandle,
+    window: WebviewWindow,
     watcher: State<'_, crate::watcher::RepoWatcher>,
     path: Option<String>,
 ) -> AppResult<()> {
     watcher
-        .watch(&app, path)
+        .watch(&app, window.label(), path)
         .map_err(|e| AppError::app(AppErrorKind::WatchFailed, Some(e.to_string())))
 }

@@ -9,7 +9,12 @@ import { displayPath } from "../../lib/paths";
 import { useNotify } from "../notify/notifyStore";
 import { useRepositoryActions } from "./api";
 import { useRepoDialog } from "./dialogStore";
+import { useOpenIn, useOpenRepository } from "./openRepository";
 import styles from "./RepoPicker.module.css";
+import { Icon } from "../../components/Icon";
+import { shortcutFor, useCommand } from "../../lib/commands";
+import { ToolbarButton } from "../../components/ui/ToolbarButton";
+import { Tooltip } from "../../components/ui/Tooltip";
 
 export function RepoPicker({
   repositories,
@@ -20,9 +25,12 @@ export function RepoPicker({
 }) {
   const { t } = useTranslation("repos");
   const [open, setOpen] = useState(false);
+  useCommand("view.repositories", () => setOpen(true));
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLUListElement>(null);
-  const { select, remove } = useRepositoryActions();
+  const { remove } = useRepositoryActions();
+  const openRepository = useOpenRepository();
+  const openIn = useOpenIn();
   const openDialog = useRepoDialog((s) => s.open);
   const showError = useNotify((s) => s.showError);
 
@@ -37,7 +45,7 @@ export function RepoPicker({
   const choose = (repo: RepositoryEntry) => {
     setOpen(false);
     setQuery("");
-    if (repo.path !== selected?.path) select.mutate(repo.path, { onError: showError });
+    if (repo.path !== selected?.path) void openRepository(repo.path);
   };
 
   const items = () =>
@@ -66,20 +74,24 @@ export function RepoPicker({
         if (!next) setQuery("");
       }}
     >
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          className={styles.trigger}
-          aria-label={selected ? t("picker.label", { name: selected.name }) : undefined}
-        >
-          <span className={styles.triggerName}>{selected?.name ?? t("picker.placeholder")}</span>
-          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-            <path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
-        </button>
-      </Popover.Trigger>
+      <Tooltip content={t("picker.tooltip")} shortcut={shortcutFor("view.repositories")}>
+        <Popover.Trigger asChild>
+          <ToolbarButton
+            icon="repository"
+            className={styles.trigger}
+            caption={t("picker.caption")}
+            value={selected?.name ?? t("picker.placeholder")}
+            trailing={<Icon name="dropdown" size={12} />}
+          />
+        </Popover.Trigger>
+      </Tooltip>
       <Popover.Portal>
-        <Popover.Content className={styles.content} align="start" sideOffset={4}>
+        <Popover.Content
+          className={styles.content}
+          align="start"
+          sideOffset={4}
+          aria-label={t("picker.tooltip")}
+        >
           <div className={styles.search}>
             <input
               type="search"
@@ -114,7 +126,6 @@ export function RepoPicker({
                         className={styles.item}
                         aria-current={repo.path === selected?.path ? "true" : undefined}
                         onClick={() => choose(repo)}
-                        title={repo.path}
                       >
                         <span className={styles.itemName}>{repo.name}</span>
                         {repo.missing && (
@@ -125,6 +136,17 @@ export function RepoPicker({
                     </ContextMenu.Trigger>
                     <ContextMenu.Portal>
                       <ContextMenu.Content className={menu.content}>
+                        <ContextMenu.Item
+                          className={menu.item}
+                          disabled={repo.path === selected?.path}
+                          onSelect={() => {
+                            setOpen(false);
+                            setQuery("");
+                            openIn(repo.path, "new_window").catch(showError);
+                          }}
+                        >
+                          {t("picker.openInNewWindow")}
+                        </ContextMenu.Item>
                         <ContextMenu.Item
                           className={menu.item}
                           onSelect={() => remove.mutate(repo.path, { onError: showError })}

@@ -5,8 +5,9 @@ import { ErrorMessage } from "../../../components/ErrorMessage";
 import { Button } from "../../../components/ui/Button";
 import { FormDialog } from "../../../components/ui/Dialog";
 import { Field } from "../../../components/ui/Field";
-import { toAppError, type AppError } from "../../../ipc";
+import { toAppError, type AppError, type RepositoryEntry } from "../../../ipc";
 import { useRepositoryActions } from "../api";
+import { useOpenRepository } from "../openRepository";
 import { BrowseButton } from "./BrowseButton";
 import styles from "./dialogs.module.css";
 
@@ -21,20 +22,26 @@ export function AddRepositoryDialog({
 }) {
   const { t } = useTranslation("repos");
   const { add, initExisting } = useRepositoryActions();
+  const openRepository = useOpenRepository();
   const [path, setPath] = useState(initialPath);
   const [error, setError] = useState<AppError | undefined>(initialError);
   const busy = add.isPending || initExisting.isPending;
 
+  const added = (entry: RepositoryEntry) => {
+    onClose();
+    void openRepository(entry.path);
+  };
+
   const submit = () => {
     if (!path.trim() || busy) return;
     setError(undefined);
-    add.mutate(path.trim(), { onSuccess: onClose, onError: (e) => setError(toAppError(e)) });
+    add.mutate(path.trim(), { onSuccess: added, onError: (e) => setError(toAppError(e)) });
   };
 
   const initHere = () => {
     setError(undefined);
     initExisting.mutate(path.trim(), {
-      onSuccess: onClose,
+      onSuccess: added,
       onError: (e) => setError(toAppError(e)),
     });
   };

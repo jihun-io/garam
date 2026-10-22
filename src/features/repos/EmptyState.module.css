@@ -31,7 +31,6 @@
   border: 0;
   background: none;
   text-align: start;
-  cursor: pointer;
 }
 
 .action:hover {
@@ -48,7 +47,6 @@
 
 .actionTitle {
   font-weight: 600;
-  color: var(--color-river-strong);
 }
 
 .actionDescription {

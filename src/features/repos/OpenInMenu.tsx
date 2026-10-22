@@ -1,25 +1,40 @@
 import { DropdownMenu } from "radix-ui";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "../../components/ui/Button";
+import { IconButton } from "../../components/ui/IconButton";
 import menu from "../../components/ui/Menu.module.css";
 import { commands, unwrap } from "../../ipc";
+import { useCommand } from "../../lib/commands";
 import { currentPlatform } from "../../lib/platform";
 import { useNotify } from "../notify/notifyStore";
-import { useEditors } from "./api";
+import { useSettings } from "../settings/api";
+import { useEditorsPreferredFirst } from "./api";
 
 /** "Open in" menu: file manager, terminal, and detected editors. */
 export function OpenInMenu({ path, disabled }: { path: string; disabled?: boolean }) {
   const { t } = useTranslation("repos");
-  const editors = useEditors();
+  const settings = useSettings();
+  const editors = useEditorsPreferredFirst(settings.editor);
   const showError = useNotify((s) => s.showError);
 
   const run = (action: Promise<unknown>) => action.catch(showError);
+  const firstEditor = editors[0];
+  useCommand(
+    "repo.openEditor",
+    () => firstEditor && void run(unwrap(commands.externalOpenEditor(firstEditor.id, path))),
+    !disabled && !!firstEditor,
+  );
+  useCommand(
+    "repo.openTerminal",
+    () => void run(unwrap(commands.externalOpenTerminal(path, settings.terminal))),
+    !disabled,
+  );
+  useCommand("repo.reveal", () => void run(unwrap(commands.externalReveal(path))), !disabled);
 
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild disabled={disabled}>
-        <Button>{t("open.menu")}</Button>
+        <IconButton icon="openIn" label={t("open.menu")} />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content className={menu.content} align="end" sideOffset={4}>
@@ -31,13 +46,15 @@ export function OpenInMenu({ path, disabled }: { path: string; disabled?: boolea
           </DropdownMenu.Item>
           <DropdownMenu.Item
             className={menu.item}
-            onSelect={() => void run(unwrap(commands.externalOpenTerminal(path)))}
+            onSelect={() =>
+              void run(unwrap(commands.externalOpenTerminal(path, settings.terminal)))
+            }
           >
             {t("open.terminal")}
           </DropdownMenu.Item>
           <DropdownMenu.Separator className={menu.separator} />
-          {editors.data?.length ? (
-            editors.data.map((editor) => (
+          {editors.length ? (
+            editors.map((editor) => (
               <DropdownMenu.Item
                 key={editor.id}
                 className={menu.item}

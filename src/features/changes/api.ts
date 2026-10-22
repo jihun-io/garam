@@ -115,5 +115,14 @@ export function useChangeActions(repo: string) {
         unwrap(commands.identitySet(name, email)),
       onSettled,
     }),
+    setLocalIdentity: useMutation({
+      mutationFn: ({ name, email }: { name: string; email: string }) =>
+        unwrap(commands.identitySetLocal(repo, name, email)),
+      onSettled,
+    }),
+    clearLocalIdentity: useMutation({
+      mutationFn: () => unwrap(commands.identityClearLocal(repo)),
+      onSettled,
+    }),
   };
 }

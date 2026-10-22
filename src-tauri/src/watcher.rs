@@ -1,6 +1,7 @@
-//! Watches the open repository and tells the frontend when it changed, so
-//! status and diffs refresh without polling.
+//! Watches each window's repository and tells the frontend when it
+//! changed, so status and diffs refresh without polling.
 
+use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -19,22 +20,25 @@ pub struct RepoChanged {
 
 type Watcher = Debouncer<RecommendedWatcher, RecommendedCache>;
 
+/// One watcher per window, keyed by window label.
 #[derive(Default)]
-pub struct RepoWatcher(Mutex<Option<(String, Watcher)>>);
+pub struct RepoWatcher(Mutex<HashMap<String, (String, Watcher)>>);
 
 impl RepoWatcher {
-    /// Watches `repo` instead of whatever was watched before; `None` stops.
+    /// Watches `repo` for window `window` instead of whatever it watched
+    /// before; `None` stops.
     pub fn watch(
         &self,
         app: &AppHandle,
+        window: &str,
         repo: Option<String>,
     ) -> notify_debouncer_full::notify::Result<()> {
-        let mut current = self.0.lock().unwrap_or_else(|e| e.into_inner());
-        if current.as_ref().map(|(p, _)| p) == repo.as_ref() {
+        let mut watchers = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        if watchers.get(window).map(|(p, _)| p) == repo.as_ref() {
             return Ok(());
         }
         // Dropping the old debouncer stops it.
-        *current = None;
+        watchers.remove(window);
         let Some(repo) = repo else {
             return Ok(());
         };
@@ -58,7 +62,7 @@ impl RepoWatcher {
             },
         )?;
         debouncer.watch(&root, RecursiveMode::Recursive)?;
-        *current = Some((repo, debouncer));
+        watchers.insert(window.to_owned(), (repo, debouncer));
         Ok(())
     }
 }
@@ -85,7 +89,18 @@ fn is_relevant(root: &Path, path: &Path) -> bool {
     }
     matches!(
         rest.first().map(String::as_str),
-        Some("index" | "HEAD" | "MERGE_HEAD" | "ORIG_HEAD" | "packed-refs" | "refs")
+        Some(
+            "index"
+                | "HEAD"
+                | "MERGE_HEAD"
+                | "ORIG_HEAD"
+                | "REVERT_HEAD"
+                | "CHERRY_PICK_HEAD"
+                | "rebase-merge"
+                | "rebase-apply"
+                | "packed-refs"
+                | "refs"
+        )
     )
 }
 
@@ -102,6 +117,8 @@ mod tests {
         assert!(is_relevant(root, Path::new("/repo/.git/index")));
         assert!(is_relevant(root, Path::new("/repo/.git/HEAD")));
         assert!(is_relevant(root, Path::new("/repo/.git/refs/heads/main")));
+        assert!(is_relevant(root, Path::new("/repo/.git/REVERT_HEAD")));
+        assert!(is_relevant(root, Path::new("/repo/.git/rebase-merge/done")));
         assert!(!is_relevant(root, Path::new("/repo/.git/index.lock")));
         assert!(!is_relevant(root, Path::new("/repo/.git/objects/ab/cdef")));
         assert!(!is_relevant(root, Path::new("/repo/.git/logs/HEAD")));

@@ -11,6 +11,11 @@ export const commands = {
 	 *  `git_not_found` / `git_too_old` errors.
 	 */
 	gitInfo: () => typedError<GitInfo, AppError>(__TAURI_INVOKE("git_info")),
+	/**
+	 *  All repositories, with `selected` set to the one the calling window
+	 *  shows. A window that hasn't chosen one yet (the first window at launch)
+	 *  takes the repository open last, unless another window shows it.
+	 */
 	repoList: () => __TAURI_INVOKE<RepositoryList>("repo_list"),
 	/**  Adds an existing repository. `path` may be any folder inside it. */
 	repoAdd: (path: string) => typedError<RepositoryEntry, AppError>(__TAURI_INVOKE("repo_add", { path })),
@@ -19,19 +24,37 @@ export const commands = {
 	/**  Creates `parent/name` and initializes a repository in it. */
 	repoCreate: (parent: string, name: string) => typedError<RepositoryEntry, AppError>(__TAURI_INVOKE("repo_create", { parent, name })),
 	/**
-	 *  Clones `url` into `parent/name`, streaming progress to `on_progress`.
-	 *  Cancel with [`operation_cancel`] using the same `operation_id`.
+	 *  Clones `url` into `parent/name`, streaming progress and credential
+	 *  prompts to `on_event`. Cancel with [`operation_cancel`] using the same
+	 *  `operation_id`.
 	 */
-	repoClone: (operationId: string, url: string, parent: string, name: string, onProgress: Channel<Progress>) => typedError<RepositoryEntry, AppError>(__TAURI_INVOKE("repo_clone", { operationId, url, parent, name, onProgress })),
+	repoClone: (operationId: string, url: string, parent: string, name: string, onEvent: Channel<RemoteEvent>) => typedError<RepositoryEntry, AppError>(__TAURI_INVOKE("repo_clone", { operationId, url, parent, name, onEvent })),
 	/**  Removes a repository from Garam's list. Files on disk are untouched. */
 	repoRemove: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("repo_remove", { path })),
+	/**  Shows the repository at `path` in the calling window. */
 	repoSelect: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("repo_select", { path })),
+	/**
+	 *  Chooses the GitHub account git uses for the repository's HTTPS
+	 *  remotes; `None` goes back to the user's own git setup.
+	 */
+	repoSetAccount: (path: string, account: string | null) => typedError<null, AppError>(__TAURI_INVOKE("repo_set_account", { path, account })),
+	/**  Cancels a running operation, declining any credential prompt it shows. */
 	operationCancel: (operationId: string) => __TAURI_INVOKE<void>("operation_cancel", { operationId }),
 	/**
-	 *  Starts watching `path` for changes (or stops with `None`). The frontend
-	 *  receives `repo-changed` events and refreshes.
+	 *  Starts watching `path` for the calling window (or stops with `None`).
+	 *  The frontend receives `repo-changed` events and refreshes.
 	 */
 	repoWatch: (path: string | null) => typedError<null, AppError>(__TAURI_INVOKE("repo_watch", { path })),
+	/**
+	 *  Brings forward the window, other than the calling one, that shows
+	 *  `path`. Returns whether there was one.
+	 */
+	windowFocusRepo: (path: string) => __TAURI_INVOKE<boolean>("window_focus_repo", { path }),
+	/**
+	 *  Opens `path` in a new window, or brings forward the window already
+	 *  showing it.
+	 */
+	windowOpen: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("window_open", { path })),
 	statusGet: (repo: string) => typedError<RepoStatus, AppError>(__TAURI_INVOKE("status_get", { repo })),
 	diffGet: (repo: string, file: FileChange) => typedError<FileDiff, AppError>(__TAURI_INVOKE("diff_get", { repo, file })),
 	diffImages: (repo: string, file: FileChange) => typedError<ImageVersions, AppError>(__TAURI_INVOKE("diff_images", { repo, file })),
@@ -48,11 +71,15 @@ export const commands = {
 	summary: string,
 	body: string,
 } | null, AppError>(__TAURI_INVOKE("commit_head", { repo })),
-	identityGet: (repo: string) => typedError<Identity, AppError>(__TAURI_INVOKE("identity_get", { repo })),
+	identityGet: (repo: string) => typedError<RepoIdentity, AppError>(__TAURI_INVOKE("identity_get", { repo })),
 	identitySet: (name: string, email: string) => typedError<null, AppError>(__TAURI_INVOKE("identity_set", { name, email })),
+	/**  Overrides the global identity in `repo`'s own config. */
+	identitySetLocal: (repo: string, name: string, email: string) => typedError<null, AppError>(__TAURI_INVOKE("identity_set_local", { repo, name, email })),
+	/**  Removes `repo`'s own identity so the global one applies again. */
+	identityClearLocal: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("identity_clear_local", { repo })),
 	branchList: (repo: string) => typedError<Branch[], AppError>(__TAURI_INVOKE("branch_list", { repo })),
-	/**  Creates a branch from HEAD and switches to it. */
-	branchCreate: (repo: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("branch_create", { repo, name })),
+	/**  Creates a branch at `start` (default: HEAD) and switches to it. */
+	branchCreate: (repo: string, name: string, start: string | null) => typedError<null, AppError>(__TAURI_INVOKE("branch_create", { repo, name, start })),
 	/**
 	 *  Switches branches. `current` names the branch being left, used to label
 	 *  a stash when `mode` is `leave_changes`.
@@ -71,13 +98,130 @@ export const commands = {
 } | null, AppError>(__TAURI_INVOKE("stash_find_auto", { repo, branch })),
 	stashPop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_pop", { repo, oid })),
 	stashDrop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_drop", { repo, oid })),
+	conflictState: (repo: string) => typedError<ConflictState, AppError>(__TAURI_INVOKE("conflict_state", { repo })),
+	/**  Keeps one side's version of a conflicted file. */
+	conflictResolve: (repo: string, path: string, side: Side) => typedError<null, AppError>(__TAURI_INVOKE("conflict_resolve", { repo, path, side })),
+	/**  Marks a file resolved as it is in the working folder. */
+	conflictMarkResolved: (repo: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_mark_resolved", { repo, path })),
+	conflictContinue: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_continue", { repo })),
+	conflictAbort: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_abort", { repo })),
+	/**  A page of the history `filter` selects, newest first. */
+	historyList: (repo: string, filter: HistoryFilter, skip: number, limit: number) => typedError<CommitSummary[], AppError>(__TAURI_INVOKE("history_list", { repo, filter, skip, limit })),
+	/**  Refs, unpushed and incoming commits, shown alongside the history. */
+	historyMarkers: (repo: string) => typedError<HistoryMarkers, AppError>(__TAURI_INVOKE("history_markers", { repo })),
+	commitDetail: (repo: string, oid: string) => typedError<CommitDetail, AppError>(__TAURI_INVOKE("commit_detail", { repo, oid })),
+	commitFileDiff: (repo: string, oid: string, file: CommitFile, ignoreWhitespace: boolean) => typedError<FileDiff, AppError>(__TAURI_INVOKE("commit_file_diff", { repo, oid, file, ignoreWhitespace })),
+	/**  An image file before and after `oid`, for side-by-side preview. */
+	commitImages: (repo: string, oid: string, file: CommitFile) => typedError<ImageVersions, AppError>(__TAURI_INVOKE("commit_images", { repo, oid, file })),
+	/**
+	 *  Whether `oid` is signed, and by whom. May run gpg, so it's asked for
+	 *  separately from the commit's details.
+	 */
+	commitSignature: (repo: string, oid: string) => typedError<Signature, AppError>(__TAURI_INVOKE("commit_signature", { repo, oid })),
+	/**  `oid` as a patch `git am` can apply. */
+	commitPatch: (repo: string, oid: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_patch", { repo, oid })),
+	/**  Writes `oid`'s patch to `path`, a file the user picked in a save dialog. */
+	commitPatchSave: (repo: string, oid: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_patch_save", { repo, oid, path })),
+	/**  Adds commits that undo `oids`, in the given order (newest first). */
+	commitRevert: (repo: string, oids: string[]) => typedError<null, AppError>(__TAURI_INVOKE("commit_revert", { repo, oids })),
+	/**  Applies `oids` (oldest first) as new commits on HEAD. */
+	commitCherryPick: (repo: string, oids: string[]) => typedError<CherryPickOutcome, AppError>(__TAURI_INVOKE("commit_cherry_pick", { repo, oids })),
+	/**  Combines consecutive commits on HEAD into one; returns its id. */
+	commitSquash: (repo: string, oids: string[], message: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_squash", { repo, oids, message })),
+	/**  Rebuilds HEAD's newest commits in `order` (newest first). */
+	commitReorder: (repo: string, order: string[]) => typedError<null, AppError>(__TAURI_INVOKE("commit_reorder", { repo, order })),
+	/**  Switches to `branch` and applies `oids` (oldest first) there. */
+	commitCherryPickOnto: (repo: string, branch: string, oids: string[]) => typedError<CherryPickOutcome, AppError>(__TAURI_INVOKE("commit_cherry_pick_onto", { repo, branch, oids })),
+	/**  Moves the current branch to `oid`. */
+	commitReset: (repo: string, oid: string, mode: ResetMode) => typedError<null, AppError>(__TAURI_INVOKE("commit_reset", { repo, oid, mode })),
+	/**  Undoes the last commit (`oid`), returning its message. */
+	commitUndo: (repo: string, oid: string) => typedError<HeadCommit, AppError>(__TAURI_INVOKE("commit_undo", { repo, oid })),
+	/**  Checks out `oid` on a detached HEAD. */
+	commitCheckout: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_checkout", { repo, oid })),
+	/**  Tags `oid`; annotated when `message` is given. */
+	tagCreate: (repo: string, name: string, oid: string, message: string | null) => typedError<null, AppError>(__TAURI_INVOKE("tag_create", { repo, name, oid, message })),
+	/**  Compares two commits or branches (commit ids or full ref names). */
+	compareGet: (repo: string, base: string, target: string, mode: CompareMode) => typedError<Comparison, AppError>(__TAURI_INVOKE("compare_get", { repo, base, target, mode })),
+	/**  One file's diff in a comparison. */
+	compareFileDiff: (repo: string, from: string, target: string, file: CommitFile, ignoreWhitespace: boolean) => typedError<FileDiff, AppError>(__TAURI_INVOKE("compare_file_diff", { repo, from, target, file, ignoreWhitespace })),
+	/**  An image file at the two ends of a comparison. */
+	compareImages: (repo: string, from: string, target: string, file: CommitFile) => typedError<ImageVersions, AppError>(__TAURI_INVOKE("compare_images", { repo, from, target, file })),
+	/**  Commits HEAD was on that no branch, tag or remote branch holds now. */
+	lostCommits: (repo: string) => typedError<LostCommit[], AppError>(__TAURI_INVOKE("lost_commits", { repo })),
+	remoteInfo: (repo: string) => typedError<RemoteInfo, AppError>(__TAURI_INVOKE("remote_info", { repo })),
+	/**
+	 *  Fetches `remote`. With `interactive: false` (background fetch), nothing
+	 *  asks the user for credentials.
+	 */
+	remoteFetch: (operationId: string, repo: string, remote: string, interactive: boolean, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_fetch", { operationId, repo, remote, interactive, onEvent })),
+	remotePull: (operationId: string, repo: string, autostash: boolean, onEvent: Channel<RemoteEvent>) => typedError<PullOutcome, AppError>(__TAURI_INVOKE("remote_pull", { operationId, repo, autostash, onEvent })),
+	remotePush: (operationId: string, repo: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_push", { operationId, repo, onEvent })),
+	/**  Pushes the current branch to `remote` and sets it as the upstream. */
+	remotePublish: (operationId: string, repo: string, remote: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_publish", { operationId, repo, remote, onEvent })),
+	/**
+	 *  Answers a credential prompt; `None` declines it and cancels the
+	 *  operation that asked.
+	 */
+	credentialRespond: (requestId: string, answer: string | null) => __TAURI_INVOKE<void>("credential_respond", { requestId, answer }),
+	githubAccounts: () => __TAURI_INVOKE<AccountList>("github_accounts"),
+	/**
+	 *  Signs in to github.com with the device flow: sends the code to
+	 *  `on_code`, then waits until the user approves it in the browser. Cancel
+	 *  with `operation_cancel` using the same `operation_id`.
+	 */
+	githubSignIn: (operationId: string, onCode: Channel<SignInCode>) => typedError<Account, AppError>(__TAURI_INVOKE("github_sign_in", { operationId, onCode })),
+	/**
+	 *  Signs out: forgets the account and deletes its token from the keychain.
+	 *  The authorization stays on GitHub until the user revokes it there.
+	 */
+	githubSignOut: (key: string) => typedError<null, AppError>(__TAURI_INVOKE("github_sign_out", { key })),
+	settingsGet: () => __TAURI_INVOKE<AppSettings>("settings_get"),
+	settingsSet: (settings: AppSettings) => typedError<null, AppError>(__TAURI_INVOKE("settings_set", { settings })),
+	/**  The operating system's accent color as `#rrggbb`, if it can be read. */
+	systemAccentColor: () => typedError<string | null, AppError>(__TAURI_INVOKE("system_accent_color")),
+	gitGlobalGet: () => typedError<GlobalSettings, AppError>(__TAURI_INVOKE("git_global_get")),
+	/**  Sets a global git setting; an empty value removes it. */
+	gitGlobalSet: (key: GlobalKey, value: string) => typedError<null, AppError>(__TAURI_INVOKE("git_global_set", { key, value })),
+	/**
+	 *  Quits and starts the app again, e.g. so macOS's own menus pick up a new
+	 *  language.
+	 */
+	appRestart: () => __TAURI_INVOKE<void>("app_restart"),
 	externalEditors: () => typedError<ExternalEditor[], AppError>(__TAURI_INVOKE("external_editors")),
+	externalTerminals: () => typedError<ExternalTerminal[], AppError>(__TAURI_INVOKE("external_terminals")),
 	externalOpenEditor: (editorId: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_editor", { editorId, path })),
-	externalOpenTerminal: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_terminal", { path })),
+	/**  Opens `path` in `terminal_id`, or the first terminal found. */
+	externalOpenTerminal: (path: string, terminalId: string | null) => typedError<null, AppError>(__TAURI_INVOKE("external_open_terminal", { path, terminalId })),
 	externalReveal: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_reveal", { path })),
 };
 
 /* Types */
+export type Accent = "garam" | "blue" | "purple" | "pink" | "orange" | 
+/**
+ *  The operating system's accent color, where it can be read (Garam
+ *  green where it can't).
+ */
+"system";
+
+export type Account = {
+	/**  `<host>/<user id>`: the ID stays the same when the login is renamed. */
+	key: string,
+	host: string,
+	login: string,
+	name: string | null,
+	avatarUrl: string,
+	/**  Verified addresses, primary first. */
+	emails: string[],
+	/**  GitHub's private `…@users.noreply.github.com` address. */
+	noreplyEmail: string,
+};
+
+export type AccountList = {
+	accounts: Account[],
+	/**  Where the user can revoke Garam's access on github.com. */
+	authorizationSettingsUrl: string,
+};
+
 /**
  *  Error shape returned by every command.
  * 
@@ -91,7 +235,34 @@ export type AppError = {
 };
 
 /**  Errors that come from the app layer rather than from git. */
-export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "external_app_not_found" | "external_app_failed" | "trash_failed" | "watch_failed";
+export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "external_app_not_found" | "external_app_failed" | "trash_failed" | "watch_failed" | 
+/**  A new window couldn't be opened. */
+"window_failed" | 
+/**  A file the user chose to save couldn't be written. */
+"save_failed" | 
+/**  The OS keychain refused to store or read a token. */
+"keychain_failed" | "github_unreachable" | 
+/**  The account's token was revoked or expired; sign in again. */
+"github_unauthorized" | 
+/**  The sign-in code expired before it was approved. */
+"github_login_expired" | "github_login_denied" | "github_unexpected";
+
+export type AppSettings = {
+	/**  UI language code; `None` follows the system language. */
+	language: string | null,
+	theme: Theme,
+	accent: Accent,
+	diffFontSize: DiffFontSize,
+	/**  Preferred editor id; `None` uses the first one found. */
+	editor: string | null,
+	/**  Preferred terminal id; `None` uses the first one found. */
+	terminal: string | null,
+	/**  Minutes between background fetches; 0 turns them off. */
+	fetchIntervalMinutes: number,
+	/**  Width of the changes/history sidebar in CSS pixels. */
+	sidebarWidth: number,
+	openRepositoryIn: OpenRepositoryIn,
+};
 
 export type AutoStash = {
 	/**  Commit id of the stash entry; stable while `stash@{n}` indexes shift. */
@@ -136,10 +307,106 @@ export type BranchStatus = {
 /**  How a file differs on one side (index or working tree). */
 export type ChangeKind = "added" | "modified" | "deleted" | "renamed" | "copied" | "type_changed" | "untracked" | "conflicted";
 
+/**  How a cherry-pick of several commits went. */
+export type CherryPickOutcome = {
+	picked: number,
+	/**  Commits whose changes HEAD already had. */
+	skipped: number,
+};
+
 export type CoAuthor = {
 	name: string,
 	email: string,
 };
+
+export type CommitDetail = {
+	/**  The message after the summary line, trimmed. */
+	body: string,
+	committerName: string,
+	committedAt: number,
+	files: CommitFile[],
+} & CommitSummary;
+
+/**  A file changed by a commit, compared with its first parent. */
+export type CommitFile = {
+	path: string,
+	/**  Previous path for renames and copies. */
+	origPath: string | null,
+	kind: ChangeKind,
+};
+
+export type CommitSummary = {
+	oid: string,
+	parents: string[],
+	authorName: string,
+	authorEmail: string,
+	/**  Seconds since the Unix epoch. */
+	authoredAt: number,
+	summary: string,
+};
+
+export type CompareMode = 
+/**  What changed from `base` to `target` (`git diff base target`). */
+"two_dot" | 
+/**
+ *  What `target` changed since it split from `base` (`base...target`),
+ *  as a pull request shows it.
+ */
+"three_dot";
+
+export type Comparison = {
+	base: string,
+	target: string,
+	/**
+	 *  The commit the diff starts from: `base`, or the merge base for a
+	 *  three-dot comparison of branches that share history.
+	 */
+	from: string,
+	/**  Commits on `target` that `base` lacks. */
+	ahead: number,
+	/**  Commits on `base` that `target` lacks. */
+	behind: number,
+	/**  The first of the `ahead` commits, newest first. */
+	commits: CommitSummary[],
+	files: CommitFile[],
+};
+
+export type ConflictFile = {
+	path: string,
+	kind: ConflictKind,
+	/**  The working tree file still contains `<<<<<<<` / `>>>>>>>` lines. */
+	hasMarkers: boolean,
+};
+
+export type ConflictKind = "both_modified" | "both_added" | "both_deleted" | "deleted_by_me" | "deleted_by_them" | "added_by_me" | "added_by_them";
+
+export type ConflictState = {
+	/**
+	 *  The operation waiting to be continued or aborted, if any. Conflicts
+	 *  can also exist without one, e.g. after a stash pop.
+	 */
+	operation: Operation | null,
+	/**  Files that still conflict. */
+	files: ConflictFile[],
+};
+
+export type CredentialPrompt = {
+	kind: PromptKind,
+	/**  What the prompt is for: a URL, a key file, `user@host` or a host. */
+	target: string | null,
+	/**  For [`PromptKind::HostKey`], e.g. `ED25519 SHA256:abc...`. */
+	fingerprint: string | null,
+	/**  The prompt as git or ssh wrote it. */
+	text: string,
+};
+
+/**  A prompt waiting for the user, as sent to the frontend. */
+export type CredentialRequest = {
+	requestId: string,
+	prompt: CredentialPrompt,
+};
+
+export type DiffFontSize = "small" | "medium" | "large";
 
 export type DiffLine = {
 	kind: LineKind,
@@ -165,9 +432,45 @@ export type ErrorCode = ErrorKind | AppErrorKind;
  *  `errors:<kind>` i18n key, so adding a variant requires adding that key to
  *  every locale.
  */
-export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "invalid_branch_name" | "branch_exists" | "branch_not_merged" | "local_changes_would_be_overwritten" | "merge_conflict" | "unrelated_histories" | "identity_missing" | "cancelled" | "unknown";
+export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "invalid_branch_name" | "branch_exists" | "branch_not_merged" | "local_changes_would_be_overwritten" | 
+/**
+ *  A pull stopped before merging because of local changes; it can be
+ *  retried with them stashed.
+ */
+"pull_blocked_by_local_changes" | "merge_conflict" | "rebase_conflict" | "revert_conflict" | "cherry_pick_conflict" | 
+/**  The branch already has the commit's changes; nothing was picked. */
+"cherry_pick_empty" | "invalid_tag_name" | "tag_exists" | 
+/**  HEAD moved since the screen was drawn (e.g. a commit from a terminal). */
+"head_moved" | 
+/**
+ *  The commits aren't consecutive on the current branch, or a merge
+ *  is among or after them.
+ */
+"cannot_squash" | 
+/**
+ *  The commits aren't the newest ones on the current branch's
+ *  first-parent line, or a merge is among them.
+ */
+"cannot_reorder" | 
+/**  Commit or stash changes to tracked files first. */
+"uncommitted_changes" | "unrelated_histories" | 
+/**  The remote has commits the local branch doesn't; pull first. */
+"non_fast_forward" | 
+/**  The server refused the push (protected branch, hook, ...). */
+"push_rejected" | 
+/**  The branch was configured to only fast-forward, but it diverged. */
+"cannot_fast_forward" | "no_upstream" | 
+/**  The upstream branch no longer exists on the remote. */
+"remote_branch_not_found" | "no_remote" | "detached_head" | 
+/**  Continuing needs every conflicted file resolved first. */
+"conflicts_remain" | "nothing_in_progress" | "identity_missing" | "cancelled" | "unknown";
 
 export type ExternalEditor = {
+	id: string,
+	name: string,
+};
+
+export type ExternalTerminal = {
 	id: string,
 	name: string,
 };
@@ -195,11 +498,63 @@ export type GitInfo = {
 	path: string,
 };
 
+export type GlobalKey = 
+/**  `user.name` */
+"user_name" | 
+/**  `user.email` */
+"user_email" | 
+/**  `init.defaultBranch` */
+"default_branch";
+
+export type GlobalSettings = {
+	userName: string | null,
+	userEmail: string | null,
+	defaultBranch: string | null,
+};
+
 export type HeadCommit = {
 	oid: string,
 	summary: string,
 	body: string,
 };
+
+/**  Narrows the history. The default is HEAD's whole history. */
+export type HistoryFilter = {
+	scope: HistoryScope,
+	/**  Matched literally, ignoring case. Empty matches everything. */
+	query: string,
+	searchIn: SearchField,
+	/**
+	 *  A path relative to the repository root: only commits touching it.
+	 *  Empty matches every path.
+	 */
+	path: string,
+	/**  Follow only the first parent of merges, as the branch saw them. */
+	firstParent: boolean,
+};
+
+/**  Where HEAD's history stands against its remote. */
+export type HistoryMarkers = {
+	refs: RefLabel[],
+	/**
+	 *  Commits on HEAD not yet on the upstream (or, without one, on any
+	 *  remote branch). Empty when the repository has no remote branches.
+	 */
+	unpushed: string[],
+	/**  Commits on the upstream that HEAD doesn't have yet, newest first. */
+	incoming: CommitSummary[],
+	/**  Stashed changes, newest first. */
+	stashes: StashEntry[],
+};
+
+/**  Which commits the history walks. */
+export type HistoryScope = 
+/**  The checked-out branch (or detached HEAD). */
+{ kind: "head" } | 
+/**  Every local branch, remote branch and tag. */
+{ kind: "all" } | 
+/**  One branch, by its full name (`refs/heads/x`, `refs/remotes/o/x`). */
+{ kind: "ref"; refname: string };
 
 export type Hunk = {
 	oldStart: number,
@@ -233,7 +588,26 @@ export type LineRef = {
 	line: number,
 };
 
+/**
+ *  A commit HEAD was on that no branch, tag or remote branch holds now,
+ *  e.g. after a reset or a deleted branch.
+ */
+export type LostCommit = {
+	/**
+	 *  git's note on how HEAD got there, e.g. `commit: Fix x` or
+	 *  `reset: moving to HEAD~1`.
+	 */
+	action: string,
+	/**  When HEAD was there, in seconds since the Unix epoch. */
+	visitedAt: number,
+} & CommitSummary;
+
 export type MergeOutcome = "up_to_date" | "fast_forward" | "merged";
+
+/**  Where a repository chosen from another one's window opens. */
+export type OpenRepositoryIn = "ask" | "current_window" | "new_window";
+
+export type Operation = "merge" | "rebase" | "revert" | "cherry_pick";
 
 export type Progress = {
 	phase: ProgressPhase,
@@ -244,7 +618,84 @@ export type Progress = {
 };
 
 /**  Stages of a transfer, in the order git reports them. */
-export type ProgressPhase = "counting" | "compressing" | "receiving" | "resolving" | "checking_out";
+export type ProgressPhase = "counting" | "compressing" | "receiving" | "resolving" | 
+/**  Uploading objects during a push. */
+"writing" | "checking_out";
+
+export type PromptKind = 
+/**  HTTPS username. */
+"username" | 
+/**  HTTPS password or token. */
+"password" | 
+/**  Passphrase of an SSH private key. */
+"ssh_passphrase" | 
+/**  Password for an SSH login. */
+"ssh_password" | 
+/**
+ *  ssh doesn't know the server's host key yet; the answer is "yes" or
+ *  nothing.
+ */
+"host_key" | "other";
+
+export type PullOutcome = "up_to_date" | "updated" | 
+/**
+ *  Pulled, but putting the stashed local changes back conflicted: the
+ *  conflicts are in the working tree, the changes still in the stash.
+ */
+"updated_with_conflicts";
+
+export type RefKind = 
+/**  A detached HEAD. */
+"head" | "branch" | "remote" | "tag";
+
+/**  A name pointing at a commit, shown next to it in the history. */
+export type RefLabel = {
+	/**  The commit it points at (annotated tags are peeled). */
+	oid: string,
+	kind: RefKind,
+	/**  Short name: `main`, `origin/main`, `v1.0`, or `HEAD`. */
+	name: string,
+	/**  The checked-out branch, or a detached HEAD. */
+	current: boolean,
+};
+
+export type Remote = {
+	name: string,
+	url: string,
+};
+
+/**  Streamed to the frontend while a network operation runs. */
+export type RemoteEvent = {
+	type: "progress",
+} & Progress | 
+/**  git or ssh needs an answer; reply with [`credential_respond`]. */
+{
+	type: "credential",
+} & CredentialRequest;
+
+export type RemoteInfo = {
+	remotes: Remote[],
+	/**
+	 *  Remote used by fetch and publish: the current branch's upstream
+	 *  remote, else `origin`, else the first one.
+	 */
+	defaultRemote: string | null,
+	/**  Seconds since the Unix epoch of the last fetch, if any. */
+	lastFetchedAt: number | null,
+};
+
+/**  Where a repository's identity comes from. */
+export type RepoIdentity = {
+	/**  What git uses for commits in the repository. */
+	effective: Identity,
+	/**  Values set in the repository's own config, which win over the rest. */
+	local: Identity,
+	/**
+	 *  What git would use without the repository's own values (global,
+	 *  system or included config).
+	 */
+	inherited: Identity,
+};
 
 export type RepoStatus = {
 	branch: BranchStatus,
@@ -259,6 +710,11 @@ export type RepositoryEntry = {
 	lastOpenedAt: number | null,
 	/**  The folder no longer exists (moved or deleted outside Garam). */
 	missing: boolean,
+	/**
+	 *  Key of the signed-in GitHub account git uses for this repository's
+	 *  HTTPS remotes; `None` leaves it to the user's git setup.
+	 */
+	account: string | null,
 };
 
 export type RepositoryList = {
@@ -267,12 +723,78 @@ export type RepositoryList = {
 	selected: string | null,
 };
 
+/**  What `reset` keeps. */
+export type ResetMode = 
+/**  Keep the undone commits' changes staged. */
+"soft" | 
+/**  Keep them in the working tree, unstaged. */
+"mixed" | 
+/**  Discard them, and any uncommitted changes to tracked files. */
+"hard";
+
+/**  What a history search looks at. */
+export type SearchField = 
+/**
+ *  The commit message. A query that looks like a hash also finds that
+ *  commit.
+ */
+"message" | 
+/**  Author name or email. */
+"author" | 
+/**  Added or removed text in the changes (`git log -S`). */
+"content";
+
+/**  Which version to keep for a conflicted file. */
+export type Side = "mine" | "theirs";
+
+/**  The one-time code the user enters on GitHub. */
+export type SignInCode = {
+	userCode: string,
+	verificationUri: string,
+	/**  Seconds until the code expires. */
+	expiresIn: number,
+};
+
+export type Signature = {
+	status: SignatureStatus,
+	/**  Who signed it, when git could tell. */
+	signer: string | null,
+	key: string | null,
+};
+
+/**  Whether a commit's signature checks out, from `git log --format=%G?`. */
+export type SignatureStatus = 
+/**  Not signed. */
+"none" | "good" | 
+/**  A good signature from a key that isn't trusted. */
+"good_untrusted" | "bad" | 
+/**  A good signature that has expired, or made with an expired key. */
+"expired" | "revoked" | 
+/**  Signed, but the key isn't available to check it. */
+"cannot_check";
+
+/**  One entry of `git stash list`. */
+export type StashEntry = {
+	oid: string,
+	/**  The commit the changes were stashed on. */
+	base: string,
+	/**  `stash@{0}`. */
+	name: string,
+	/**  git's description, e.g. `On main: message` or `WIP on main: …`. */
+	message: string,
+	authorName: string,
+	/**  Seconds since the Unix epoch. */
+	createdAt: number,
+};
+
 /**  How to treat uncommitted changes when switching branches. */
 export type SwitchMode = 
 /**  Take the changes to the other branch (fails if they'd be overwritten). */
 "bring_changes" | 
 /**  Stash the changes on the current branch first. */
 "leave_changes";
+
+export type Theme = "system" | "light" | "dark";
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

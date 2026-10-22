@@ -3,7 +3,7 @@
     "title_one": "{{count}} changed file",
     "title_other": "{{count}} changed files",
     "selectAll": "Include all files in the commit",
-    "include": "Include {{path}} in the commit",
+    "more": "More actions",
     "discardAll": "Discard all changes…"
   },
   "kind": {
@@ -34,10 +34,12 @@
     "after": "After",
     "noImage": "None",
     "selectFile": "Select a file to see its changes.",
-    "stageLine": "Include this line in the commit",
     "stageHunk": "Include block",
     "unstageHunk": "Exclude block",
-    "lineHint": "Click or drag in the left margin to choose lines for the commit."
+    "lineHint": "Click or drag in the left margin to choose lines for the commit.",
+    "label": "Diff",
+    "addedLine": "Added line {{line}}: {{text}}",
+    "deletedLine": "Deleted line {{line}}: {{text}}"
   },
   "commit": {
     "summary": "Summary",
@@ -49,11 +51,16 @@
     "coAuthors": "Co-authors",
     "coAuthorsPlaceholder": "Name <email@example.com>, one per line",
     "coAuthorsInvalid": "Write each co-author as Name <email@example.com>.",
-    "submit": "Commit to {{branch}}",
+    "submit": "Commit to <branch>{{branch}}</branch>",
     "submitDetached": "Commit",
     "submitAmend": "Amend last commit",
     "nothingStaged": "Select files to include in the commit.",
-    "shortcut": "{{key}}+Enter to commit"
+    "shortcut": "{{key}}+Enter to commit",
+    "author": "Author",
+    "authorMissing": "Not set",
+    "authorRepo": "This repository",
+    "authorEdit": "Choose the author for this repository",
+    "authorMismatch": "This email isn't on the @{{login}} account, so GitHub won't link these commits to it."
   },
   "discard": {
     "title": "Discard changes?",
@@ -71,5 +78,24 @@
     "email": "Email",
     "save": "Save and commit",
     "cancel": "Cancel"
+  },
+  "repoIdentity": {
+    "title": "Commit author for this repository",
+    "inherit": "Use my global Git settings",
+    "inheritMissing": "Not set yet",
+    "override": "Use a different author in this repository",
+    "overrideHint": "Saved in this repository's Git config, so commits from the command line use it too.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "titleWithAccount": "Account and author for this repository",
+    "account": "GitHub account",
+    "noAccount": "None (use my Git settings)",
+    "suggested": "{{account}} — suggested",
+    "noAccountHint": "Push and pull sign in the way your Git is set up (credential helper or a prompt).",
+    "accountHint": "Push and pull over HTTPS sign in as @{{login}}, whatever your Git is set up to use.",
+    "sshHint": "This repository's remote uses SSH, so your SSH keys are used instead of the account.",
+    "author": "Commit author",
+    "accountEmails": "Emails on this account",
+    "mismatch": "{{email}} isn't on the @{{login}} account, so GitHub won't link these commits to it."
   }
 }

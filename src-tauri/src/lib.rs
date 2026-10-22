@@ -1,13 +1,20 @@
+mod accounts;
+mod askpass;
 mod commands;
 mod error;
 mod external;
+mod locale;
 mod operations;
 mod repositories;
+mod settings;
+mod storage;
+mod system;
 mod watcher;
+mod windows;
 
 use std::sync::Arc;
 
-use tauri::Manager;
+use tauri::{Manager, WindowEvent};
 use tauri_specta::{Builder, collect_commands};
 
 use crate::operations::Operations;
@@ -16,7 +23,10 @@ use crate::repositories::RepositoryStore;
 /// Single source of truth for the IPC surface. Also used by the
 /// `export_bindings` test to regenerate `src/ipc/bindings.ts`.
 pub fn specta_builder() -> Builder<tauri::Wry> {
-    use commands::{branches, changes, external, git, repo};
+    use commands::{
+        branches, changes, conflicts, external, git, github, history, remote, repo, settings,
+        window,
+    };
     Builder::<tauri::Wry>::new().commands(collect_commands![
         git::git_info,
         repo::repo_list,
@@ -26,8 +36,11 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         repo::repo_clone,
         repo::repo_remove,
         repo::repo_select,
+        repo::repo_set_account,
         repo::operation_cancel,
         repo::repo_watch,
+        window::window_focus_repo,
+        window::window_open,
         changes::status_get,
         changes::diff_get,
         changes::diff_images,
@@ -39,6 +52,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         changes::commit_head,
         changes::identity_get,
         changes::identity_set,
+        changes::identity_set_local,
+        changes::identity_clear_local,
         branches::branch_list,
         branches::branch_create,
         branches::branch_switch,
@@ -49,7 +64,49 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         branches::stash_find_auto,
         branches::stash_pop,
         branches::stash_drop,
+        conflicts::conflict_state,
+        conflicts::conflict_resolve,
+        conflicts::conflict_mark_resolved,
+        conflicts::conflict_continue,
+        conflicts::conflict_abort,
+        history::history_list,
+        history::history_markers,
+        history::commit_detail,
+        history::commit_file_diff,
+        history::commit_images,
+        history::commit_signature,
+        history::commit_patch,
+        history::commit_patch_save,
+        history::commit_revert,
+        history::commit_cherry_pick,
+        history::commit_squash,
+        history::commit_reorder,
+        history::commit_cherry_pick_onto,
+        history::commit_reset,
+        history::commit_undo,
+        history::commit_checkout,
+        history::tag_create,
+        history::compare_get,
+        history::compare_file_diff,
+        history::compare_images,
+        history::lost_commits,
+        remote::remote_info,
+        remote::remote_fetch,
+        remote::remote_pull,
+        remote::remote_push,
+        remote::remote_publish,
+        remote::credential_respond,
+        github::github_accounts,
+        github::github_sign_in,
+        github::github_sign_out,
+        settings::settings_get,
+        settings::settings_set,
+        settings::system_accent_color,
+        settings::git_global_get,
+        settings::git_global_set,
+        settings::app_restart,
         external::external_editors,
+        external::external_terminals,
         external::external_open_editor,
         external::external_open_terminal,
         external::external_reveal,
@@ -64,9 +121,25 @@ pub fn export_bindings(builder: &Builder<tauri::Wry>) {
         .expect("failed to export TypeScript bindings");
 }
 
+/// When git or ssh started this process as its askpass program, answers
+/// the prompt and returns the exit code instead of starting the app.
+pub fn run_askpass_helper() -> Option<i32> {
+    askpass::run_helper_if_requested()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = specta_builder();
+    let context = tauri::generate_context!();
+
+    // Before the app starts: AppKit reads the language only at launch.
+    #[cfg(target_os = "macos")]
+    if let Some(dir) = locale::macos_data_dir(&context.config().identifier) {
+        let language = settings::SettingsStore::load(dir.join("settings.json"))
+            .get()
+            .language;
+        locale::sync(&context.config().identifier, language.as_deref());
+    }
 
     #[cfg(debug_assertions)]
     export_bindings(&builder);
@@ -81,11 +154,28 @@ pub fn run() {
             app.manage(Arc::new(RepositoryStore::load(
                 data_dir.join("repositories.json"),
             )));
+            app.manage(Arc::new(accounts::AccountStore::load(
+                data_dir.join("accounts.json"),
+                Box::new(accounts::Keychain),
+            )));
+            app.manage(Arc::new(settings::SettingsStore::load(
+                data_dir.join("settings.json"),
+            )));
             app.manage(Arc::new(Operations::default()));
+            app.manage(Arc::new(askpass::Askpass::start()));
             app.manage(watcher::RepoWatcher::default());
+            app.manage(Arc::new(windows::RepoWindows::default()));
             Ok(())
         })
-        .run(tauri::generate_context!())
+        .on_window_event(|window, event| {
+            if let WindowEvent::Destroyed = event {
+                let app = window.app_handle();
+                let label = window.label();
+                app.state::<Arc<windows::RepoWindows>>().remove(label);
+                let _ = app.state::<watcher::RepoWatcher>().watch(app, label, None);
+            }
+        })
+        .run(context)
         .expect("error while running tauri application");
 }
 

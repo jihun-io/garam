@@ -1,30 +1,59 @@
-/* Design tokens. Named after the app's river theme (가람 = river). */
+/* Design tokens. The reasoning behind them is in docs/DESIGN.md
+   ("Instrument"): graphite neutrals with almost no chroma, color only where
+   it means something. Values are designed in OKLCH (noted beside each) and
+   stored as hex so contrast can be checked (src/styles/tokens.test.ts). */
 :root {
   color-scheme: light;
 
-  --color-ink: #1e272d;
-  --color-ink-muted: #56636b;
-  --color-ink-faint: #8a969c;
-  --color-bg: #f1f4f2;
-  --color-surface: #fbfcfb;
-  --color-line: #d5dcd8;
+  /* Surfaces: chrome (toolbar, sidebar), content, and raised (menus,
+     popovers, dialogs). */
+  --color-bg: #f2f3f5; /* oklch(96.3% 0.003 265) */
+  --color-surface: #fcfdfe; /* oklch(99.3% 0.0015 265) */
+  --color-raised: #fdfdfe; /* oklch(99.5% 0.001 265) */
+  --color-hover: #e5e6e9; /* oklch(92.5% 0.004 265) */
+  --color-line: #dbdcdf; /* oklch(89.5% 0.004 265) */
+  --color-line-strong: #c2c4c8; /* oklch(82% 0.006 265) */
+
+  /* Text. `faint` is for borders, disabled items and decoration only. */
+  --color-ink: #191b1d; /* oklch(22% 0.006 265) */
+  --color-ink-muted: #595b5f; /* oklch(47% 0.008 265) */
+  --color-ink-faint: #9c9ea2; /* oklch(70% 0.006 265) */
+
+  /* Accent: replaced at runtime by the chosen accent (src/lib/accent.ts). */
   --color-river: #2c7a6b;
   --color-river-strong: #1f5f53;
-  --color-link: #336a9e;
-  --color-danger: #a8452c;
-  --color-danger-bg: #f7e9e4;
   --color-focus: #2c7a6b;
-  --color-hover: rgba(30, 39, 45, 0.06);
-  --color-added-ink: #2c7a3f;
-  --color-added-bg: #e3f2e6;
-  --color-added-strong: #c4e5cc;
-  --color-deleted-bg: #f9e6e2;
-  --color-deleted-strong: #f0c7bf;
-  --color-modified-ink: #a26a12;
-  --color-hunk-bg: #e8eef3;
-  --color-selected: rgba(44, 122, 107, 0.12);
-  --color-scrim: rgba(20, 26, 29, 0.32);
-  --shadow-popover: 0 8px 24px rgba(20, 26, 29, 0.16), 0 1px 3px rgba(20, 26, 29, 0.12);
+  --color-selected: #d6e2e2; /* bg mixed 14% toward the accent */
+
+  /* Status. */
+  --color-link: #1a609e; /* oklch(48% 0.12 250) */
+  --color-danger: #ac312a; /* oklch(50% 0.16 28) */
+  --color-danger-bg: #ffefed; /* oklch(96.5% 0.018 28) */
+  --color-added-ink: #206f33; /* oklch(48% 0.12 148) */
+  --color-modified-ink: #875814; /* oklch(50% 0.1 70) */
+
+  /* Diff. */
+  --color-added-bg: #e6fae9; /* oklch(96.5% 0.03 150) */
+  --color-added-strong: #c6edcd; /* oklch(91% 0.06 150) */
+  --color-deleted-bg: #ffeeec; /* oklch(96.5% 0.022 25) */
+  --color-deleted-strong: #ffd4cf; /* oklch(90.5% 0.05 25) */
+  --color-hunk-bg: #ebedf0; /* oklch(94.5% 0.005 265) */
+
+  /* Syntax: code text only, on the content surface and diff lines. Hues
+     kept away from the status green and red. */
+  --color-syntax-keyword: #8e2873; /* oklch(46% 0.16 340) */
+  --color-syntax-string: #005d84; /* oklch(45% 0.1 235) */
+  --color-syntax-constant: #2953a5; /* oklch(46% 0.14 262) */
+  --color-syntax-function: #643b9a; /* oklch(45% 0.15 300) */
+  --color-syntax-type: #006166; /* oklch(44% 0.09 200) */
+  --color-syntax-comment: #595b5f; /* = ink-muted */
+
+  /* Overlays only: translucency is a modifier, never a palette color. */
+  --color-scrim: rgba(18, 19, 21, 0.28);
+  --shadow-control: 0 1px 1px rgba(18, 19, 21, 0.05);
+  --shadow-raised:
+    0 0 0 1px rgba(18, 19, 21, 0.06), 0 10px 28px rgba(18, 19, 21, 0.14),
+    0 2px 6px rgba(18, 19, 21, 0.08);
 
   --font-ui:
     -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Apple SD Gothic Neo",
@@ -47,62 +76,75 @@
   --space-8: 32px;
   --space-12: 48px;
 
+  --color-on-accent: #ffffff;
+  --color-on-danger: #ffffff;
+  --diff-font-size: 12px;
+
+  /* Corners follow size: small marks, controls, raised surfaces. */
   --radius-sm: 4px;
   --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Motion: only surfaces appearing move (docs/DESIGN.md 1.5). */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 120ms;
+  --dur-base: 160ms;
+
+  /* Saved sidebar width (set from settings), and the width actually used:
+     never so wide that the diff gets squeezed. The toolbar's first button
+     follows it too. Limits match lib/layout.ts. */
+  --sidebar-width: 320px;
+  --sidebar-actual: clamp(256px, var(--sidebar-width), max(256px, min(560px, 100vw - 480px)));
+
+  /* Space the macOS window buttons take inside the toolbar. */
+  --titlebar-inset: 0px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --color-ink: #e1e8e4;
-    --color-ink-muted: #a3b0aa;
-    --color-ink-faint: #6f7d78;
-    --color-bg: #141a1d;
-    --color-surface: #1c2428;
-    --color-line: #2c373c;
-    --color-river: #5db3a0;
-    --color-river-strong: #84cbbb;
-    --color-link: #7fb1de;
-    --color-danger: #e58a72;
-    --color-danger-bg: #3a2420;
-    --color-focus: #5db3a0;
-    --color-hover: rgba(225, 232, 228, 0.07);
-    --color-added-ink: #7fcf92;
-    --color-added-bg: #1d3325;
-    --color-added-strong: #285a36;
-    --color-deleted-bg: #3a2420;
-    --color-deleted-strong: #5f3229;
-    --color-modified-ink: #e2b25c;
-    --color-hunk-bg: #1f2b33;
-    --color-added-ink: #7fcf92;
-    --color-added-bg: #1d3325;
-    --color-added-strong: #285a36;
-    --color-deleted-bg: #3a2420;
-    --color-deleted-strong: #5f3229;
-    --color-modified-ink: #e2b25c;
-    --color-hunk-bg: #1f2b33;
-    --color-selected: rgba(93, 179, 160, 0.16);
-    --color-scrim: rgba(0, 0, 0, 0.5);
-    --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
-  }
+/* The window buttons end about 77px from the left edge (inset 18px, see
+   tauri.conf.json); the rest keeps them from touching the first button. */
+:root[data-platform="macos"]:not([data-fullscreen]) {
+  --titlebar-inset: 96px;
 }
 
+/* Dark theme. `src/lib/theme.ts` sets `data-theme` on <html>, also when
+   following the system, so this is the only place dark colors live. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-ink: #e1e8e4;
-  --color-ink-muted: #a3b0aa;
-  --color-ink-faint: #6f7d78;
-  --color-bg: #141a1d;
-  --color-surface: #1c2428;
-  --color-line: #2c373c;
+  /* Content sits darker than the chrome; raised surfaces get lighter, as
+     shadows barely show on dark. Same hue as light, only lightness moves. */
+  --color-bg: #18191b; /* oklch(21.5% 0.004 265) */
+  --color-surface: #121314; /* oklch(18.5% 0.004 265) */
+  --color-raised: #222325; /* oklch(25.5% 0.005 265) */
+  --color-hover: #26282a; /* oklch(27.5% 0.005 265) */
+  --color-line: #2d2e30; /* oklch(30% 0.005 265) */
+  --color-line-strong: #414246; /* oklch(38% 0.006 265) */
+  --color-ink: #e6e8eb; /* oklch(93% 0.004 265) */
+  --color-ink-muted: #a5a8ac; /* oklch(73% 0.007 265) */
+  --color-ink-faint: #67696c; /* oklch(52% 0.006 265) */
   --color-river: #5db3a0;
   --color-river-strong: #84cbbb;
-  --color-link: #7fb1de;
-  --color-danger: #e58a72;
-  --color-danger-bg: #3a2420;
   --color-focus: #5db3a0;
-  --color-hover: rgba(225, 232, 228, 0.07);
-  --color-selected: rgba(93, 179, 160, 0.16);
+  --color-selected: #273b38;
+  --color-link: #7cb3eb; /* oklch(75% 0.1 250) */
+  --color-danger: #eb8373; /* oklch(72% 0.13 30) */
+  --color-danger-bg: #331d1a; /* oklch(26% 0.035 28) */
+  --color-added-ink: #7ace87; /* oklch(78% 0.13 148) */
+  --color-modified-ink: #e7b369; /* oklch(80% 0.11 75) */
+  --color-added-bg: #142517; /* oklch(24.5% 0.035 150) */
+  --color-added-strong: #163f21; /* oklch(33% 0.07 150) */
+  --color-deleted-bg: #2d1b19; /* oklch(24.5% 0.03 25) */
+  --color-deleted-strong: #572825; /* oklch(34% 0.07 25) */
+  --color-hunk-bg: #1d1e21; /* oklch(23.5% 0.006 265) */
+  --color-syntax-keyword: #f89ad9; /* oklch(80% 0.136 340) */
+  --color-syntax-string: #86c7ed; /* oklch(80% 0.085 235) */
+  --color-syntax-constant: #93beff; /* oklch(80% 0.119 262) */
+  --color-syntax-function: #caaaff; /* oklch(80% 0.128 300) */
+  --color-syntax-type: #80cdd1; /* oklch(80% 0.076 200) */
+  --color-syntax-comment: #a5a8ac; /* = ink-muted */
+  --color-on-accent: #10161a;
+  --color-on-danger: #10161a;
   --color-scrim: rgba(0, 0, 0, 0.5);
-  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-control: 0 1px 1px rgba(0, 0, 0, 0.3);
+  --shadow-raised:
+    0 0 0 1px rgba(0, 0, 0, 0.5), 0 10px 28px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
 }

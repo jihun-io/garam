@@ -1,35 +1,20 @@
-.trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  max-width: 320px;
-  height: 30px;
-  padding: 0 var(--space-3);
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  background: none;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.trigger:hover,
-.trigger[data-state="open"] {
-  background: var(--color-hover);
-}
-
-.triggerName {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* Ends exactly where the sidebar below ends. The toolbar starts after the
+   macOS window buttons, so subtract that inset. The doubled class wins
+   over ToolbarButton's own width. */
+/* Always ends exactly where the sidebar does, so the button's own minimum
+   width must not push it wider. */
+.trigger.trigger {
+  flex: none;
+  width: calc(var(--sidebar-actual) - var(--titlebar-inset));
+  min-width: 0;
 }
 
 .content {
   display: grid;
   width: min(420px, calc(100vw - 32px));
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-popover);
+  border-radius: var(--radius-lg);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-raised);
 }
 
 .search {
@@ -41,9 +26,10 @@
   width: 100%;
   min-height: 28px;
   padding: 0 var(--space-2);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  -webkit-user-select: text;
   user-select: text;
 }
 
@@ -65,7 +51,6 @@
   border-radius: var(--radius-sm);
   background: none;
   text-align: start;
-  cursor: pointer;
 }
 
 .item:hover,

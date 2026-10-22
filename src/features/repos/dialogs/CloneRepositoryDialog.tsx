@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Channel } from "@tauri-apps/api/core";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -9,7 +8,9 @@ import { FormDialog } from "../../../components/ui/Dialog";
 import { Field } from "../../../components/ui/Field";
 import { commands, toAppError, unwrap, type AppError, type Progress } from "../../../ipc";
 import { joinPath, repoNameFromUrl } from "../../../lib/paths";
+import { networkChannel } from "../../sync/networkChannel";
 import { rememberParentDir } from "../defaultParent";
+import { useOpenRepository } from "../openRepository";
 import { BrowseButton } from "./BrowseButton";
 import styles from "./dialogs.module.css";
 import { useParentDir } from "./useParentDir";
@@ -19,6 +20,7 @@ type CloneState = { status: "form" } | { status: "cloning"; progress: Progress |
 export function CloneRepositoryDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation("repos");
   const queryClient = useQueryClient();
+  const openRepository = useOpenRepository();
   const [url, setUrl] = useState("");
   // Follows the URL until the user types their own name.
   const [customName, setCustomName] = useState<string | null>(null);
@@ -38,15 +40,15 @@ export function CloneRepositoryDialog({ onClose }: { onClose: () => void }) {
     setError(undefined);
     setState({ status: "cloning", progress: null });
 
-    const channel = new Channel<Progress>();
-    channel.onmessage = (progress) => {
+    const channel = networkChannel((progress) => {
       if (operationId.current === id) setState({ status: "cloning", progress });
-    };
+    });
     try {
-      await unwrap(commands.repoClone(id, url.trim(), parent, name.trim(), channel));
+      const entry = await unwrap(commands.repoClone(id, url.trim(), parent, name.trim(), channel));
       rememberParentDir(parent);
       await queryClient.invalidateQueries({ queryKey: ["repositories"] });
       onClose();
+      void openRepository(entry.path);
     } catch (e) {
       const appError = toAppError(e);
       // A cancel is the user's own choice: go back to the form quietly.

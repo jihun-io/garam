@@ -12,28 +12,50 @@ pub enum ProgressPhase {
     Compressing,
     Receiving,
     Resolving,
+    /// Uploading objects during a push.
+    Writing,
     CheckingOut,
 }
 
+/// Which command the progress comes from; decides which phases exist and
+/// how much of the bar each one covers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TransferKind {
+    #[default]
+    Clone,
+    Fetch,
+    Push,
+}
+
 impl ProgressPhase {
-    /// Share of the overall bar each phase covers. Receiving dominates on
-    /// real networks, so it gets the largest slice.
-    fn weight(self) -> f64 {
-        match self {
-            Self::Counting => 0.05,
-            Self::Compressing => 0.05,
-            Self::Receiving => 0.65,
-            Self::Resolving => 0.15,
-            Self::CheckingOut => 0.10,
+    /// Share of the overall bar each phase covers for `kind`; 0 for phases
+    /// that command doesn't have. Network transfer dominates on real
+    /// networks, so it gets the largest slice.
+    fn weight(self, kind: TransferKind) -> f64 {
+        match (kind, self) {
+            (TransferKind::Clone, Self::Counting) => 0.05,
+            (TransferKind::Clone, Self::Compressing) => 0.05,
+            (TransferKind::Clone, Self::Receiving) => 0.65,
+            (TransferKind::Clone, Self::Resolving) => 0.15,
+            (TransferKind::Clone, Self::CheckingOut) => 0.10,
+            (TransferKind::Fetch, Self::Counting) => 0.05,
+            (TransferKind::Fetch, Self::Compressing) => 0.05,
+            (TransferKind::Fetch, Self::Receiving) => 0.70,
+            (TransferKind::Fetch, Self::Resolving) => 0.20,
+            (TransferKind::Push, Self::Counting) => 0.10,
+            (TransferKind::Push, Self::Compressing) => 0.20,
+            (TransferKind::Push, Self::Writing) => 0.70,
+            _ => 0.0,
         }
     }
 
-    fn all() -> [Self; 5] {
+    fn all() -> [Self; 6] {
         [
             Self::Counting,
             Self::Compressing,
             Self::Receiving,
             Self::Resolving,
+            Self::Writing,
             Self::CheckingOut,
         ]
     }
@@ -44,6 +66,7 @@ impl ProgressPhase {
             "Compressing objects" => Some(Self::Compressing),
             "Receiving objects" => Some(Self::Receiving),
             "Resolving deltas" => Some(Self::Resolving),
+            "Writing objects" => Some(Self::Writing),
             "Updating files" | "Checking out files" => Some(Self::CheckingOut),
             _ => None,
         }
@@ -64,19 +87,28 @@ pub struct Progress {
 /// Turns progress lines into monotonically increasing [`Progress`] updates.
 #[derive(Debug, Default)]
 pub struct ProgressParser {
+    kind: TransferKind,
     last: Option<Progress>,
 }
 
 impl ProgressParser {
+    /// A parser for `git clone` output.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn for_kind(kind: TransferKind) -> Self {
+        Self { kind, last: None }
     }
 
     /// Feeds one stderr line. Returns an update if the line was progress
     /// output that moved the bar.
     pub fn feed(&mut self, line: &str) -> Option<Progress> {
         let (phase, phase_percent) = parse_line(line)?;
-        let overall = overall_percent(phase, phase_percent);
+        if phase.weight(self.kind) == 0.0 {
+            return None;
+        }
+        let overall = overall_percent(self.kind, phase, phase_percent);
         if let Some(last) = self.last {
             // Never move backwards (e.g. "Counting" lines printed late).
             if phase < last.phase || overall < last.overall_percent {
@@ -111,13 +143,13 @@ fn parse_line(line: &str) -> Option<(ProgressPhase, Option<u8>)> {
     Some((phase, percent))
 }
 
-fn overall_percent(phase: ProgressPhase, phase_percent: Option<u8>) -> u8 {
+fn overall_percent(kind: TransferKind, phase: ProgressPhase, phase_percent: Option<u8>) -> u8 {
     let before: f64 = ProgressPhase::all()
         .into_iter()
         .take_while(|p| *p != phase)
-        .map(ProgressPhase::weight)
+        .map(|p| p.weight(kind))
         .sum();
-    let within = phase.weight() * f64::from(phase_percent.unwrap_or(0)) / 100.0;
+    let within = phase.weight(kind) * f64::from(phase_percent.unwrap_or(0)) / 100.0;
     ((before + within) * 100.0).round().clamp(0.0, 100.0) as u8
 }
 
@@ -157,10 +189,47 @@ mod tests {
 
     #[test]
     fn overall_progress_spans_phases() {
-        assert_eq!(overall_percent(ProgressPhase::Counting, Some(0)), 0);
-        assert_eq!(overall_percent(ProgressPhase::Receiving, Some(0)), 10);
-        assert_eq!(overall_percent(ProgressPhase::Receiving, Some(100)), 75);
-        assert_eq!(overall_percent(ProgressPhase::CheckingOut, Some(100)), 100);
+        let clone = TransferKind::Clone;
+        assert_eq!(overall_percent(clone, ProgressPhase::Counting, Some(0)), 0);
+        assert_eq!(
+            overall_percent(clone, ProgressPhase::Receiving, Some(0)),
+            10
+        );
+        assert_eq!(
+            overall_percent(clone, ProgressPhase::Receiving, Some(100)),
+            75
+        );
+        assert_eq!(
+            overall_percent(clone, ProgressPhase::CheckingOut, Some(100)),
+            100
+        );
+    }
+
+    #[test]
+    fn fetch_and_push_reach_full_progress() {
+        let fetch = TransferKind::Fetch;
+        assert_eq!(
+            overall_percent(fetch, ProgressPhase::Resolving, Some(100)),
+            100
+        );
+        let push = TransferKind::Push;
+        assert_eq!(overall_percent(push, ProgressPhase::Writing, Some(0)), 30);
+        assert_eq!(
+            overall_percent(push, ProgressPhase::Writing, Some(100)),
+            100
+        );
+    }
+
+    #[test]
+    fn push_parser_reads_writing_objects() {
+        let mut parser = ProgressParser::for_kind(TransferKind::Push);
+        let p = parser
+            .feed("Writing objects:  50% (3/6), 1.00 KiB | 1.00 MiB/s")
+            .unwrap();
+        assert_eq!(p.phase, ProgressPhase::Writing);
+        assert_eq!(p.overall_percent, 65);
+        // Fetch-only phases are ignored for a push.
+        assert!(parser.feed("Resolving deltas: 100% (2/2)").is_none());
     }
 
     #[test]

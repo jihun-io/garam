@@ -1,18 +1,19 @@
-/* Shared look for Radix dropdown/context menu content and items. */
+/* Shared look for Radix dropdown/context menu content and items: a raised
+   surface (docs/DESIGN.md 1.2). */
 .content {
   min-width: 200px;
-  padding: var(--space-1);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-popover);
+  padding: 5px;
+  border-radius: var(--radius-lg);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-raised);
 }
 
 .item {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
+  min-height: 24px;
+  padding: 0 var(--space-2);
   border-radius: var(--radius-sm);
   outline: none;
   cursor: default;
@@ -20,7 +21,7 @@
 
 .item[data-highlighted] {
   background: var(--color-river);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .item[data-disabled] {
@@ -29,6 +30,6 @@
 
 .separator {
   height: 1px;
-  margin: var(--space-1) 0;
+  margin: var(--space-1) var(--space-2);
   background: var(--color-line);
 }

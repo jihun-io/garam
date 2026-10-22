@@ -1,0 +1,25 @@
+.root {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  max-width: 30rem;
+  height: 100%;
+  margin: 0 auto;
+  padding: var(--space-8);
+  text-align: center;
+}
+
+.icon {
+  margin-bottom: var(--space-1);
+  color: var(--color-ink-faint);
+}
+
+.title {
+  font-size: var(--text-lg);
+  font-weight: 650;
+}
+
+.body {
+  color: var(--color-ink-muted);
+}

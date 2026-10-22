@@ -1,0 +1,18 @@
+.area {
+  display: none;
+}
+
+:global(:root[data-platform="macos"]) .area {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 0;
+  display: block;
+  height: 28px;
+}
+
+/* Matches the toolbar's height and stays usable while a modal dialog has
+   turned off pointer events for the rest of the page. */
+:global(:root[data-platform="macos"]) .overDialog {
+  height: 52px;
+  pointer-events: auto;
+}

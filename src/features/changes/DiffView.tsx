@@ -1,17 +1,40 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
-import { toAppError, type DiffLine, type FileChange, type Hunk, type LineRef } from "../../ipc";
+import { Loading } from "../../components/ui/Loading";
+import {
+  toAppError,
+  type ConflictFile,
+  type DiffLine,
+  type FileChange,
+  type Hunk,
+  type LineRef,
+} from "../../ipc";
+import { ConflictActions } from "../conflicts/ConflictActions";
 import { useChangeActions, useDiff, useImages } from "./api";
 import { displayKind, isImage } from "./fileState";
+import { hunkWordChanges, type Range } from "./wordDiff";
+import { useSyntaxTokens, type SyntaxToken } from "./syntax/highlight";
+import { lineSegments } from "./syntax/segments";
 import styles from "./DiffView.module.css";
 import { useNotify } from "../notify/notifyStore";
+import { Icon } from "../../components/Icon";
+import { Tooltip } from "../../components/ui/Tooltip";
 
 type Row = { type: "hunk"; hunk: Hunk } | { type: "line"; line: DiffLine };
 
-export function DiffView({ repo, file }: { repo: string; file: FileChange | null }) {
+/** `conflict` adds the ways to resolve a conflicted file above its diff. */
+export function DiffView({
+  repo,
+  file,
+  conflict,
+}: {
+  repo: string;
+  file: FileChange | null;
+  conflict?: ConflictFile;
+}) {
   const { t } = useTranslation("changes");
   const diff = useDiff(repo, file);
   const { stageLines } = useChangeActions(repo);
@@ -24,11 +47,16 @@ export function DiffView({ repo, file }: { repo: string; file: FileChange | null
   const kind = displayKind(file);
   const header = (
     <header className={styles.header}>
-      <span className={styles.headerPath}>{file.path}</span>
+      <Tooltip content={file.path} whenTruncated>
+        <span className={styles.headerPath}>{file.path}</span>
+      </Tooltip>
       {file.origPath && (
         <span className={styles.headerMeta}>{t("diff.renamedFrom", { path: file.origPath })}</span>
       )}
-      <span className={`${styles.badge} ${styles[kind]}`}>{t(`kind.${kind}`)}</span>
+      <span className={`${styles.badge} ${styles[kind]}`}>
+        <Icon name={kind} size={14} />
+        {t(`kind.${kind}`)}
+      </span>
     </header>
   );
 
@@ -40,7 +68,7 @@ export function DiffView({ repo, file }: { repo: string; file: FileChange | null
       </div>
     );
   } else if (!diff.data) {
-    body = null;
+    body = <Loading />;
   } else if (diff.data.type === "binary") {
     body = isImage(file.path) ? (
       <ImageDiff repo={repo} file={file} />
@@ -60,6 +88,7 @@ export function DiffView({ repo, file }: { repo: string; file: FileChange | null
     body = (
       <TextDiff
         key={file.path}
+        path={file.path}
         hunks={diff.data.hunks}
         onStageLines={
           diff.data.selectable
@@ -73,6 +102,7 @@ export function DiffView({ repo, file }: { repo: string; file: FileChange | null
   return (
     <section className={styles.root} aria-label={file.path}>
       {header}
+      {conflict && <ConflictActions repo={repo} file={conflict} />}
       {body}
     </section>
   );
@@ -98,13 +128,17 @@ function refOfKey(key: LineKey): LineRef {
  * Text diff. When `onStageLines` is given, changed lines get a selection
  * margin: click or drag to choose which lines are in the commit.
  */
-function TextDiff({
+export function TextDiff({
+  path,
   hunks,
   onStageLines,
 }: {
+  /** The file's path, which decides how its code is highlighted. */
+  path: string;
   hunks: Hunk[];
   onStageLines?: (selected: LineRef[]) => void;
 }) {
+  const { t } = useTranslation("changes");
   const scrollRef = useRef<HTMLDivElement>(null);
   const rows = useMemo<Row[]>(
     () =>
@@ -114,6 +148,9 @@ function TextDiff({
       ]),
     [hunks],
   );
+  // Which words changed in lines that replaced other lines.
+  const words = useMemo(() => hunkWordChanges(hunks), [hunks]);
+  const syntax = useSyntaxTokens(path, hunks);
   const staged = useMemo(() => {
     const keys = new Set<LineKey>();
     for (const line of hunks.flatMap((h) => h.lines)) {
@@ -174,8 +211,67 @@ function TextDiff({
 
   const selectable = onStageLines !== undefined;
 
+  // One tab stop for the whole diff: arrow keys move between the block and
+  // line controls, so a long diff doesn't take hundreds of Tab presses.
+  const controls = useMemo(() => {
+    if (!selectable) return [];
+    const list: { key: string; row: number }[] = [];
+    rows.forEach((row, index) => {
+      if (row.type === "hunk") {
+        if (row.hunk.lines.some((l) => lineRef(l))) list.push({ key: `hunk:${index}`, row: index });
+      } else {
+        const ref = lineRef(row.line);
+        if (ref) list.push({ key: keyOf(ref), row: index });
+      }
+    });
+    return list;
+  }, [rows, selectable]);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const active = controls.some((c) => c.key === activeKey) ? activeKey : (controls[0]?.key ?? null);
+  const [focusRequest, setFocusRequest] = useState(0);
+
+  useEffect(() => {
+    if (focusRequest === 0 || !active) return;
+    // The row may only now be rendered after scrolling to it.
+    const frame = requestAnimationFrame(() => {
+      scrollRef.current?.querySelector<HTMLElement>(`[data-control="${active}"]`)?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusRequest, active]);
+
+  const onControlKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    const index = controls.findIndex((c) => c.key === active);
+    const target = {
+      ArrowDown: index + 1,
+      ArrowUp: index - 1,
+      Home: 0,
+      End: controls.length - 1,
+    }[e.key];
+    if (target === undefined) return;
+    e.preventDefault();
+    const next = controls[Math.max(0, Math.min(controls.length - 1, target))];
+    if (!next) return;
+    setActiveKey(next.key);
+    virtualizer.scrollToIndex(next.row, { align: "auto" });
+    setFocusRequest((n) => n + 1);
+  };
+  const control = (key: string) => ({
+    "data-control": key,
+    tabIndex: key === active ? 0 : -1,
+    onKeyDown: onControlKeyDown,
+    onFocus: () => setActiveKey(key),
+  });
+
   return (
-    <div ref={scrollRef} className={styles.scroll}>
+    <div
+      ref={scrollRef}
+      className={styles.scroll}
+      // A read-only diff has nothing to focus inside; make it scrollable
+      // from the keyboard.
+      tabIndex={selectable ? undefined : 0}
+      role={selectable ? undefined : "region"}
+      aria-label={selectable ? undefined : t("diff.label")}
+    >
       <div
         className={`${styles.lines} ${selectable ? styles.selectable : ""}`}
         style={{ height: virtualizer.getTotalSize() }}
@@ -194,7 +290,11 @@ function TextDiff({
                 hunk={row.hunk}
                 toggle={
                   selectable && keys.length > 0
-                    ? { allIn, onToggle: () => toggle(keys, !allIn) }
+                    ? {
+                        allIn,
+                        onToggle: () => toggle(keys, !allIn),
+                        control: control(`hunk:${item.index}`),
+                      }
                     : undefined
                 }
               />
@@ -205,6 +305,8 @@ function TextDiff({
             content = (
               <Line
                 line={row.line}
+                words={words.get(row.line)}
+                tokens={syntax?.get(row.line)}
                 selection={
                   selectable && key
                     ? {
@@ -214,6 +316,7 @@ function TextDiff({
                         onEnter: () =>
                           drag && setDrag({ ...drag, keys: new Set(drag.keys).add(key) }),
                         onKeyboardToggle: () => toggle([key], !current.has(key)),
+                        control: control(key),
                       }
                     : selectable
                       ? "spacer"
@@ -244,7 +347,7 @@ function HunkHeader({
   toggle,
 }: {
   hunk: Hunk;
-  toggle?: { allIn: boolean; onToggle: () => void };
+  toggle?: { allIn: boolean; onToggle: () => void; control: ControlProps };
 }) {
   const { t } = useTranslation("changes");
   return (
@@ -254,7 +357,12 @@ function HunkHeader({
       </span>
       {hunk.section && <span className={styles.hunkSection}>{hunk.section}</span>}
       {toggle && (
-        <button type="button" className={styles.hunkToggle} onClick={toggle.onToggle}>
+        <button
+          type="button"
+          className={styles.hunkToggle}
+          onClick={toggle.onToggle}
+          {...toggle.control}
+        >
           {toggle.allIn ? t("diff.unstageHunk") : t("diff.stageHunk")}
         </button>
       )}
@@ -264,14 +372,34 @@ function HunkHeader({
 
 const MARKER = { context: " ", added: "+", deleted: "-" } as const;
 
+type ControlProps = {
+  "data-control": string;
+  tabIndex: number;
+  onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
+  onFocus: () => void;
+};
+
 type Selection = {
+  control: ControlProps;
   included: boolean;
   onPress: () => void;
   onEnter: () => void;
   onKeyboardToggle: () => void;
 };
 
-function Line({ line, selection }: { line: DiffLine; selection?: Selection | "spacer" }) {
+function Line({
+  line,
+  words,
+  tokens,
+  selection,
+}: {
+  line: DiffLine;
+  /** Changed stretches of the text, marked more strongly than the line. */
+  words?: Range[];
+  /** Syntax colors, once worked out. */
+  tokens?: SyntaxToken[];
+  selection?: Selection | "spacer";
+}) {
   const { t } = useTranslation("changes");
   const included = typeof selection === "object" && selection.included;
   const excluded = typeof selection === "object" && !selection.included;
@@ -286,8 +414,12 @@ function Line({ line, selection }: { line: DiffLine; selection?: Selection | "sp
           type="button"
           role="checkbox"
           aria-checked={included}
-          aria-label={t("diff.stageLine")}
+          aria-label={t(line.kind === "added" ? "diff.addedLine" : "diff.deletedLine", {
+            line: line.newLine ?? line.oldLine,
+            text: line.text.trim().slice(0, 80),
+          })}
           className={styles.select}
+          {...selection.control}
           onMouseDown={(e) => {
             if (e.button !== 0) return;
             // Don't start a text selection while dragging over lines.
@@ -306,11 +438,14 @@ function Line({ line, selection }: { line: DiffLine; selection?: Selection | "sp
         {MARKER[line.kind]}
       </span>
       <span className={styles.text}>
-        {line.text}
+        {words || tokens ? (
+          <StyledText text={line.text} tokens={tokens} ranges={words} />
+        ) : (
+          line.text
+        )}
         {line.noNewline && (
-          <span className={styles.noNewline} aria-hidden="true">
-            {" "}
-            ⊘
+          <span className={styles.noNewline}>
+            <Icon name="noNewline" size={12} />
           </span>
         )}
       </span>
@@ -318,16 +453,69 @@ function Line({ line, selection }: { line: DiffLine; selection?: Selection | "sp
   );
 }
 
+/** `text` in its syntax colors, with `ranges` wrapped in highlight spans. */
+function StyledText({
+  text,
+  tokens,
+  ranges,
+}: {
+  text: string;
+  tokens?: SyntaxToken[];
+  ranges?: Range[];
+}) {
+  return lineSegments(text, tokens, ranges).map((segment) => {
+    let at = segment.start;
+    const parts = segment.tokens.map((token) => {
+      const key = at;
+      at += token.text.length;
+      return token.color || token.italic || token.bold ? (
+        <span
+          key={key}
+          style={{
+            color: token.color,
+            fontStyle: token.italic ? "italic" : undefined,
+            fontWeight: token.bold ? 650 : undefined,
+          }}
+        >
+          {token.text}
+        </span>
+      ) : (
+        token.text
+      );
+    });
+    return segment.marked ? (
+      <span key={segment.start} className={styles.word}>
+        {parts}
+      </span>
+    ) : (
+      parts
+    );
+  });
+}
+
 function ImageDiff({ repo, file }: { repo: string; file: FileChange }) {
-  const { t } = useTranslation("changes");
   const images = useImages(repo, file, true);
-  if (!images.data) return null;
+  if (!images.data) return <Loading />;
+  return <ImageComparison path={file.path} {...images.data} />;
+}
+
+/** Two versions of an image side by side; a missing side says so. */
+export function ImageComparison({
+  path,
+  before,
+  after,
+}: {
+  path: string;
+  before: string | null;
+  after: string | null;
+}) {
+  const { t } = useTranslation("changes");
   const side = (label: string, src: string | null) => (
     <figure className={styles.imageSide}>
       <figcaption className={styles.imageLabel}>{label}</figcaption>
       <div className={styles.imageFrame}>
         {src ? (
-          <img src={src} alt={`${label}: ${file.path}`} className={styles.image} />
+          <img src={src} alt={`${label}: ${path}`} className={styles.image} />
         ) : (
           <span className={styles.imageNone}>{t("diff.noImage")}</span>
         )}
@@ -336,8 +524,8 @@ function ImageDiff({ repo, file }: { repo: string; file: FileChange }) {
   );
   return (
     <div className={styles.images}>
-      {side(t("diff.before"), images.data.before)}
-      {side(t("diff.after"), images.data.after)}
+      {side(t("diff.before"), before)}
+      {side(t("diff.after"), after)}
     </div>
   );
 }

@@ -1,0 +1,19 @@
+[package]
+name = "garam-github"
+description = "GitHub sign-in (OAuth device flow) and REST API client for Garam"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+ureq = { version = "3", features = ["json"] }
+
+[dev-dependencies]
+mockito = "1"
+
+[lints]
+workspace = true

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::error::{AppResult, blocking};
-use crate::external::{self, ExternalEditor};
+use crate::external::{self, ExternalEditor, ExternalTerminal};
 
 #[tauri::command]
 #[specta::specta]
@@ -17,8 +17,15 @@ pub async fn external_open_editor(editor_id: String, path: String) -> AppResult<
 
 #[tauri::command]
 #[specta::specta]
-pub async fn external_open_terminal(path: String) -> AppResult<()> {
-    blocking(move || external::open_in_terminal(&PathBuf::from(path))).await
+pub async fn external_terminals() -> AppResult<Vec<ExternalTerminal>> {
+    blocking(|| Ok(external::detect_terminals())).await
+}
+
+/// Opens `path` in `terminal_id`, or the first terminal found.
+#[tauri::command]
+#[specta::specta]
+pub async fn external_open_terminal(path: String, terminal_id: Option<String>) -> AppResult<()> {
+    blocking(move || external::open_in_terminal(&PathBuf::from(path), terminal_id.as_deref())).await
 }
 
 #[tauri::command]

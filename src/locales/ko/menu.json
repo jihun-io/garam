@@ -1,0 +1,73 @@
+{
+  "menus": {
+    "app": "Garam",
+    "file": "파일",
+    "edit": "편집",
+    "view": "보기",
+    "repository": "저장소",
+    "branch": "브랜치",
+    "window": "윈도우",
+    "help": "도움말"
+  },
+  "commands": {
+    "repo": {
+      "add": "기존 저장소 추가…",
+      "create": "새 저장소…",
+      "clone": "저장소 복제…",
+      "openEditor": "에디터에서 열기",
+      "openTerminal": "터미널에서 열기",
+      "recover": "잃어버린 커밋 복구…"
+    },
+    "settings": "설정…",
+    "view": {
+      "changes": "변경 사항",
+      "history": "기록",
+      "repositories": "저장소 목록",
+      "branches": "브랜치 목록",
+      "refresh": "새로 고침"
+    },
+    "sync": {
+      "fetch": "가져오기",
+      "pull": "풀",
+      "push": "푸시"
+    },
+    "branch": {
+      "create": "새 브랜치…",
+      "rename": "브랜치 이름 바꾸기…",
+      "merge": "현재 브랜치에 병합…",
+      "compare": "브랜치 비교…"
+    },
+    "help": {
+      "shortcuts": "키보드 단축키",
+      "report": "문제 신고…"
+    },
+    "history": {
+      "search": "기록 검색"
+    }
+  },
+  "native": {
+    "about": "Garam에 관하여",
+    "services": "서비스",
+    "hide": "Garam 가리기",
+    "hideOthers": "기타 가리기",
+    "showAll": "모두 보기",
+    "quit": "Garam 종료",
+    "undo": "실행 취소",
+    "redo": "실행 복귀",
+    "cut": "오려두기",
+    "copy": "복사하기",
+    "paste": "붙여넣기",
+    "selectAll": "전체 선택",
+    "minimize": "최소화",
+    "zoom": "확대/축소",
+    "bringAllToFront": "모두 앞으로 가져오기",
+    "fullscreen": "전체 화면 시작",
+    "quitOther": "끝내기"
+  },
+  "shortcuts": {
+    "title": "키보드 단축키",
+    "close": "닫기",
+    "commit": "커밋",
+    "discard": "선택한 파일의 변경 취소"
+  }
+}

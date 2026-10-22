@@ -1,15 +1,14 @@
 //! The list of repositories the user has added, persisted as JSON in the
 //! app data directory.
 
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use garam_git::RepositoryInfo;
 use serde::{Deserialize, Serialize};
 
-use crate::error::{AppError, AppResult};
+use crate::error::AppResult;
+use crate::storage::{self, now_ms};
 
 const FILE_VERSION: u32 = 1;
 
@@ -20,6 +19,9 @@ struct StoredRepository {
     name: String,
     added_at: f64,
     last_opened_at: Option<f64>,
+    /// Key of the GitHub account used for this repository's remotes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    account: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -39,6 +41,9 @@ pub struct RepositoryEntry {
     pub last_opened_at: Option<f64>,
     /// The folder no longer exists (moved or deleted outside Garam).
     pub missing: bool,
+    /// Key of the signed-in GitHub account git uses for this repository's
+    /// HTTPS remotes; `None` leaves it to the user's git setup.
+    pub account: Option<String>,
 }
 
 impl From<&StoredRepository> for RepositoryEntry {
@@ -49,6 +54,7 @@ impl From<&StoredRepository> for RepositoryEntry {
             added_at: r.added_at,
             last_opened_at: r.last_opened_at,
             missing: !Path::new(&r.path).is_dir(),
+            account: r.account.clone(),
         }
     }
 }
@@ -66,22 +72,9 @@ pub struct RepositoryStore {
 }
 
 impl RepositoryStore {
-    /// Loads the store from `file`. A missing file means an empty list. A
-    /// corrupt file is moved aside (never silently overwritten) and the
-    /// store starts empty.
+    /// Loads the store from `file` (see [`storage::load`]).
     pub fn load(file: PathBuf) -> Self {
-        let data = match fs::read(&file) {
-            Ok(bytes) => serde_json::from_slice(&bytes).unwrap_or_else(|err| {
-                let backup = file.with_extension(format!("corrupt-{}.json", now_ms() as u64));
-                eprintln!(
-                    "repository list is unreadable ({err}); moved to {}",
-                    backup.display()
-                );
-                let _ = fs::rename(&file, &backup);
-                StoreFile::default()
-            }),
-            Err(_) => StoreFile::default(),
-        };
+        let data = storage::load(&file);
         Self {
             file,
             data: Mutex::new(data),
@@ -113,6 +106,7 @@ impl RepositoryStore {
                     name: info.name,
                     added_at: now,
                     last_opened_at: Some(now),
+                    account: None,
                 };
                 let entry = RepositoryEntry::from(&stored);
                 data.repositories.push(stored);
@@ -144,33 +138,41 @@ impl RepositoryStore {
         self.save(&mut data)
     }
 
+    /// The account chosen for the repository at `path`.
+    pub fn account(&self, path: &str) -> Option<String> {
+        let data = self.lock();
+        data.repositories
+            .iter()
+            .find(|r| r.path == path)?
+            .account
+            .clone()
+    }
+
+    /// Chooses the account for the repository at `path` (`None`: the
+    /// user's own git setup).
+    pub fn set_account(&self, path: &str, account: Option<String>) -> AppResult<()> {
+        let mut data = self.lock();
+        let Some(repo) = data.repositories.iter_mut().find(|r| r.path == path) else {
+            return Ok(());
+        };
+        repo.account = account;
+        self.save(&mut data)
+    }
+
     fn lock(&self) -> std::sync::MutexGuard<'_, StoreFile> {
         self.data.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// Writes atomically: to a temp file next to the target, then renames.
     fn save(&self, data: &mut StoreFile) -> AppResult<()> {
         data.version = FILE_VERSION;
-        if let Some(dir) = self.file.parent() {
-            fs::create_dir_all(dir).map_err(AppError::storage)?;
-        }
-        let json = serde_json::to_vec_pretty(&*data).map_err(AppError::storage)?;
-        let tmp = self.file.with_extension("json.tmp");
-        fs::write(&tmp, json).map_err(AppError::storage)?;
-        fs::rename(&tmp, &self.file).map_err(AppError::storage)
+        storage::save(&self.file, data)
     }
-}
-
-fn now_ms() -> f64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis() as f64)
-        .unwrap_or_default()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     fn info(path: &Path) -> RepositoryInfo {
         RepositoryInfo {
@@ -211,6 +213,32 @@ mod tests {
         assert_eq!(list.repositories.len(), 1);
         assert_eq!(list.selected, Some(repo.display().to_string()));
         assert!(list.repositories[0].missing, "folder was never created");
+    }
+
+    #[test]
+    fn remembers_the_account_per_repository() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("repositories.json");
+        let repo = dir.path().join("repo");
+        let path = repo.display().to_string();
+        let store = RepositoryStore::load(file.clone());
+        store.add(info(&repo)).unwrap();
+        assert_eq!(store.account(&path), None);
+
+        store
+            .set_account(&path, Some("github.com/1".into()))
+            .unwrap();
+        // Adding the same folder again keeps the choice.
+        store.add(info(&repo)).unwrap();
+        let reloaded = RepositoryStore::load(file);
+        assert_eq!(reloaded.account(&path).as_deref(), Some("github.com/1"));
+        assert_eq!(
+            reloaded.list().repositories[0].account.as_deref(),
+            Some("github.com/1")
+        );
+
+        reloaded.set_account(&path, None).unwrap();
+        assert_eq!(reloaded.account(&path), None);
     }
 
     #[test]

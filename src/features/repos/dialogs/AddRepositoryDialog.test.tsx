@@ -16,6 +16,7 @@ const entry = {
   name: "site",
   addedAt: 0,
   lastOpenedAt: 0,
+  account: null,
   missing: false,
 };
 

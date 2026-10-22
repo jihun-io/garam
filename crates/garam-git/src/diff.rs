@@ -128,7 +128,12 @@ pub(crate) fn head_or_empty_tree(git: &Git, repo: &Path) -> Result<String, GitEr
     if let Some(head) = crate::commit::head_oid(git, repo)? {
         return Ok(head);
     }
-    // Hashing an empty tree gives the right id for SHA-1 and SHA-256 repos.
+    empty_tree(git, repo)
+}
+
+/// The empty tree's id. Hashing it gives the right id for SHA-1 and SHA-256
+/// repositories alike.
+pub(crate) fn empty_tree(git: &Git, repo: &Path) -> Result<String, GitError> {
     let output = git
         .command()
         .cwd(repo)

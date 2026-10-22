@@ -23,8 +23,10 @@ UI 문자열을 번역할 때 이 표를 따른다. 새 용어가 생기면 먼�
 | merge                            | 병합                   |                                       |
 | rebase                           | 리베이스               |                                       |
 | cherry-pick                      | 체리픽                 |                                       |
+| squash                           | 스쿼시                 | 설명: "커밋 여러 개를 하나로 합치기"  |
 | revert                           | 커밋 되돌리기          | reset과 구분할 것                     |
 | reset                            | 리셋                   |                                       |
+| undo last commit                 | 마지막 커밋 취소       | 푸시 전에만. 변경 사항은 남는다       |
 | stash                            | 스태시                 | 설명: "변경 사항 임시 보관"           |
 | stage                            | 커밋에 포함 / 스테이지 | 체크박스 동작은 "커밋에 포함"         |
 | unstage                          | 커밋에서 제외          |                                       |
@@ -34,7 +36,7 @@ UI 문자열을 번역할 때 이 표를 따른다. 새 용어가 생기면 먼�
 | changes                          | 변경 사항              |                                       |
 | diff                             | 차이 / diff            | 화면 제목은 "변경 내용"               |
 | hunk                             | 변경 묶음              |                                       |
-| history / log                    | 히스토리               |                                       |
+| history / log                    | 기록                   | "내역"은 쓰지 않는다(명세서 느낌)     |
 | remote                           | 원격 저장소            |                                       |
 | origin                           | origin                 | 이름이므로 번역하지 않음              |
 | upstream                         | 업스트림               |                                       |
@@ -55,4 +57,12 @@ UI 문자열을 번역할 때 이 표를 따른다. 새 용어가 생기면 먼�
 | hash / SHA                       | 해시                   |                                       |
 | author                           | 작성자                 |                                       |
 | co-author                        | 공동 작성자            |                                       |
+| patch                            | 패치                   |                                       |
+| signature (commit)               | 서명                   | "서명 확인됨", "서명이 맞지 않음"     |
+| breaking change                  | 호환성이 깨지는 변경   |                                       |
 | credential                       | 자격 증명              |                                       |
+| credential helper                | 자격 증명 도우미       |                                       |
+| personal access token            | 개인 액세스 토큰       |                                       |
+| passphrase (SSH key)             | 암호                   | "패스프레이즈"는 쓰지 않는다          |
+| host key fingerprint             | 지문                   |                                       |
+| fast-forward                     | 빨리 감기              |                                       |

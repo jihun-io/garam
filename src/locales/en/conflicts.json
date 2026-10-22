@@ -1,0 +1,66 @@
+{
+  "operation": {
+    "merge": "Merge in progress",
+    "rebase": "Rebase in progress",
+    "revert": "Revert in progress",
+    "cherry_pick": "Cherry-pick in progress"
+  },
+  "remaining_one": "{{count}} conflicted file left. Resolve it to continue.",
+  "remaining_other": "{{count}} conflicted files left. Resolve them to continue.",
+  "ready": "All conflicts are resolved. You can continue.",
+  "continue": {
+    "merge": "Commit merge",
+    "rebase": "Continue rebase",
+    "revert": "Commit revert",
+    "cherry_pick": "Continue cherry-pick"
+  },
+  "abort": {
+    "button": "Abort…",
+    "title": {
+      "merge": "Abort the merge?",
+      "rebase": "Abort the rebase?",
+      "revert": "Abort the revert?",
+      "cherry_pick": "Abort the cherry-pick?"
+    },
+    "body": "Your branch goes back to how it was before it started. Conflicts you've already resolved are lost.",
+    "confirm": {
+      "merge": "Abort merge",
+      "rebase": "Abort rebase",
+      "revert": "Abort revert",
+      "cherry_pick": "Abort cherry-pick"
+    },
+    "keep": "Keep resolving"
+  },
+  "done": {
+    "merge": "Merge committed.",
+    "rebase": "Rebase finished.",
+    "revert": "Revert committed.",
+    "cherry_pick": "Cherry-pick finished.",
+    "aborted": "Stopped. Your branch is back to how it was."
+  },
+  "kind": {
+    "both_modified": "Both sides changed this file.",
+    "both_added": "Both sides added a file with this name.",
+    "both_deleted": "Both sides deleted this file.",
+    "deleted_by_me": "You deleted this file, but the other side changed it.",
+    "deleted_by_them": "You changed this file, but the other side deleted it.",
+    "added_by_me": "Only your side added this file.",
+    "added_by_them": "Only the other side added this file."
+  },
+  "file": {
+    "label": "Resolve conflict",
+    "useMine": "Use my changes",
+    "useTheirs": "Use their changes",
+    "openEditor": "Open in editor",
+    "editor": "Open in {{name}}",
+    "noEditors": "No supported editors found",
+    "markResolved": "Mark as resolved",
+    "hint": "Or edit the file to keep what you need, remove the conflict markers, and mark it as resolved."
+  },
+  "markers": {
+    "title": "Conflict markers are still in this file",
+    "body": "{{name}} still has <<<<<<< and >>>>>>> lines. If you mark it resolved, they are committed as they are.",
+    "confirm": "Mark as resolved anyway",
+    "cancel": "Cancel"
+  }
+}

@@ -27,6 +27,25 @@ impl TestRepo {
         repo
     }
 
+    /// Creates an empty bare repository on branch `main`, to act as a remote.
+    pub fn bare() -> Self {
+        let repo = Self::plain_dir();
+        repo.git(["init", "--bare", "--initial-branch=main"]);
+        repo
+    }
+
+    /// Clones `remote` (as `origin`) into a new repository.
+    pub fn clone_of(remote: &TestRepo) -> Self {
+        let repo = Self::plain_dir();
+        repo.git([
+            std::ffi::OsStr::new("clone"),
+            std::ffi::OsStr::new("--quiet"),
+            remote.path().as_os_str(),
+            std::ffi::OsStr::new("."),
+        ]);
+        repo
+    }
+
     /// Creates an empty directory that is *not* a git repository.
     pub fn plain_dir() -> Self {
         let dir = tempfile::Builder::new()

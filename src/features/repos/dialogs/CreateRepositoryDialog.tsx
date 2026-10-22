@@ -9,12 +9,14 @@ import { joinPath } from "../../../lib/paths";
 import { toAppError, type AppError } from "../../../ipc";
 import { useRepositoryActions } from "../api";
 import { rememberParentDir } from "../defaultParent";
+import { useOpenRepository } from "../openRepository";
 import { BrowseButton } from "./BrowseButton";
 import { useParentDir } from "./useParentDir";
 
 export function CreateRepositoryDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation("repos");
   const { create } = useRepositoryActions();
+  const openRepository = useOpenRepository();
   const [name, setName] = useState("");
   const [parent, setParent] = useParentDir();
   const [error, setError] = useState<AppError>();
@@ -26,9 +28,10 @@ export function CreateRepositoryDialog({ onClose }: { onClose: () => void }) {
     create.mutate(
       { parent, name: name.trim() },
       {
-        onSuccess: () => {
+        onSuccess: (entry) => {
           rememberParentDir(parent);
           onClose();
+          void openRepository(entry.path);
         },
         onError: (e) => setError(toAppError(e)),
       },

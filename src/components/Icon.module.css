@@ -1,0 +1,5 @@
+.icon {
+  flex: none;
+  /* Sits on the text baseline's center like a glyph would. */
+  vertical-align: -0.15em;
+}

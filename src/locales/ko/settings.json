@@ -1,0 +1,86 @@
+{
+  "title": "설정",
+  "open": "설정",
+  "close": "닫기",
+  "sections": "설정 항목",
+  "general": {
+    "title": "일반",
+    "restartHint": "macOS가 직접 넣는 일부 메뉴 항목(글쓰기 도구, 이모지 및 기호 등)은 Garam을 다시 시작해야 언어가 바뀝니다.",
+    "restart": "지금 다시 시작",
+    "openRepositoryIn": "다른 저장소를 열 때",
+    "openRepositoryInChoices": {
+      "ask": "매번 묻기",
+      "current_window": "이 창에서 열기",
+      "new_window": "새 창에서 열기"
+    },
+    "openRepositoryInHint": "이미 다른 창에 열려 있는 저장소는 그 창을 앞으로 가져옵니다."
+  },
+  "appearance": {
+    "title": "모양",
+    "theme": "테마",
+    "themes": {
+      "system": "시스템",
+      "light": "라이트",
+      "dark": "다크"
+    },
+    "accent": "강조색",
+    "accents": {
+      "garam": "Garam 초록",
+      "blue": "파랑",
+      "purple": "보라",
+      "pink": "분홍",
+      "orange": "주황",
+      "system": "시스템"
+    },
+    "accentSystemHint": "시스템 강조색을 쓰되, 글자가 잘 읽히도록 명도를 맞춥니다.",
+    "accentSystemUnavailable": "이 시스템에서는 강조색을 읽을 수 없어 Garam 초록을 씁니다.",
+    "diffFontSize": "변경 내용 글자 크기",
+    "diffFontSizes": {
+      "small": "작게",
+      "medium": "보통",
+      "large": "크게"
+    }
+  },
+  "git": {
+    "title": "Git",
+    "hint": "Git 전역 설정에 저장되므로 명령줄에서도 똑같이 쓰입니다.",
+    "name": "이름",
+    "email": "이메일",
+    "defaultBranch": "새 저장소의 기본 브랜치",
+    "defaultBranchPlaceholder": "main",
+    "saved": "저장했습니다"
+  },
+  "apps": {
+    "title": "연동 앱",
+    "editor": "에디터",
+    "terminal": "터미널",
+    "firstFound": "처음 찾은 앱 ({{name}})",
+    "noneFound": "찾지 못함"
+  },
+  "sync": {
+    "title": "동기화",
+    "fetchInterval": "백그라운드 가져오기",
+    "off": "하지 않음",
+    "minutes_one": "{{count}}분마다",
+    "minutes_other": "{{count}}분마다",
+    "hint": "백그라운드 가져오기는 자격 증명을 묻지 않습니다. 로그인이 필요하면 툴바에서 가져오기를 누르세요."
+  },
+  "accounts": {
+    "title": "계정",
+    "hint": "GitHub에 로그인하면 토큰을 붙여 넣지 않고 push와 pull을 할 수 있습니다. 회사 계정과 개인 계정처럼 여러 계정에 로그인할 수 있습니다.",
+    "listLabel": "로그인한 계정",
+    "empty": "로그인한 계정이 없습니다.",
+    "add": "GitHub 계정 추가",
+    "signOut": "로그아웃",
+    "signOutLabel": "@{{login}}에서 로그아웃",
+    "pendingTitle": "GitHub에 로그인하는 중",
+    "codeCopied": "코드를 복사했습니다. 브라우저에 열린 GitHub 페이지에 붙여 넣고 Garam을 승인하세요.",
+    "codeManual": "브라우저에 열린 GitHub 페이지에 이 코드를 입력하고 Garam을 승인하세요.",
+    "codeLabel": "일회용 코드",
+    "waiting": "브라우저에서 승인하기를 기다리는 중…",
+    "copyCode": "코드 복사",
+    "openBrowser": "브라우저 다시 열기",
+    "cancel": "취소",
+    "revokeHint": "로그아웃하면 이 컴퓨터에서 토큰이 지워집니다. Garam의 접근 권한까지 취소하려면 <settings>GitHub 설정</settings>에서 취소하세요."
+  }
+}

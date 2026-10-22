@@ -18,15 +18,28 @@ body {
   font-size: var(--text-md);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  /* Desktop app: text is not selectable unless a component opts in. */
+  /* Desktop app: text is not selectable unless a component opts in, and
+     controls keep the arrow cursor (docs/UI.md 4.1). */
+  -webkit-user-select: none;
   user-select: none;
   cursor: default;
+}
+
+/* Only real links leave the app, so only they get the pointing hand. */
+a[href] {
+  cursor: pointer;
 }
 
 /* Korean reads better without breaking words mid-syllable-group. */
 :lang(ko) {
   word-break: keep-all;
   overflow-wrap: anywhere;
+}
+
+/* Components set `display`, which would otherwise override `hidden`
+   (e.g. inactive tab panels). */
+[hidden] {
+  display: none !important;
 }
 
 h1,
@@ -48,9 +61,47 @@ textarea {
   outline-offset: 2px;
 }
 
+/* Text fields already have a border: recolor it and add an inner ring
+   instead of stacking an outline around it. */
+input:not([type="checkbox"], [type="radio"]):focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--color-focus);
+  box-shadow: inset 0 0 0 1px var(--color-focus);
+}
+
+/* Menus, popovers and tooltips (all positioned by Radix) fade in quickly. */
+[data-radix-popper-content-wrapper] > [data-state="open"],
+[data-radix-popper-content-wrapper] > [data-state="delayed-open"],
+[data-radix-popper-content-wrapper] > [data-state="instant-open"] {
+  animation: garam-pop-in var(--dur-fast) var(--ease-out);
+}
+
+@keyframes garam-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+/* Read by screen readers, invisible on screen. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 code,
 pre {
   font-family: var(--font-mono);
+  -webkit-user-select: text;
   user-select: text;
 }
 

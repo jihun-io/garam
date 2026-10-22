@@ -1,0 +1,43 @@
+.root,
+.inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  animation: appear var(--dur-base) var(--ease-out);
+}
+
+.root {
+  justify-content: center;
+  height: 100%;
+  min-height: 64px;
+  padding: var(--space-6);
+}
+
+.inline {
+  padding: var(--space-2) var(--space-3);
+}
+
+.spinner {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Reduced motion keeps the label; the spinner stops turning. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}

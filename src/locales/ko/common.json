@@ -1,7 +1,9 @@
 {
-  "appName": "가람",
+  "appName": "Garam",
+  "loading": "불러오는 중…",
   "language": {
-    "label": "언어"
+    "label": "언어",
+    "system": "시스템 언어"
   },
   "error": {
     "showDetails": "자세히 보기",
@@ -9,5 +11,11 @@
   },
   "notify": {
     "dismiss": "닫기"
+  },
+  "layout": {
+    "resizeSidebar": "사이드바 크기 조절"
+  },
+  "time": {
+    "justNow": "방금 전"
   }
 }

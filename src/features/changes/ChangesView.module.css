@@ -1,11 +1,14 @@
 .root {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) 1fr;
+  grid-template-columns: var(--sidebar-actual) 1fr;
   height: 100%;
   min-height: 0;
 }
 
 .sidebar {
+  position: relative;
+  /* Keeps the resize handle below popovers and menus, which are portaled. */
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -27,16 +30,18 @@
   font-weight: 600;
 }
 
+/* Grid centering and no padding: WebKit's default button padding would
+   leave the 20px icon only 12px and push it off center. */
 .more {
+  display: inline-grid;
+  place-items: center;
   width: 24px;
   height: 24px;
+  padding: 0;
   border: 0;
   border-radius: var(--radius-sm);
   background: none;
   color: var(--color-ink-muted);
-  font-size: var(--text-lg);
-  line-height: 1;
-  cursor: pointer;
 }
 
 .more:hover:not(:disabled) {
@@ -55,26 +60,6 @@
   min-width: 0;
   min-height: 0;
   background: var(--color-surface);
-}
-
-.empty {
-  display: grid;
-  align-content: center;
-  justify-items: start;
-  gap: var(--space-2);
-  max-width: 34rem;
-  height: 100%;
-  margin: 0 auto;
-  padding: var(--space-8);
-}
-
-.emptyTitle {
-  font-size: var(--text-lg);
-  font-weight: 650;
-}
-
-.emptyBody {
-  color: var(--color-ink-muted);
 }
 
 .error {

@@ -1,0 +1,38 @@
+{
+  "action": {
+    "fetch": "Fetch {{remote}}",
+    "pull": "Pull {{remote}}",
+    "push": "Push {{remote}}",
+    "publish": "Publish branch"
+  },
+  "running": {
+    "fetch": "Fetching…",
+    "pull": "Pulling…",
+    "push": "Pushing…",
+    "publish": "Publishing…"
+  },
+  "lastFetched": "Last fetched {{time}}",
+  "neverFetched": "Never fetched",
+  "publishHint": "Push this branch to {{remote}} for the first time",
+  "unbornHint": "Make a commit before publishing",
+  "cancel": "Cancel",
+  "more": "More sync actions",
+  "menu": {
+    "fetch": "Fetch",
+    "pull": "Pull",
+    "push": "Push"
+  },
+  "done": {
+    "pulled": "Pulled from {{upstream}}.",
+    "upToDate": "{{branch}} is already up to date.",
+    "pushed": "Pushed to {{upstream}}.",
+    "published": "Published {{branch}} to {{remote}}.",
+    "pulledWithConflicts": "Pulled from {{upstream}}, but putting your stashed changes back conflicted. Resolve the conflicted files; the changes are still in the stash (autostash)."
+  },
+  "pullBlocked": {
+    "title": "Can't Pull",
+    "body": "Your changes can be stashed for the pull and put back afterwards. If putting them back conflicts, they stay in the stash and the conflicted files are shown.",
+    "cancel": "Cancel",
+    "submit": "Stash Changes and Pull"
+  }
+}

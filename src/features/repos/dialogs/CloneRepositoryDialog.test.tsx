@@ -2,15 +2,15 @@ import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { commands, type Progress } from "../../../ipc";
+import { commands, type RemoteEvent } from "../../../ipc";
 import { renderWithQuery } from "../../../test/renderWithQuery";
 import { CloneRepositoryDialog } from "./CloneRepositoryDialog";
 
-const channels: { onmessage: (p: Progress) => void }[] = [];
+const channels: { onmessage: (e: RemoteEvent) => void }[] = [];
 
 vi.mock("@tauri-apps/api/core", () => ({
   Channel: class {
-    onmessage: (p: Progress) => void = () => {};
+    onmessage: (e: RemoteEvent) => void = () => {};
     constructor() {
       channels.push(this);
     }
@@ -56,7 +56,14 @@ describe("CloneRepositoryDialog", () => {
     );
     expect(screen.getByText("Connecting…")).toBeVisible();
 
-    act(() => channels[0].onmessage({ phase: "receiving", phasePercent: 50, overallPercent: 43 }));
+    act(() =>
+      channels[0].onmessage({
+        type: "progress",
+        phase: "receiving",
+        phasePercent: 50,
+        overallPercent: 43,
+      }),
+    );
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "43");
     expect(screen.getByText("Receiving objects")).toBeVisible();
 
@@ -68,6 +75,7 @@ describe("CloneRepositoryDialog", () => {
           name: "garam",
           addedAt: 0,
           lastOpenedAt: 0,
+          account: null,
           missing: false,
         },
       }),

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use base64::Engine;
 use garam_git::commit::{self, CoAuthor, HeadCommit};
 use garam_git::diff::{self, FileDiff};
-use garam_git::identity::{self, Identity};
+use garam_git::identity::{self, RepoIdentity};
 use garam_git::patch::{self, LineRef};
 use garam_git::{FileChange, Git, RepoStatus, blob, index, status};
 use serde::Serialize;
@@ -52,7 +52,7 @@ pub async fn diff_images(repo: String, file: FileChange) -> AppResult<ImageVersi
     .await
 }
 
-fn data_url(path: &str, bytes: &[u8]) -> Option<String> {
+pub(crate) fn data_url(path: &str, bytes: &[u8]) -> Option<String> {
     if bytes.len() > MAX_IMAGE_BYTES {
         return None;
     }
@@ -156,7 +156,7 @@ pub async fn commit_head(repo: String) -> AppResult<Option<HeadCommit>> {
 
 #[tauri::command]
 #[specta::specta]
-pub async fn identity_get(repo: String) -> AppResult<Identity> {
+pub async fn identity_get(repo: String) -> AppResult<RepoIdentity> {
     blocking(move || Ok(identity::get(&Git::locate()?, Path::new(&repo))?)).await
 }
 
@@ -164,4 +164,26 @@ pub async fn identity_get(repo: String) -> AppResult<Identity> {
 #[specta::specta]
 pub async fn identity_set(name: String, email: String) -> AppResult<()> {
     blocking(move || Ok(identity::set_global(&Git::locate()?, &name, &email)?)).await
+}
+
+/// Overrides the global identity in `repo`'s own config.
+#[tauri::command]
+#[specta::specta]
+pub async fn identity_set_local(repo: String, name: String, email: String) -> AppResult<()> {
+    blocking(move || {
+        Ok(identity::set_local(
+            &Git::locate()?,
+            Path::new(&repo),
+            &name,
+            &email,
+        )?)
+    })
+    .await
+}
+
+/// Removes `repo`'s own identity so the global one applies again.
+#[tauri::command]
+#[specta::specta]
+pub async fn identity_clear_local(repo: String) -> AppResult<()> {
+    blocking(move || Ok(identity::clear_local(&Git::locate()?, Path::new(&repo))?)).await
 }

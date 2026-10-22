@@ -3,6 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { commands, unwrap, type Branch, type SwitchMode } from "../../ipc";
 import { changesKeys, indexScope } from "../changes/api";
 
+/** A branch's full ref name, as git commands that take refs want it. */
+export function refName(branch: Pick<Branch, "kind" | "name">): string {
+  return `refs/${branch.kind === "local" ? "heads" : "remotes"}/${branch.name}`;
+}
+
 export const branchKeys = {
   list: (repo: string) => ["repo", repo, "branches"] as const,
   autoStash: (repo: string, branch: string) => ["repo", repo, "auto-stash", branch] as const,
@@ -40,7 +45,8 @@ export function useBranchActions(repo: string) {
 
   return {
     create: useMutation({
-      mutationFn: (name: string) => unwrap(commands.branchCreate(repo, name)),
+      mutationFn: ({ name, start = null }: { name: string; start?: string | null }) =>
+        unwrap(commands.branchCreate(repo, name, start)),
       onSettled,
       scope,
     }),

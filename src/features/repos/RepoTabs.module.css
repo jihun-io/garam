@@ -1,0 +1,15 @@
+.root,
+.content {
+  height: 100%;
+  min-height: 0;
+}
+
+.bar {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-line);
+}
+
+/* Spans the sidebar, each tab taking half. */
+.list {
+  width: 100%;
+}

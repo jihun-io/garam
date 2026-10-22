@@ -24,3 +24,31 @@ export function Checkbox({
     />
   );
 }
+
+/**
+ * Looks like a checkbox but is only a picture of one, for rows that report
+ * the state themselves (e.g. a list option with `aria-checked`): a real
+ * input there would be a control nested in a control.
+ */
+export function CheckMark({
+  state,
+  disabled = false,
+  onToggle,
+}: {
+  state: "checked" | "unchecked" | "mixed";
+  disabled?: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <span
+      className={styles.checkbox}
+      data-checkmark
+      data-state={state}
+      data-disabled={disabled || undefined}
+      aria-hidden="true"
+      // Clicking the box toggles without also selecting the row.
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={() => !disabled && onToggle()}
+    />
+  );
+}

@@ -15,14 +15,16 @@
 │  │ i18next                │  channels │  - 파일 감시(notify)           │  │
 │  └───────────────────────┘            └──────────────┬──────────────┘  │
 │                                                      │                 │
-│                                       ┌──────────────▼──────────────┐  │
-│                                       │ crates/garam-git             │  │
-│                                       │  - git CLI 실행·출력 파싱       │  │
-│                                       │  - 도메인 타입, 오류 분류        │  │
-│                                       └──────────────┬──────────────┘  │
-└──────────────────────────────────────────────────────┼─────────────────┘
-                                                       │ spawn
-                                                 시스템 git (2.35+)
+│                 ┌────────────────────────────────┬───┘                 │
+│                 ▼                                ▼                     │
+│  ┌─────────────────────────────┐  ┌─────────────────────────────┐      │
+│  │ crates/garam-github         │  │ crates/garam-git            │      │
+│  │  - Device Flow 로그인       │  │  - git CLI 실행·출력 파싱   │      │
+│  │  - GitHub REST API          │  │  - 도메인 타입, 오류 분류   │      │
+│  └──────────────┬──────────────┘  └──────────────┬──────────────┘      │
+└─────────────────┼────────────────────────────────┼─────────────────────┘
+                  │ HTTPS                          │ spawn
+ github.com, api.github.com                 시스템 git (2.35+)
 ```
 
 ### 저장소 레이아웃
@@ -41,7 +43,8 @@ Garam/
 │   └── locales/{en,ko}/    # 번역 JSON (네임스페이스별 파일)
 ├── src-tauri/              # Tauri 앱 crate (명령 계층)
 └── crates/
-    └── garam-git/          # Git 엔진 라이브러리 (Tauri 의존성 없음)
+    ├── garam-git/          # Git 엔진 라이브러리 (Tauri 의존성 없음)
+    └── garam-github/       # GitHub 로그인·API 클라이언트 (Tauri 의존성 없음, 토큰은 저장하지 않음)
 ```
 
 `garam-git`을 Tauri와 분리하는 이유는 두 가지다. Git 로직을 Tauri 없이 `cargo test`로 빠르게 테스트할 수 있고, 나중에 CLI나 다른 프론트엔드에서도 재사용할 수 있다.
@@ -64,7 +67,7 @@ libgit2나 gitoxide 대신 **시스템 `git` 바이너리를 실행하고 출력
 | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | `LC_ALL=C`, `LANGUAGE=C`                                                            | 출력·오류 문자열을 영어로 고정해서 파싱과 오류 분류를 안정적으로 한다. 번역은 앱이 한다 |
 | `GIT_TERMINAL_PROMPT=0`                                                             | 터미널 프롬프트에서 멈추는 것을 막는다                                                  |
-| `GIT_ASKPASS` / `SSH_ASKPASS` → 앱의 askpass 헬퍼                                   | 자격 증명 입력을 앱 UI로 받는다 (M5)                                                    |
+| 네트워크 작업은 `GIT_ASKPASS` / `SSH_ASKPASS` → 앱의 askpass 헬퍼 (2.7)             | 자격 증명 입력을 앱 UI로 받는다                                                         |
 | `-c core.quotePath=false` + 가능한 곳은 `-z`                                        | 한글 등 비ASCII 경로를 이스케이프 없이 정확히 받는다                                    |
 | 읽기 전용 명령에 `--no-optional-locks`                                              | 사용자가 터미널에서 git을 함께 쓸 때 index.lock 충돌을 줄인다                           |
 | 기계 판독용 포맷 사용 (`status --porcelain=v2 -z`, `log --format=` + NUL 구분자 등) | 사람용 출력은 버전마다 바뀔 수 있다                                                     |
@@ -85,8 +88,9 @@ garam-git/src/
 ├── patch.rs       # 선택한 줄로 부분 패치 생성 (줄 단위 스테이징)
 ├── commit.rs      # commit/amend
 ├── branch.rs      # 브랜치 목록·생성·전환·삭제·병합
-├── remote.rs      # fetch/pull/push, ahead/behind, 진행률 파싱
-├── log.rs         # 히스토리 페이지 단위 조회
+├── remote.rs      # fetch/pull/push/publish, 원격 저장소 정보
+├── credential.rs  # askpass로 들어온 git·ssh 프롬프트 분류
+├── log.rs         # 히스토리 페이지 조회, 커밋 상세·diff, revert
 ├── stash.rs
 └── conflict.rs    # 충돌 상태 감지, ours/theirs 해결
 ```
@@ -111,6 +115,8 @@ garam-git/src/
 
 각 줄이 이미 스테이지됐는지는 보조 diff 두 개로 계산한다. 삭제 줄은 HEAD → index diff에서 지워졌으면 스테이지된 것이고, 추가 줄은 index → 작업 폴더 diff에서 추가로 나오지 않으면(이미 index에 있으면) 스테이지된 것이다.
 
+diff 본문은 구문 강조를 한다(`src/features/changes/syntax/`). 어떤 문법을 쓸지는 GitHub Linguist의 파일 이름·확장자·shebang 표로 정한다. 이 표는 `pnpm languages`(`scripts/gen-languages.mjs`)가 `linguist-languages`와 Shiki 문법 목록을 맞춰 `languages.json`으로 만든다. Shiki와 각 언어 문법은 처음 쓸 때 불러오고, WebAssembly가 필요 없는 JavaScript 정규식 엔진을 쓴다(CSP를 넓히지 않음). hunk마다 이전 쪽(문맥+삭제 줄)과 이후 쪽(문맥+추가 줄)을 각각 이어진 코드로 토큰화해 여러 줄 주석·문자열이 이어지게 한다. 2만 줄이 넘는 diff는 강조하지 않고, 토큰화는 12ms마다 화면에 양보한다.
+
 프론트의 diff 쿼리 키에는 파일의 staged/unstaged 상태가 들어간다. 상태가 바뀌면 줄 표시도 새로 계산해야 하기 때문이다. index를 쓰는 요청(스테이지, 줄 스테이지, 변경 취소, 커밋)은 `index.lock` 충돌을 피하려고 저장소마다 순서대로 실행한다(TanStack Query mutation `scope`).
 
 ### 2.6 브랜치 전환과 자동 보관
@@ -120,12 +126,83 @@ garam-git/src/
 - 전환이 실패하면 **이번에 만든 stash만** 되돌린다. 보관할 변경이 없으면 git이 stash를 만들지 않으므로, 전후 `refs/stash`를 비교해 새로 생겼는지 확인한다.
 - 원격 브랜치를 고르면 같은 이름의 로컬 브랜치가 있을 때는 그쪽으로, 없으면 `git switch --track`으로 추적 브랜치를 만들어 전환한다.
 
+### 2.7 원격 동기화와 자격 증명
+
+- **fetch**: `git fetch --progress --prune -- <원격>`. 기본 원격은 현재 브랜치의 업스트림 원격, 없으면 `origin`, 그것도 없으면 첫 번째 원격이다. 마지막 fetch 시각은 `FETCH_HEAD`의 수정 시각으로 보여준다.
+- **pull**: `git pull` 한 번 대신 **업스트림 원격 fetch(취소 가능) → 로컬 통합** 두 단계로 나눈다. 네트워크 단계만 취소할 수 있고, 병합·리베이스 도중에 프로세스를 죽여 저장소를 망가뜨리는 일이 없다. 통합은 `branch.<이름>.rebase` → `pull.rebase` 순서로 설정을 따라 `git rebase`(merges면 `--rebase-merges`) 또는 `git merge --no-edit @{upstream}`(`pull.ff`가 only/false면 `--ff-only`/`--no-ff`)를 실행한다. 아무 설정이 없으면 병합한다. 그래서 git 2.27+의 "갈라진 브랜치를 어떻게 합칠지" 질문에서 멈추지 않는다.
+- **push**: `git push --progress -- <업스트림 원격> refs/heads/<브랜치>:<branch.<이름>.merge>`로 refspec을 명시한다. `push.default` 설정과 무관하게 항상 업스트림으로 간다. 강제 푸시는 MVP에 없다.
+- **publish**: `git push --set-upstream -- <원격> refs/heads/<브랜치>:refs/heads/<브랜치>`. 업스트림이 없거나 원격에서 삭제된(`gone`) 브랜치에 쓴다.
+- 진행률 가중치는 작업마다 다르다(`TransferKind`). push는 `Writing objects` 단계를 쓴다.
+
+**askpass 중계**
+
+```
+git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드)
+                                        │ 127.0.0.1 TCP, 토큰 확인
+                                        ▼
+                         앱의 Askpass 서버 ──operationId──▶ 해당 작업의 Channel
+                                                              │ RemoteEvent::Credential
+                                                              ▼
+                                               프론트 자격 증명 대화상자 → credential_respond
+```
+
+- 별도 헬퍼 바이너리를 배포하지 않고 **앱 실행 파일 자신**을 askpass로 쓴다. `main()`이 맨 먼저 `GARAM_ASKPASS_PORT` 환경 변수를 확인하고, 있으면 창을 열지 않고 프롬프트(argv[1])를 앱으로 보낸 뒤 답을 stdout에 쓰고 끝난다. 답이 없으면 종료 코드 1로 거절한다.
+- 앱은 시작할 때 `127.0.0.1`의 임의 포트에 소켓을 열고 128비트 무작위 토큰을 만든다. 헬퍼 환경 변수로 포트·토큰·작업 ID를 넘긴다. 토큰이 틀린 요청에는 답하지 않는다.
+- 프롬프트는 그 작업의 진행률 Channel로 함께 보낸다. 핸들러가 등록되지 않은 작업(백그라운드 fetch)은 즉시 거절되므로 아무도 보지 못하는 질문에서 git이 멈추지 않는다.
+- 사용자가 프롬프트를 취소하면 그 작업을 취소한다. 작업이 끝나거나 취소되면 대기 중인 프롬프트도 모두 거절한다. 답을 기다리는 시간은 최대 10분이다.
+- `SSH_ASKPASS_REQUIRE=force`로 터미널이 있어도 askpass를 쓰게 하고, 오래된 ssh를 위해 `DISPLAY`가 없으면 채운다.
+- 프롬프트 문장(`LC_ALL=C`라 영어)은 `credential.rs`가 종류(사용자 이름, 암호, SSH 키 암호, SSH 암호, 호스트 키 확인, 기타)와 대상으로 나눈다. 문장은 프론트가 번역한다.
+- 사용자가 입력한 자격 증명은 앱이 저장하지 않는다. 인증에 성공하면 git이 설정된 credential helper(OS 키체인 등)에 저장한다. 예외는 앱이 발급받은 GitHub 토큰이다(2.10).
+
+**프론트**
+
+- 툴바의 동기화 버튼 하나가 상황에 따라 바뀐다: 분리된 HEAD·동기화됨 → 가져오기, 받을 커밋 있음 → 풀, 보낼 커밋만 있음 → 푸시, 업스트림 없음·삭제됨 → 브랜치 게시. 옆 메뉴에서 다른 작업을 직접 고를 수 있다.
+- 저장소마다 네트워크 작업은 한 번에 하나다(`syncStore`). pull은 index를 바꾸므로 커밋·스테이지와 같은 mutation scope에 들어간다.
+- 백그라운드 fetch: 1분마다 확인해서 마지막 fetch(또는 시도)가 5분보다 오래됐으면 프롬프트 없이 fetch한다. 실패는 조용히 무시한다. 주기 설정은 M8.
+
+### 2.8 히스토리
+
+- 커밋 목록은 `git log -z --format=...`(필드 구분자 `0x1f`)로 HEAD에서 페이지 단위(100개, `--skip`/`--max-count`)로 가져온다. 프론트는 `useInfiniteQuery`로 끝에서 20줄 전에 다음 페이지를 미리 불러온다.
+- 커밋의 변경 파일과 diff는 **첫 번째 부모**와 비교한다. 루트 커밋은 빈 트리와 비교한다. 병합 커밋 되돌리기도 `--mainline 1`로 첫 번째 부모 기준이다.
+- 프론트에서 받은 커밋 id는 16진수만 허용한다. `HEAD~1`이나 `-`로 시작하는 값이 옵션·리비전 식으로 해석되지 않게 하기 위해서다. 브랜치 시작점도 `-`로 시작하면 거부한다.
+- 히스토리 쿼리 키는 `["history", repo, ...]`로, 파일이 바뀔 때마다 무효화되는 `["repo", repo]` 아래에 두지 않는다. 목록 키에 HEAD 커밋 id를 넣어 HEAD가 움직일 때만 다시 불러오고, 커밋 상세와 diff는 바뀌지 않으므로 계속 캐시한다.
+- revert는 커밋을 만들므로 다른 index 쓰기와 같은 mutation scope에서 실행한다. 충돌하면 `revert_conflict`로 안내하고 해결은 M7에서 한다.
+
+### 2.9 충돌 해결
+
+- **진행 중인 작업 감지**: git 디렉터리(`rev-parse --absolute-git-dir`)의 `rebase-merge`/`rebase-apply`(단 `git am`은 제외), `MERGE_HEAD`, `REVERT_HEAD`, `CHERRY_PICK_HEAD` 순서로 확인한다. stash pop처럼 작업 없이 충돌만 남는 경우도 있으므로 작업과 충돌 파일 목록은 따로 다룬다.
+- **충돌 종류**는 `git ls-files --unmerged -z`의 stage(1 공통 조상, 2 ours, 3 theirs) 조합으로 정한다. 상태 파서의 `FileChange`에는 넣지 않고 `conflict_state` 명령으로 따로 받는다.
+- **"내 변경 / 상대 변경"은 사용자 기준**이다. 병합·되돌리기·체리픽에서는 내 변경 = stage 2(ours)지만, 리베이스에서는 git이 뒤바꾸므로 내 변경 = stage 3(theirs)이다. 충돌 종류 이름(`deleted_by_me` 등)도 같은 기준을 따른다.
+- **한쪽 사용**: 그쪽 stage가 있으면 `git checkout --ours/--theirs` 후 `git add`, 그쪽에서 파일을 지웠다면 `git rm`.
+- **해결 완료로 표시**: `git add --all -- <경로>`(삭제도 반영). 작업 폴더 파일에 `<<<<<<<`…`>>>>>>>` 줄이 남아 있으면 프론트가 한 번 더 확인한다. 충돌 파일의 체크박스는 막아서 표시 없이 해결 처리되는 일을 막는다.
+- **계속**: 충돌이 남아 있으면 `conflicts_remain`으로 거부한다. 병합은 `git commit --no-edit`, 나머지는 `git rebase|revert|cherry-pick --continue`를 `GIT_EDITOR=true`로 실행해 git이 준비한 메시지를 그대로 쓴다. 리베이스는 다음 커밋에서 다시 멈출 수 있다.
+- **중단**: `git <작업> --abort`. 해결한 내용이 사라지므로 확인 대화상자를 거친다.
+- 작업이 진행 중이면 커밋 입력 대신 계속·중단 패널을 보여준다. 리베이스 도중 일반 커밋을 만들면 안 되기 때문이다.
+- 파일 감시는 `REVERT_HEAD`, `CHERRY_PICK_HEAD`, `rebase-merge`, `rebase-apply` 변경에도 반응한다.
+
+### 2.10 GitHub 계정
+
+- **로그인**: OAuth Device Flow(`garam-github`). client secret 없이 client ID만 쓴다. `github_sign_in`이 일회용 코드를 `Channel`로 보내고 승인될 때까지 기다린다. 취소는 다른 장시간 작업처럼 `operation_cancel`이다. 프론트는 코드를 클립보드에 복사하고 인증 페이지를 시스템 브라우저로 연다.
+- **scope**: `repo`(비공개 저장소 push·pull), `workflow`(워크플로 파일 push), `read:org`(저장소별 계정 추천), `user:email`(작성자 이메일 추천).
+- **저장**: 계정 정보(로그인 이름, 이름, 아바타, 인증된 이메일, noreply 주소)는 앱 데이터 폴더의 `accounts.json`에, 토큰은 OS 키체인(`keyring`, 서비스 `io.jihun.garam.github`, 계정 `<host>/<user id>`)에 둔다. 키를 사용자 ID로 잡아 로그인 이름이 바뀌어도 같은 계정으로 본다.
+- 토큰은 백엔드 밖으로 나가지 않는다. 프론트로 보내는 타입에는 토큰이 없다.
+- 키체인에서 읽은 토큰은 앱이 실행되는 동안 메모리에 둔다. macOS는 키체인 항목을 만든 실행 파일과 서명이 다른 실행 파일이 읽으려 하면 사용자에게 묻는데, 개발 빌드(ad-hoc 서명)는 다시 빌드할 때마다 서명이 바뀌어 매번 묻게 된다. 그래서 한 번 실행하는 동안에는 한 번만 읽는다. 사용자가 거절하거나 창을 닫으면 `keychain_failed`로 '항상 허용'을 안내한다. 고정된 Developer ID로 서명하는 릴리스 빌드에서는 처음 한 번만 묻는다.
+- **로그아웃**: 키체인에서 토큰을 지운다. GitHub의 토큰 폐기 API는 client secret이 필요해 부를 수 없으므로, 권한 취소는 GitHub 설정 페이지로 안내한다.
+- 아바타는 `avatars.githubusercontent.com`에서 불러온다(CSP `img-src`에 추가).
+- **저장소별 계정**: 저장소 목록 항목에 계정 키를 저장한다(`repo_set_account`). 고르지 않으면 지금까지처럼 사용자의 git 설정을 그대로 쓴다.
+- **토큰을 git에 넘기기(credential helper)**: 계정이 있는 저장소의 네트워크 작업에는 `-c credential.https://<host>.helper=`(빈 값으로 사용자가 설정한 도우미 목록을 비움)와 `-c credential.https://<host>.helper=!'<garam 실행 파일>' 'garam-credential'`을 붙인다(`Git::with_credential_helper`). askpass와 같은 방식으로 **앱 실행 파일 자신**이 도우미가 되어, `main()`이 `garam-credential get`을 보면 창을 열지 않고 askpass 중계 소켓으로 앱에 물어 `username=<로그인 이름>`, `password=<토큰>`을 돌려준다. 앱은 그 작업에 맡겨 둔 계정(`Askpass::provide`)이 있고 호스트가 맞을 때만 답한다. `store`·`erase`는 아무것도 하지 않으므로 토큰이 사용자의 osxkeychain 등에 복사되지 않는다.
+- 도우미 값은 git이 셸로 실행하므로 `!`로 시작하고 경로와 인수를 작은따옴표로 감싼다(공백·따옴표가 있는 경로). `!`가 없으면 git이 `git credential-<값>`으로 해석한다.
+- 이 설정은 가람이 실행하는 git에만 붙는다. 터미널에서 실행하는 git은 사용자의 설정(`gh auth git-credential`, 원격 URL의 사용자 이름 등)을 그대로 따른다.
+- **추천**: 원격 URL의 사용자 이름(`https://jihun-io@github.com/...`) → 원격 소유자 → 작성자 이메일이 계정의 인증된 이메일·noreply 주소인 계정 순서.
+- **불일치 경고**: 저장소에 계정이 있고 작성자 이메일이 그 계정의 인증된 이메일·noreply 주소가 아니면 GitHub가 커밋을 그 계정과 연결하지 않는다. 커밋 영역과 대화상자에 알리되 커밋을 막지는 않는다.
+
 ## 3. IPC 설계
 
 - 프론트↔Rust 통신은 **Tauri 명령(`invoke`)** 으로 한다. 명령 이름은 `도메인_동작`(예: `status_get`, `branch_create`).
 - **타입 공유**: `tauri-specta`로 Rust 타입에서 TypeScript 바인딩을 자동 생성한다. 생성 파일은 `src/ipc/bindings.ts`이며 직접 수정하지 않는다. 디버그 실행 시와 `pnpm bindings`(= `export_bindings` 테스트)에서 다시 만들어지고, CI는 커밋된 파일이 최신인지 검사한다. 프론트는 `src/ipc/index.ts`의 `unwrap()`으로 결과를 값 또는 `CommandError`로 바꿔 TanStack Query에 넘긴다.
-- **장시간 작업**(clone, fetch, push): 진행률은 `tauri::ipc::Channel`로 스트리밍하고, 작업 ID를 반환해 취소할 수 있게 한다.
-- **저장소 변경 감지**: Rust에서 `notify`로 작업 트리와 `.git`을 감시하고, 디바운스(약 200ms)한 뒤 `repo-changed` 이벤트를 보낸다. 프론트는 해당 쿼리를 invalidate한다.
+- **장시간 작업**(clone, fetch, pull, push): 진행률과 자격 증명 프롬프트를 `tauri::ipc::Channel<RemoteEvent>`로 스트리밍하고, 프론트가 만든 작업 ID로 취소할 수 있게 한다.
+- **저장소 변경 감지**: Rust에서 `notify`로 작업 트리와 `.git`을 감시하고, 디바운스(약 200ms)한 뒤 `repo-changed` 이벤트를 보낸다. 프론트는 해당 쿼리를 invalidate한다. 감시는 창(label)마다 따로 두고, 창이 닫히면 멈춘다.
+- **여러 창**: 창마다 보여 주는 저장소는 Rust의 `RepoWindows`(창 label → 저장소 경로)가 기억한다(`src-tauri/src/windows.rs`). `repo_list`·`repo_select`는 호출한 창 기준으로 `selected`를 돌려주고 바꾼다. 처음 뜬 창은 마지막으로 연 저장소(`repositories.json`의 `selected`)를 이어받는다. 새 창은 `window_open`이 첫 창 설정(`tauri.conf.json`)을 복사해 `repo-<n>` label로 만들고, 같은 저장소가 이미 열려 있으면 `window_focus_repo`처럼 그 창을 앞으로 가져온다. 권한(`capabilities/default.json`)은 `main`과 `repo-*` 창에 준다. 각 창은 웹뷰가 따로라 쿼리 캐시도 따로이므로, 설정은 `settings-changed` 이벤트로, 저장소 목록은 창 포커스 때 다시 읽어 맞춘다.
 - **취소**: 장시간 작업은 프론트가 만든 `operationId`로 `Operations` 레지스트리에 `CancelToken`을 등록하고, `operation_cancel`로 취소한다. `GitCommand::run_streaming`이 토큰을 확인해 git 프로세스를 종료한다.
 - **앱 상태 저장**: 저장소 목록은 앱 데이터 폴더의 `repositories.json`에 저장한다(`src-tauri/src/repositories.rs`). 임시 파일에 쓴 뒤 이름을 바꾸는 방식으로 원자적으로 저장하고, 손상된 파일은 덮어쓰지 않고 `.corrupt-<시각>.json`으로 옮겨 둔다.
 - **오류 코드**: Git 엔진 오류(`ErrorKind`)와 앱 계층 오류(`AppErrorKind`)는 `ErrorCode`로 합쳐서 하나의 문자열 유니언으로 프론트에 전달한다.
@@ -156,6 +233,7 @@ struct AppError {
 | UI 상태   | Zustand (선택된 파일, 패널 크기 등)                                            |
 | 목록      | `@tanstack/react-virtual` (파일 목록, 커밋 목록, 큰 diff)                      |
 | i18n      | i18next + react-i18next, 네임스페이스별 JSON                                   |
+| 구문 강조 | Shiki(TextMate 문법, JS 정규식 엔진, 지연 로딩) + GitHub Linguist 언어 판별    |
 | 테스트    | Vitest + Testing Library, IPC는 목(mock)으로 대체                              |
 | 린트·포맷 | ESLint, Prettier (Rust는 `cargo fmt`, `clippy`)                                |
 
@@ -184,11 +262,12 @@ struct AppError {
 ## 7. 보안
 
 - Tauri capability는 필요한 권한만 연다. 프론트엔드에서 임의 셸 실행 권한(shell plugin의 execute)은 열지 않는다. git 실행은 Rust 명령으로만 한다.
-- 자격 증명은 앱이 저장하지 않는다. git credential helper(OS 키체인)에 맡긴다.
+- 사용자가 입력한 자격 증명은 앱이 저장하지 않는다. git credential helper(OS 키체인)에 맡긴다.
+- 앱이 발급받은 GitHub 토큰만 OS 키체인에 저장한다. 파일·로그·프론트로 보내지 않는다.
 - 외부 링크는 시스템 브라우저로 연다.
 
 ## 8. 아직 정하지 않은 것
 
-- 인앱 diff 구문 강조(Shiki 지연 로딩 검토), 커밋 그래프 렌더링 방식(Canvas 대 SVG)
+- 커밋 그래프 렌더링 방식(Canvas 대 SVG)
 - Windows에서 git 번들 여부 (MVP는 시스템 git만 사용)
 - 자동 업데이트 배포 채널(GitHub Releases + Tauri updater 검토)

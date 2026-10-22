@@ -1,7 +1,9 @@
 {
   "appName": "Garam",
+  "loading": "Loading…",
   "language": {
-    "label": "Language"
+    "label": "Language",
+    "system": "System language"
   },
   "error": {
     "showDetails": "Show details",
@@ -9,5 +11,11 @@
   },
   "notify": {
     "dismiss": "Dismiss"
+  },
+  "layout": {
+    "resizeSidebar": "Resize sidebar"
+  },
+  "time": {
+    "justNow": "just now"
   }
 }

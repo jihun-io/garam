@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -6,6 +6,8 @@ import { commands, type Branch, type FileChange } from "../../ipc";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { Notifications } from "../notify/Notifications";
 import { useNotify } from "../notify/notifyStore";
+import { useCommitDrag } from "../history/commitDragStore";
+import { useHistoryPane } from "../history/historyPaneStore";
 import { useBranchDialog } from "./branchDialogStore";
 import { AutoStashBanner } from "./AutoStashBanner";
 import { BranchControls } from "./BranchControls";
@@ -73,7 +75,7 @@ function setup(files: FileChange[] = []) {
 }
 
 async function openPicker(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole("button", { name: "Current branch: main" }));
+  await user.click(await screen.findByRole("button", { name: "Current branch main" }));
 }
 
 describe("BranchControls", () => {
@@ -93,10 +95,67 @@ describe("BranchControls", () => {
         .getAllByRole("button")
         .map((b) => b.textContent),
     ).toEqual([expect.stringContaining("main"), expect.stringContaining("feature")]);
-    expect(within(local).getByTitle("2 to push")).toBeVisible();
+    expect(within(local).getByText("2 commits to push")).toBeVisible();
     const remote = screen.getByRole("region", { name: "Remote branches" });
     expect(within(remote).getByText("origin/review")).toBeVisible();
     expect(within(remote).queryByText("origin/main")).not.toBeInTheDocument();
+  });
+
+  it("compares a branch, remote ones too, with the current one", async () => {
+    const user = userEvent.setup();
+    useHistoryPane.setState({ panes: {} });
+    setup();
+    await openPicker(user);
+    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("origin/review") });
+    const menu = await screen.findByRole("menu");
+    // Remote branches can't be renamed or deleted from here.
+    expect(within(menu).queryByRole("menuitem", { name: "Rename…" })).toBeNull();
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "Compare with Current Branch (main)" }),
+    );
+    expect(useHistoryPane.getState().panes["/repo"]).toEqual({
+      kind: "compare",
+      base: "refs/heads/main",
+      target: "refs/remotes/origin/review",
+      mode: "three_dot",
+      baseLabel: "main",
+      targetLabel: "origin/review",
+    });
+
+    await openPicker(user);
+    await user.pointer({ keys: "[MouseRight]", target: screen.getAllByText("main")[1] });
+    const own = await screen.findByRole("menu");
+    expect(within(own).queryByRole("menuitem", { name: /Compare with/ })).toBeNull();
+  });
+
+  it("opens for dragged commits and takes them on local branches", async () => {
+    setup();
+    const button = await screen.findByRole("button", { name: "Current branch main" });
+    expect(button).toHaveAttribute("data-drop-branch", "main");
+    act(() =>
+      useCommitDrag.getState().set({ commits: [], x: 0, y: 0, over: null, insertAt: null }),
+    );
+    fireEvent.mouseEnter(button);
+    const local = await screen.findByRole("region", { name: "Branches" });
+    expect(within(local).getByText("feature").closest("button")).toHaveAttribute(
+      "data-drop-branch",
+      "feature",
+    );
+    const remote = screen.getByRole("region", { name: "Remote branches" });
+    expect(within(remote).getByText("origin/review").closest("button")).not.toHaveAttribute(
+      "data-drop-branch",
+    );
+
+    // The branch under the pointer is marked.
+    act(() =>
+      useCommitDrag.getState().set({ commits: [], x: 0, y: 0, over: "feature", insertAt: null }),
+    );
+    expect(within(local).getByText("feature").closest("button")).toHaveAttribute("data-drop-over");
+    expect(within(local).getByText("main").closest("button")).not.toHaveAttribute("data-drop-over");
+
+    // Done dragging: the list goes away again.
+    act(() => useCommitDrag.getState().set(null));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Branches" })).toBeNull());
   });
 
   it("switches straight away when there are no changes", async () => {
@@ -140,7 +199,7 @@ describe("BranchControls", () => {
     await user.type(within(dialog).getByLabelText("Name"), "로그인 화면 개선");
     expect(within(dialog).getByText("Will be created as 로그인-화면-개선")).toBeVisible();
     await user.click(within(dialog).getByRole("button", { name: "Create branch" }));
-    expect(commands.branchCreate).toHaveBeenCalledWith("/repo", "로그인-화면-개선");
+    expect(commands.branchCreate).toHaveBeenCalledWith("/repo", "로그인-화면-개선", null);
   });
 
   it("asks again before force-deleting an unmerged branch", async () => {

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { commands, unwrap, type RepositoryEntry } from "../../ipc";
 
-const REPOSITORIES = ["repositories"] as const;
+export const REPOSITORIES = ["repositories"] as const;
 
 const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
 
@@ -14,6 +14,8 @@ export function useRepositories() {
   return useQuery({
     queryKey: REPOSITORIES,
     queryFn: () => commands.repoList(),
+    // Another window may have added or removed one.
+    refetchOnWindowFocus: true,
     select: (list) => {
       const repositories = sortRepositories(list.repositories);
       const selected =
@@ -48,7 +50,18 @@ export function useRepositoryActions() {
       mutationFn: (path: string) => unwrap(commands.repoSelect(path)),
       ...options,
     }),
+    setAccount: useMutation({
+      mutationFn: ({ path, account }: { path: string; account: string | null }) =>
+        unwrap(commands.repoSetAccount(path, account)),
+      ...options,
+    }),
   };
+}
+
+/** Detected editors, with the one chosen in settings first. */
+export function useEditorsPreferredFirst(preferred: string | null) {
+  const editors = useEditors().data ?? [];
+  return [...editors].sort((a, b) => Number(b.id === preferred) - Number(a.id === preferred));
 }
 
 export function useEditors() {

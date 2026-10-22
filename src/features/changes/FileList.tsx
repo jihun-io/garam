@@ -3,24 +3,18 @@ import { ContextMenu } from "radix-ui";
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Checkbox } from "../../components/ui/Checkbox";
+import { CheckMark } from "../../components/ui/Checkbox";
 import menu from "../../components/ui/Menu.module.css";
 import { commands, type FileChange } from "../../ipc";
 import { joinPath } from "../../lib/paths";
 import { currentPlatform } from "../../lib/platform";
 import { useNotify } from "../notify/notifyStore";
-import { checkState, displayKind, splitPath, type DisplayKind } from "./fileState";
+import { checkState, displayKind, splitPath } from "./fileState";
 import styles from "./FileList.module.css";
+import { Icon } from "../../components/Icon";
+import { Tooltip } from "../../components/ui/Tooltip";
 
 const ROW_HEIGHT = 28;
-
-const KIND_GLYPH: Record<DisplayKind, string> = {
-  added: "+",
-  modified: "•",
-  deleted: "−",
-  renamed: "→",
-  conflicted: "!",
-};
 
 export function FileList({
   repo,
@@ -53,7 +47,8 @@ export function FileList({
     if (selectedIndex >= 0) virtualizer.scrollToIndex(selectedIndex, { align: "auto" });
   }, [selectedIndex, virtualizer]);
 
-  // Arrow keys move the selection; Space toggles inclusion in the commit.
+  // Arrow keys move the selection; Space toggles inclusion in the commit;
+  // ⌘⌫ / Ctrl+Backspace asks to discard the selected file's changes.
   const onKeyDown = (e: KeyboardEvent) => {
     if (files.length === 0) return;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -61,7 +56,19 @@ export function FileList({
       const delta = e.key === "ArrowDown" ? 1 : -1;
       const next = Math.max(0, Math.min(files.length - 1, selectedIndex + delta));
       onSelect(files[next].path);
-    } else if (e.key === " " && selectedIndex >= 0) {
+    } else if (
+      (e.key === "Backspace" || e.key === "Delete") &&
+      (e.metaKey || e.ctrlKey) &&
+      selectedIndex >= 0
+    ) {
+      // Opens the confirmation; nothing is discarded without it.
+      e.preventDefault();
+      onDiscard([files[selectedIndex]]);
+    } else if (
+      e.key === " " &&
+      selectedIndex >= 0 &&
+      files[selectedIndex].staged !== "conflicted"
+    ) {
       e.preventDefault();
       onToggle(files[selectedIndex]);
     }
@@ -81,6 +88,7 @@ export function FileList({
         {virtualizer.getVirtualItems().map((item) => {
           const file = files[item.index];
           const kind = displayKind(file);
+          const state = checkState(file);
           const { dir, name } = splitPath(file.path);
           const selected = file.path === selectedPath;
           return (
@@ -90,29 +98,33 @@ export function FileList({
                   id={`file-${item.index}`}
                   role="option"
                   aria-selected={selected}
+                  // The row reports inclusion itself (Space toggles it); the
+                  // box inside is only for the mouse, so it isn't a control
+                  // nested in an option for screen readers.
+                  aria-checked={state === "mixed" ? "mixed" : state === "checked"}
                   className={styles.row}
                   style={{ transform: `translateY(${item.start}px)`, height: ROW_HEIGHT }}
                   onMouseDown={() => onSelect(file.path)}
-                  title={file.origPath ? `${file.origPath} → ${file.path}` : file.path}
                 >
-                  <Checkbox
-                    state={checkState(file)}
-                    tabIndex={-1}
-                    aria-label={t("list.include", { path: file.path })}
-                    onChange={() => onToggle(file)}
-                    onMouseDown={(e) => e.stopPropagation()}
+                  <CheckMark
+                    state={state}
+                    disabled={kind === "conflicted"}
+                    onToggle={() => onToggle(file)}
                   />
-                  <span className={styles.path}>
-                    {dir && <span className={styles.dir}>{dir}</span>}
-                    <span className={styles.name}>{name}</span>
-                  </span>
-                  <span
-                    className={`${styles.kind} ${styles[kind]}`}
-                    title={t(`kind.${kind}`)}
-                    aria-label={t(`kind.${kind}`)}
+                  <Tooltip
+                    content={file.origPath ? `${file.origPath} → ${file.path}` : file.path}
+                    whenTruncated
                   >
-                    {KIND_GLYPH[kind]}
-                  </span>
+                    <span className={styles.path}>
+                      {dir && <span className={styles.dir}>{dir}</span>}
+                      <span className={styles.name}>{name}</span>
+                    </span>
+                  </Tooltip>
+                  <Tooltip content={t(`kind.${kind}`)} side="right">
+                    <span className={`${styles.kind} ${styles[kind]}`}>
+                      <Icon name={kind} label={t(`kind.${kind}`)} />
+                    </span>
+                  </Tooltip>
                 </div>
               </ContextMenu.Trigger>
               <ContextMenu.Portal>

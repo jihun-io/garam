@@ -1,0 +1,668 @@
+/* Commit list */
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  padding-top: var(--space-1);
+  overflow-y: auto;
+  outline: none;
+}
+
+/* Inset, rounded selection like the file list; rows are told apart by the
+   two-line rhythm, not by rules between them. */
+.row {
+  /* Hollow graph nodes are filled with whatever is behind the row. */
+  --row-bg: var(--color-bg);
+  position: absolute;
+  top: 0;
+  left: 6px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: calc(100% - 12px);
+  margin: 0;
+  padding: 0 6px;
+  border-radius: var(--radius-md);
+  cursor: default;
+}
+
+.row:hover {
+  --row-bg: var(--color-hover);
+  background: var(--row-bg);
+}
+
+.row[aria-selected="true"] {
+  --row-bg: var(--color-selected);
+  background: var(--row-bg);
+}
+
+.scroll:focus-visible .row[aria-selected="true"] {
+  --row-bg: var(--color-river);
+  background: var(--row-bg);
+  color: var(--color-on-accent);
+}
+
+.rowText {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* The commit graph: one color, since color means state here
+   (docs/DESIGN.md 1.1). Node shapes tell HEAD, uncommitted changes and
+   stashes apart. */
+.graph {
+  flex: none;
+  align-self: stretch;
+  margin-left: -6px;
+  color: var(--color-ink-muted);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.scroll:focus-visible .row[aria-selected="true"] .graph {
+  color: inherit;
+}
+
+.node {
+  fill: currentColor;
+  stroke: none;
+}
+
+.headNode {
+  fill: var(--row-bg);
+  stroke-width: 2.5;
+}
+
+.hollowNode {
+  fill: var(--row-bg);
+}
+
+.scroll:focus-visible .row[aria-selected="true"] .meta {
+  color: inherit;
+}
+
+.summary,
+.meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary {
+  font-weight: 550;
+}
+
+.meta,
+.loading {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+/* Commit detail */
+
+.detail {
+  container: commit-detail / inline-size;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  min-height: 0;
+}
+
+.commitHeader {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 40vh;
+  padding: var(--space-4);
+  overflow-y: auto;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.commitSummary {
+  font-size: var(--text-lg);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.commitBody {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.commitMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.hash {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 1px var(--space-1);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.hash:hover {
+  border-color: var(--color-ink-faint);
+}
+
+.hash svg {
+  color: var(--color-ink-muted);
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.files {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--color-line);
+}
+
+/* Too narrow for files beside the diff: stack them instead. */
+@container commit-detail (width < 560px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, auto) minmax(0, 1fr);
+  }
+
+  .files {
+    max-height: 9rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-line);
+  }
+}
+
+.filesTitle {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.fileList {
+  flex: 1;
+  margin: 0;
+  padding: 0 0 var(--space-2);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: calc(100% - 12px);
+  min-height: 28px;
+  margin: 0 6px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  text-align: start;
+  cursor: default;
+}
+
+.file:hover {
+  background: var(--color-hover);
+}
+
+.file[aria-current="true"] {
+  background: var(--color-selected);
+}
+
+.fileName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileDir {
+  color: var(--color-ink-muted);
+}
+
+.fileKind {
+  display: inline-flex;
+  flex: none;
+}
+
+.added {
+  color: var(--color-added-ink);
+}
+
+.modified {
+  color: var(--color-modified-ink);
+}
+
+.deleted,
+.conflicted {
+  color: var(--color-danger);
+}
+
+.renamed {
+  color: var(--color-link);
+}
+
+/* Refs and sync marks */
+
+.titleLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.titleLine .summary {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Muted like the rest of the row's secondary text; the river-filled
+   selection recolors them through `color: inherit`. */
+.refs {
+  display: inline-flex;
+  flex: 0 1 auto;
+  gap: var(--space-1);
+  min-width: 0;
+  max-width: 60%;
+}
+
+.ref {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.ref[data-current] {
+  border-color: var(--color-ink-muted);
+  color: var(--color-ink);
+  font-weight: 550;
+}
+
+.refName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sync {
+  display: inline-flex;
+  vertical-align: -0.15em;
+}
+
+/* Not on this branch yet: quieter than its own commits. */
+.row[data-sync="incoming"] .summary {
+  color: var(--color-ink-muted);
+  font-weight: 400;
+}
+
+.scroll:focus-visible .row[aria-selected="true"] .ref,
+.scroll:focus-visible .row[aria-selected="true"] .summary {
+  border-color: currentColor;
+  color: inherit;
+}
+
+.syncNote {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Search and filter */
+
+/* Same height as a list header. */
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 36px;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.searchField {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+}
+
+.searchField:focus-within {
+  border-color: var(--color-focus);
+  box-shadow: inset 0 0 0 1px var(--color-focus);
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* The filter is in effect: what the user chose, so the accent. */
+.filterOn,
+.filterOn:hover:not(:disabled) {
+  color: var(--color-river);
+}
+
+.filterPanel {
+  display: grid;
+  width: min(340px, calc(100vw - 32px));
+  border-radius: var(--radius-lg);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-raised);
+}
+
+.filterOptions {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.filterRow {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.filterLabel {
+  font-weight: 550;
+}
+
+.filterCheck {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.filterFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-2);
+  border-top: 1px solid var(--color-line);
+}
+
+/* Commit message details */
+
+/* The Conventional Commits prefix: a quiet label, not a status. */
+.typeBadge {
+  display: inline-block;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-hover);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 16px;
+  vertical-align: 1px;
+}
+
+.commitSummary .typeBadge {
+  font-size: var(--text-md);
+  line-height: 20px;
+  vertical-align: 3px;
+}
+
+.scroll:focus-visible .row[aria-selected="true"] .typeBadge {
+  background: none;
+  box-shadow: inset 0 0 0 1px currentColor;
+  color: inherit;
+}
+
+.breaking {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 550;
+}
+
+.issueLink {
+  color: var(--color-link);
+  cursor: pointer;
+}
+
+.signature {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.signature[data-bad] {
+  color: var(--color-danger);
+}
+
+.metaLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-link);
+  font-size: var(--text-sm);
+}
+
+.metaLink:hover {
+  text-decoration: underline;
+}
+
+.diffOption {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+/* Comparison */
+
+/* Header, summary of commits, then files and diff. */
+.compare {
+  grid-template-rows: auto auto 1fr;
+}
+
+.compareTitle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.compareSummary {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.compareCommits {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compareCommits li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compareHash {
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.compareMore {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+/* A commit outside the list, shown on its own. */
+.peek {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  min-height: 0;
+}
+
+.peekBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4);
+  border-bottom: 1px solid var(--color-line);
+  color: var(--color-ink-muted);
+}
+
+.peekBar p {
+  flex: 1;
+  margin: 0;
+}
+
+/* Lost commits */
+
+.lostList {
+  display: grid;
+  max-height: min(360px, 50vh);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  list-style: none;
+}
+
+.lost {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.lost + .lost {
+  border-top: 1px solid var(--color-line);
+}
+
+.lostText {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lostText > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Squash dialog */
+
+.squashDescription {
+  min-height: 6rem;
+  padding-block: var(--space-2);
+  font: inherit;
+  resize: vertical;
+}
+
+.dialogNote {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+/* Several selected commits */
+
+.multiActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Dragging commits to a branch */
+
+.dragGhost {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 320px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--text-sm);
+  pointer-events: none;
+}
+
+.dragLabel {
+  overflow: hidden;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dragTarget {
+  flex: none;
+  color: var(--color-ink-muted);
+}
+
+/* Where dragged commits would move to in the list. */
+.insertLine {
+  position: absolute;
+  z-index: 1;
+  right: 6px;
+  left: 6px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-river);
+  pointer-events: none;
+}

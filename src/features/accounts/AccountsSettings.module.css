@@ -1,0 +1,119 @@
+.hint {
+  max-width: 420px;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.empty {
+  color: var(--color-ink-muted);
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  list-style: none;
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+
+.account + .account {
+  border-top: 1px solid var(--color-line);
+}
+
+.avatar,
+.avatarFallback {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.avatar {
+  box-shadow: inset 0 0 0 1px var(--color-line);
+}
+
+.avatarFallback {
+  display: grid;
+  place-items: center;
+  background: var(--color-selected);
+  font-weight: 600;
+}
+
+.names {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.login {
+  overflow: hidden;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signIn {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.pending {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding: var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.pendingTitle {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+/* The one-time code: large and monospaced so it reads at a glance and
+   copies cleanly. */
+.code {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  -webkit-user-select: all;
+  user-select: all;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-link);
+  font-size: inherit;
+}

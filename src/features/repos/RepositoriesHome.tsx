@@ -1,17 +1,26 @@
+import { Loading } from "../../components/ui/Loading";
+import { useCommand } from "../../lib/commands";
+
 import { DropOverlay } from "./DropOverlay";
 import { EmptyState } from "./EmptyState";
+import { OpenRepositoryDialog } from "./dialogs/OpenRepositoryDialog";
 import { RepoDialogs } from "./dialogs/RepoDialogs";
 import { useRepositories } from "./api";
 import { useFolderDrop } from "./useFolderDrop";
 import { Workspace } from "./Workspace";
+import { useRepoDialog } from "./dialogStore";
 
 /** Shown once git is available: empty state or the workspace. */
 export function RepositoriesHome({ gitVersion }: { gitVersion: string }) {
   const repositories = useRepositories();
   const dragging = useFolderDrop();
+  const openDialog = useRepoDialog((s) => s.open);
+  useCommand("repo.add", () => openDialog({ kind: "add" }));
+  useCommand("repo.create", () => openDialog({ kind: "create" }));
+  useCommand("repo.clone", () => openDialog({ kind: "clone" }));
 
-  // The list is local and fast; render nothing for the brief first load.
-  if (!repositories.data) return null;
+  // The list is local and fast; Loading shows only if it isn't.
+  if (!repositories.data) return <Loading />;
   const { repositories: list, selected } = repositories.data;
 
   return (
@@ -22,6 +31,7 @@ export function RepositoriesHome({ gitVersion }: { gitVersion: string }) {
         <Workspace repositories={list} selected={selected} />
       )}
       <RepoDialogs />
+      <OpenRepositoryDialog />
       <DropOverlay visible={dragging} />
     </>
   );

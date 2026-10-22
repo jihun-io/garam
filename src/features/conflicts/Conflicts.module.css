@@ -1,0 +1,59 @@
+.banner {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.banner > p:last-child {
+  padding-left: 24px;
+  color: var(--color-ink-muted);
+}
+
+.bannerTitle,
+.kind {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+/* Conflicts read as conflicts everywhere: the same red as the file list. */
+.bannerIcon,
+.kindIcon {
+  color: var(--color-danger);
+}
+
+.banner[data-ready] .bannerIcon {
+  color: var(--color-added-ink);
+}
+
+.panel {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-line);
+}
+
+.continue {
+  flex: 1;
+}
+
+.actions {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-bg);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.hint {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}

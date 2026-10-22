@@ -1,6 +1,6 @@
 {
   "picker": {
-    "label": "Current branch: {{name}}",
+    "caption": "Current branch",
     "detached": "Detached HEAD",
     "search": "Filter branches",
     "local": "Branches",
@@ -11,9 +11,14 @@
     "rename": "Rename…",
     "delete": "Delete…",
     "mergeThis": "Merge into {{branch}}…",
-    "ahead": "{{count}} to push",
-    "behind": "{{count}} to pull",
-    "gone": "Deleted on remote"
+    "ahead_one": "{{count}} commit to push",
+    "ahead_other": "{{count}} commits to push",
+    "behind_one": "{{count}} commit to pull",
+    "behind_other": "{{count}} commits to pull",
+    "gone": "Deleted on remote",
+    "tooltip": "Switch branch",
+    "compareThis": "Compare with Current Branch ({{branch}})",
+    "compare": "Compare Branches…"
   },
   "switch": {
     "title": "Switch to {{branch}}?",
@@ -29,6 +34,7 @@
     "title": "Create a branch",
     "name": "Name",
     "from": "Starts from {{branch}}. Your uncommitted changes come along.",
+    "fromCommit": "Starts from commit {{hash}} ({{summary}}). Uncommitted changes come along too.",
     "willBe": "Will be created as {{name}}",
     "submit": "Create branch"
   },

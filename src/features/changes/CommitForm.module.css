@@ -1,18 +1,21 @@
 .form {
   display: grid;
+  /* Long content (a branch name in the button) must not widen the form
+     past the sidebar. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
   padding: var(--space-3);
   border-top: 1px solid var(--color-line);
-  background: var(--color-surface);
 }
 
 .summary,
 .description {
   width: 100%;
   padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  -webkit-user-select: text;
   user-select: text;
 }
 
@@ -25,12 +28,6 @@
   resize: vertical;
   min-height: 3.5em;
   line-height: 1.45;
-}
-
-.summary:focus-visible,
-.description:focus-visible {
-  outline-offset: 0;
-  border-color: var(--color-focus);
 }
 
 .description[aria-invalid="true"] {
@@ -62,15 +59,24 @@
   border: 0;
   background: none;
   color: var(--color-link);
-  cursor: pointer;
 }
 
 .submit {
   width: 100%;
+  min-width: 0;
   min-height: 32px;
 }
 
-.submit span {
+/* A row so the branch part can shrink; `pre` keeps the spaces around it,
+   which flex layout would otherwise drop. */
+.label {
+  display: flex;
+  min-width: 0;
+  white-space: pre;
+}
+
+.branch {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -87,4 +93,51 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* "Author Name <email>  This repository" — a quiet row that opens the
+   per-repository author choice. */
+.author {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  text-align: left;
+}
+
+.author:hover .authorValue {
+  color: var(--color-ink);
+}
+
+.authorLabel {
+  flex: none;
+}
+
+.authorValue {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.authorScope {
+  flex: none;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+}
+
+.authorAccount {
+  flex: none;
+  color: var(--color-ink);
+}
+
+.mismatch {
+  color: var(--color-modified-ink);
+  font-size: var(--text-sm);
 }

@@ -13,6 +13,19 @@ pub enum AppErrorKind {
     ExternalAppFailed,
     TrashFailed,
     WatchFailed,
+    /// A new window couldn't be opened.
+    WindowFailed,
+    /// A file the user chose to save couldn't be written.
+    SaveFailed,
+    /// The OS keychain refused to store or read a token.
+    KeychainFailed,
+    GithubUnreachable,
+    /// The account's token was revoked or expired; sign in again.
+    GithubUnauthorized,
+    /// The sign-in code expired before it was approved.
+    GithubLoginExpired,
+    GithubLoginDenied,
+    GithubUnexpected,
 }
 
 /// Either kind of error code; serialized as a plain string, so the frontend
@@ -60,6 +73,25 @@ impl From<GitError> for AppError {
             kind: ErrorCode::Git(err.kind()),
             params,
             detail: err.detail(),
+        }
+    }
+}
+
+impl From<garam_github::GitHubError> for AppError {
+    fn from(err: garam_github::GitHubError) -> Self {
+        use garam_github::ErrorKind as Kind;
+        let kind = match err.kind() {
+            Kind::Network => ErrorCode::App(AppErrorKind::GithubUnreachable),
+            Kind::Unauthorized => ErrorCode::App(AppErrorKind::GithubUnauthorized),
+            Kind::LoginExpired => ErrorCode::App(AppErrorKind::GithubLoginExpired),
+            Kind::LoginDenied => ErrorCode::App(AppErrorKind::GithubLoginDenied),
+            Kind::Cancelled => ErrorCode::Git(ErrorKind::Cancelled),
+            Kind::Unexpected => ErrorCode::App(AppErrorKind::GithubUnexpected),
+        };
+        Self {
+            kind,
+            params: BTreeMap::new(),
+            detail: Some(err.detail()),
         }
     }
 }

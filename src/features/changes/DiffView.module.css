@@ -20,6 +20,7 @@
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+  -webkit-user-select: text;
   user-select: text;
 }
 
@@ -31,33 +32,32 @@
   white-space: nowrap;
 }
 
+/* The file's status in the same words and icon as the file list; color
+   only on the mark, no filled chip. */
 .badge {
+  display: inline-flex;
   flex: none;
+  align-items: center;
+  gap: var(--space-1);
   margin-left: auto;
-  padding: 1px var(--space-2);
-  border-radius: var(--radius-sm);
+  color: var(--color-ink-muted);
   font-size: var(--text-sm);
-  font-weight: 600;
 }
 
-.badge.added {
-  background: var(--color-added-bg);
+.badge.added svg {
   color: var(--color-added-ink);
 }
 
-.badge.modified {
-  background: var(--color-hover);
+.badge.modified svg {
   color: var(--color-modified-ink);
 }
 
-.badge.deleted,
-.badge.conflicted {
-  background: var(--color-deleted-bg);
+.badge.deleted svg,
+.badge.conflicted svg {
   color: var(--color-danger);
 }
 
-.badge.renamed {
-  background: var(--color-hover);
+.badge.renamed svg {
   color: var(--color-link);
 }
 
@@ -79,7 +79,7 @@
 .lines {
   position: relative;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--diff-font-size);
   line-height: 20px;
 }
 
@@ -99,9 +99,19 @@
   color: var(--color-ink-muted);
 }
 
+/* One line: the range stays whole, the section name gives way, and the
+   button never wraps. */
+.hunkRange {
+  flex: none;
+  white-space: nowrap;
+}
+
 .hunkSection {
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-ink);
-  white-space: pre-wrap;
+  text-overflow: ellipsis;
+  white-space: pre;
 }
 
 .line {
@@ -110,16 +120,18 @@
   min-height: 20px;
 }
 
+/* Line numbers and +/- markers carry meaning (the markers repeat the
+   colors for those who can't tell them apart), so they keep text contrast. */
 .gutter {
   padding: 0 var(--space-1);
-  color: var(--color-ink-faint);
+  color: var(--color-ink-muted);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 .marker {
   text-align: center;
-  color: var(--color-ink-faint);
+  color: var(--color-ink-muted);
 }
 
 .text {
@@ -127,6 +139,7 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   tab-size: 4;
+  -webkit-user-select: text;
   user-select: text;
 }
 
@@ -190,7 +203,7 @@
 }
 
 .imageNone {
-  color: var(--color-ink-faint);
+  color: var(--color-ink-muted);
 }
 
 /* Line selection (line-level staging). */
@@ -204,7 +217,6 @@
   padding: 0;
   border: 0;
   background: none;
-  cursor: pointer;
 }
 
 .select:focus-visible {
@@ -248,17 +260,31 @@
 }
 
 .hunkToggle {
+  flex: none;
   margin-left: auto;
+  white-space: nowrap;
   padding: 0 var(--space-2);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
+  box-shadow: var(--shadow-control);
   color: var(--color-ink);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
-  cursor: pointer;
 }
 
 .hunkToggle:hover {
   border-color: var(--color-ink-faint);
+}
+
+/* Words that changed within a replaced line: the line's own color, but
+   as strong as its gutter. */
+.added .word {
+  border-radius: 2px;
+  background: var(--color-added-strong);
+}
+
+.deleted .word {
+  border-radius: 2px;
+  background: var(--color-deleted-strong);
 }

@@ -1,0 +1,18 @@
+.content {
+  z-index: 100;
+  max-width: 320px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-ink);
+  color: var(--color-bg);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.shortcut {
+  margin-left: var(--space-2);
+  font-family: var(--font-ui);
+  opacity: 0.7;
+}

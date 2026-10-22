@@ -14,12 +14,20 @@ rust-version.workspace = true
 name = "garam_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[[bin]]
+# Named after the product so unbundled dev builds show "Garam" in the Dock
+# and task switcher, matching the bundled app.
+name = "Garam"
+path = "src/main.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
 base64 = "0.22"
 garam-git = { workspace = true, features = ["specta"] }
+garam-github.workspace = true
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust", "vendored"] }
 notify-debouncer-full = "0.7"
 serde.workspace = true
 serde_json.workspace = true

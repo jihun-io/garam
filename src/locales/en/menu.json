@@ -1,0 +1,73 @@
+{
+  "menus": {
+    "app": "Garam",
+    "file": "File",
+    "edit": "Edit",
+    "view": "View",
+    "repository": "Repository",
+    "branch": "Branch",
+    "window": "Window",
+    "help": "Help"
+  },
+  "commands": {
+    "repo": {
+      "add": "Add Existing Repository…",
+      "create": "New Repository…",
+      "clone": "Clone Repository…",
+      "openEditor": "Open in Editor",
+      "openTerminal": "Open in Terminal",
+      "recover": "Recover Lost Commits…"
+    },
+    "settings": "Settings…",
+    "view": {
+      "changes": "Changes",
+      "history": "History",
+      "repositories": "Repository List",
+      "branches": "Branch List",
+      "refresh": "Refresh"
+    },
+    "sync": {
+      "fetch": "Fetch",
+      "pull": "Pull",
+      "push": "Push"
+    },
+    "branch": {
+      "create": "New Branch…",
+      "rename": "Rename Branch…",
+      "merge": "Merge into Current Branch…",
+      "compare": "Compare Branches…"
+    },
+    "help": {
+      "shortcuts": "Keyboard Shortcuts",
+      "report": "Report a Problem…"
+    },
+    "history": {
+      "search": "Search History"
+    }
+  },
+  "native": {
+    "about": "About Garam",
+    "services": "Services",
+    "hide": "Hide Garam",
+    "hideOthers": "Hide Others",
+    "showAll": "Show All",
+    "quit": "Quit Garam",
+    "undo": "Undo",
+    "redo": "Redo",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "selectAll": "Select All",
+    "minimize": "Minimize",
+    "zoom": "Zoom",
+    "bringAllToFront": "Bring All to Front",
+    "fullscreen": "Enter Full Screen",
+    "quitOther": "Exit"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "close": "Close",
+    "commit": "Commit",
+    "discard": "Discard changes to the selected file"
+  }
+}

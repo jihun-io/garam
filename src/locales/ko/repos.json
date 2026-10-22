@@ -12,12 +12,14 @@
     "createDescription": "빈 폴더에서 새 프로젝트를 시작합니다."
   },
   "picker": {
-    "label": "저장소: {{name}}",
+    "caption": "현재 저장소",
     "placeholder": "저장소 선택",
     "search": "저장소 검색",
     "noMatches": "“{{query}}”와 일치하는 저장소가 없습니다.",
     "missing": "찾을 수 없음",
-    "remove": "목록에서 제거"
+    "remove": "목록에서 제거",
+    "tooltip": "저장소 바꾸기",
+    "openInNewWindow": "새 창에서 열기"
   },
   "open": {
     "menu": "다른 앱에서 열기",
@@ -70,10 +72,19 @@
       "compressing": "개체 압축하는 중",
       "receiving": "개체 받는 중",
       "resolving": "델타 처리하는 중",
+      "writing": "개체 보내는 중",
       "checking_out": "파일 꺼내는 중"
     }
   },
   "drop": {
     "overlay": "놓으면 이 저장소를 추가합니다"
+  },
+  "openIn": {
+    "title": "{{name}} 저장소를 어디에서 열까요?",
+    "body": "지금 창의 저장소를 닫지 않고 새 창에서 열 수 있습니다.",
+    "currentWindow": "이 창에서 열기",
+    "newWindow": "새 창에서 열기",
+    "remember": "다시 묻지 않기",
+    "rememberHint": "설정 > 일반에서 바꿀 수 있습니다."
   }
 }

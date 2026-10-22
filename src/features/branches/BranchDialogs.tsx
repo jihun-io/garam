@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import type { BranchStatus } from "../../ipc";
+import { shortHash } from "../../lib/hash";
 import { useNotify } from "../notify/notifyStore";
 import { useBranchActions, useBranches } from "./api";
 import { useBranchDialog } from "./branchDialogStore";
@@ -26,8 +27,15 @@ export function BranchDialogs({ repo, status }: { repo: string; status: BranchSt
           title={t("create.title")}
           label={t("create.name")}
           submitLabel={t("create.submit")}
-          note={t("create.from", { branch: current ?? t("picker.detached") })}
-          onSubmit={(name) => actions.create.mutateAsync(name)}
+          note={
+            dialog.from
+              ? t("create.fromCommit", {
+                  hash: shortHash(dialog.from.oid),
+                  summary: dialog.from.summary,
+                })
+              : t("create.from", { branch: current ?? t("picker.detached") })
+          }
+          onSubmit={(name) => actions.create.mutateAsync({ name, start: dialog.from?.oid })}
           onClose={close}
         />
       );
