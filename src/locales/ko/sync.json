@@ -26,6 +26,13 @@
     "pulled": "{{upstream}}에서 풀 했습니다.",
     "upToDate": "{{branch}} 브랜치는 이미 최신 상태입니다.",
     "pushed": "{{upstream}}에 푸시했습니다.",
-    "published": "{{branch}} 브랜치를 {{remote}}에 게시했습니다."
+    "published": "{{branch}} 브랜치를 {{remote}}에 게시했습니다.",
+    "pulledWithConflicts": "{{upstream}}에서 풀 했지만, 보관해 둔 변경 사항을 다시 꺼내다 충돌했습니다. 충돌한 파일을 해결하세요. 보관한 내용은 스태시(autostash)에 그대로 남아 있습니다."
+  },
+  "pullBlocked": {
+    "title": "풀할 수 없습니다",
+    "body": "변경 사항을 잠시 보관(스태시)했다가 풀한 뒤 다시 꺼낼 수 있습니다. 다시 꺼낼 때 충돌하면 보관한 내용은 스태시에 남겨 두고 충돌한 파일을 보여 드립니다.",
+    "cancel": "취소",
+    "submit": "변경 사항을 잠시 보관하고 풀하기"
   }
 }

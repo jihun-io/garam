@@ -130,6 +130,9 @@ pub fn fetch(
 pub enum PullOutcome {
     UpToDate,
     Updated,
+    /// Pulled, but putting the stashed local changes back conflicted: the
+    /// conflicts are in the working tree, the changes still in the stash.
+    UpdatedWithConflicts,
 }
 
 /// Brings the current branch up to date with its upstream.
@@ -139,9 +142,14 @@ pub enum PullOutcome {
 /// Follows `branch.<name>.rebase`, `pull.rebase` and `pull.ff`; without
 /// them it merges, so diverged branches never stop with git's "how to
 /// reconcile" question.
+///
+/// Local changes that would get in the way stop it with
+/// [`crate::ErrorKind::PullBlockedByLocalChanges`]; with `autostash` they
+/// are stashed first and put back afterwards.
 pub fn pull(
     git: &Git,
     repo: &Path,
+    autostash: bool,
     cancel: &CancelToken,
     on_progress: impl FnMut(Progress),
 ) -> Result<PullOutcome, GitError> {
@@ -178,14 +186,42 @@ pub fn pull(
             .arg("@{upstream}")
         }
     };
-    command.run()?;
+    let command = if autostash {
+        command.arg("--autostash")
+    } else {
+        command
+    };
+    let output = command.run().map_err(blocked_by_local_changes)?;
 
     let after = rev_parse(git, repo, "HEAD")?;
-    Ok(if before == after {
-        PullOutcome::UpToDate
-    } else {
-        PullOutcome::Updated
-    })
+    let text = format!("{}{}", output.stdout_str(), output.stderr_str()).to_ascii_lowercase();
+    Ok(
+        if text.contains("applying autostash resulted in conflicts") {
+            PullOutcome::UpdatedWithConflicts
+        } else if before == after {
+            PullOutcome::UpToDate
+        } else {
+            PullOutcome::Updated
+        },
+    )
+}
+
+/// git refuses a merge over local changes it would touch (or any staged
+/// ones), and a rebase over any change at all; both say so differently.
+fn blocked_by_local_changes(err: GitError) -> GitError {
+    match err {
+        GitError::Failed { kind, code, stderr }
+            if kind == crate::ErrorKind::LocalChangesWouldBeOverwritten
+                || stderr.to_ascii_lowercase().contains("cannot rebase:") =>
+        {
+            GitError::Failed {
+                kind: crate::ErrorKind::PullBlockedByLocalChanges,
+                code,
+                stderr,
+            }
+        }
+        other => other,
+    }
 }
 
 /// Pushes the current branch to its upstream branch.

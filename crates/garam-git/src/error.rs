@@ -27,6 +27,9 @@ pub enum ErrorKind {
     BranchExists,
     BranchNotMerged,
     LocalChangesWouldBeOverwritten,
+    /// A pull stopped before merging because of local changes; it can be
+    /// retried with them stashed.
+    PullBlockedByLocalChanges,
     MergeConflict,
     RebaseConflict,
     RevertConflict,

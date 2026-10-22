@@ -138,7 +138,7 @@ export const commands = {
 	 *  asks the user for credentials.
 	 */
 	remoteFetch: (operationId: string, repo: string, remote: string, interactive: boolean, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_fetch", { operationId, repo, remote, interactive, onEvent })),
-	remotePull: (operationId: string, repo: string, onEvent: Channel<RemoteEvent>) => typedError<PullOutcome, AppError>(__TAURI_INVOKE("remote_pull", { operationId, repo, onEvent })),
+	remotePull: (operationId: string, repo: string, autostash: boolean, onEvent: Channel<RemoteEvent>) => typedError<PullOutcome, AppError>(__TAURI_INVOKE("remote_pull", { operationId, repo, autostash, onEvent })),
 	remotePush: (operationId: string, repo: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_push", { operationId, repo, onEvent })),
 	/**  Pushes the current branch to `remote` and sets it as the upstream. */
 	remotePublish: (operationId: string, repo: string, remote: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_publish", { operationId, repo, remote, onEvent })),
@@ -413,7 +413,12 @@ export type ErrorCode = ErrorKind | AppErrorKind;
  *  `errors:<kind>` i18n key, so adding a variant requires adding that key to
  *  every locale.
  */
-export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "invalid_branch_name" | "branch_exists" | "branch_not_merged" | "local_changes_would_be_overwritten" | "merge_conflict" | "rebase_conflict" | "revert_conflict" | "cherry_pick_conflict" | 
+export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "invalid_branch_name" | "branch_exists" | "branch_not_merged" | "local_changes_would_be_overwritten" | 
+/**
+ *  A pull stopped before merging because of local changes; it can be
+ *  retried with them stashed.
+ */
+"pull_blocked_by_local_changes" | "merge_conflict" | "rebase_conflict" | "revert_conflict" | "cherry_pick_conflict" | 
 /**  The branch already has the commit's changes; nothing was picked. */
 "cherry_pick_empty" | "invalid_tag_name" | "tag_exists" | 
 /**  HEAD moved since the screen was drawn (e.g. a commit from a terminal). */
@@ -610,7 +615,12 @@ export type PromptKind =
  */
 "host_key" | "other";
 
-export type PullOutcome = "up_to_date" | "updated";
+export type PullOutcome = "up_to_date" | "updated" | 
+/**
+ *  Pulled, but putting the stashed local changes back conflicted: the
+ *  conflicts are in the working tree, the changes still in the stash.
+ */
+"updated_with_conflicts";
 
 export type RefKind = 
 /**  A detached HEAD. */

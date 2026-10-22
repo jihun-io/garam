@@ -158,6 +158,7 @@ pub async fn remote_fetch(
 
 #[tauri::command]
 #[specta::specta]
+#[allow(clippy::too_many_arguments)]
 pub async fn remote_pull(
     operations: State<'_, Arc<Operations>>,
     askpass: State<'_, Arc<Askpass>>,
@@ -165,12 +166,13 @@ pub async fn remote_pull(
     accounts: State<'_, Arc<AccountStore>>,
     operation_id: String,
     repo: String,
+    autostash: bool,
     on_event: Channel<RemoteEvent>,
 ) -> AppResult<PullOutcome> {
     let repo = PathBuf::from(repo);
     NetworkContext::new(&operations, &askpass, operation_id, true, on_event)
         .for_repo(&repositories, &accounts, &repo)
-        .run(move |git, cancel, progress| remote::pull(git, &repo, cancel, progress))
+        .run(move |git, cancel, progress| remote::pull(git, &repo, autostash, cancel, progress))
         .await
 }
 

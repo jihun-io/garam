@@ -1,4 +1,4 @@
-import { act, screen } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -154,6 +154,28 @@ describe("SyncButton", () => {
     expect(button).toHaveTextContent("3 commits to pull");
     await user.click(button);
     expect(await screen.findByText("Pulled from origin/main.")).toBeVisible();
+  });
+
+  it("offers to stash local changes when they stop a pull", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.remotePull)
+      .mockResolvedValueOnce({
+        status: "error",
+        error: { kind: "pull_blocked_by_local_changes", params: {}, detail: null },
+      })
+      .mockResolvedValueOnce(ok("updated_with_conflicts"));
+    setup({ ahead: 1, behind: 3 });
+
+    await user.click(await screen.findByRole("button", { name: /Pull origin/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Can't Pull" });
+    expect(vi.mocked(commands.remotePull).mock.calls[0][2]).toBe(false);
+    expect(within(dialog).getByText(/Uncommitted changes are in the way/)).toBeVisible();
+
+    await user.click(within(dialog).getByRole("button", { name: "Stash Changes and Pull" }));
+    await vi.waitFor(() => expect(commands.remotePull).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(commands.remotePull).mock.calls[1][2]).toBe(true);
+    expect(await screen.findByText(/putting your stashed changes back conflicted/)).toBeVisible();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("offers sync commands to the menu and shortcuts", async () => {

@@ -17,6 +17,8 @@ import styles from "./SyncButton.module.css";
 import { useSyncStore, type SyncAction } from "./syncStore";
 import { useBackgroundFetch } from "./useBackgroundFetch";
 import { Icon } from "../../components/Icon";
+import { Button } from "../../components/ui/Button";
+import { FormDialog } from "../../components/ui/Dialog";
 import { ToolbarButton, ToolbarPlaceholder } from "../../components/ui/ToolbarButton";
 import { Tooltip } from "../../components/ui/Tooltip";
 
@@ -57,11 +59,16 @@ export function SyncButton({ repo }: { repo: string }) {
   const head = branch?.head ?? "";
   const busy = running !== undefined;
 
-  const start = (action: SyncAction) => {
-    run({ action, remote })
+  // A pull that local changes stopped can be retried with them stashed.
+  const [blockedPull, setBlockedPull] = useState(false);
+
+  const start = (action: SyncAction, autostash = false) => {
+    run({ action, remote, autostash })
       .then((result) => result && announce(action, result))
       .catch((e: unknown) => {
-        if (toAppError(e).kind !== "cancelled") showError(e);
+        const kind = toAppError(e).kind;
+        if (kind === "pull_blocked_by_local_changes") setBlockedPull(true);
+        else if (kind !== "cancelled") showError(e);
       });
   };
 
@@ -70,7 +77,9 @@ export function SyncButton({ repo }: { repo: string }) {
       showInfo(
         result === "up_to_date"
           ? t("done.upToDate", { branch: head })
-          : t("done.pulled", { upstream }),
+          : result === "updated_with_conflicts"
+            ? t("done.pulledWithConflicts", { upstream })
+            : t("done.pulled", { upstream }),
       );
     } else if (action === "push") {
       showInfo(t("done.pushed", { upstream }));
@@ -194,6 +203,39 @@ export function SyncButton({ repo }: { repo: string }) {
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
       )}
+      {blockedPull && (
+        <PullBlockedDialog
+          onStash={() => {
+            setBlockedPull(false);
+            start("pull", true);
+          }}
+          onClose={() => setBlockedPull(false)}
+        />
+      )}
     </div>
+  );
+}
+
+/** Offers to stash local changes for a pull they stopped. */
+function PullBlockedDialog({ onStash, onClose }: { onStash: () => void; onClose: () => void }) {
+  const { t } = useTranslation(["sync", "errors"]);
+  return (
+    <FormDialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title={t("pullBlocked.title")}
+      onSubmit={onStash}
+      footer={
+        <>
+          <Button onClick={onClose}>{t("pullBlocked.cancel")}</Button>
+          <Button type="submit" variant="primary" autoFocus>
+            {t("pullBlocked.submit")}
+          </Button>
+        </>
+      }
+    >
+      <p>{t("errors:pull_blocked_by_local_changes")}</p>
+      <p>{t("pullBlocked.body")}</p>
+    </FormDialog>
   );
 }

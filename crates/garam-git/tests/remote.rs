@@ -61,7 +61,13 @@ fn fetch(repo: &TestRepo) -> Result<(), garam_git::GitError> {
 }
 
 fn pull(repo: &TestRepo) -> Result<PullOutcome, garam_git::GitError> {
-    remote::pull(repo.git_handle(), repo.path(), &CancelToken::new(), |_| {})
+    remote::pull(
+        repo.git_handle(),
+        repo.path(),
+        false,
+        &CancelToken::new(),
+        |_| {},
+    )
 }
 
 fn push(repo: &TestRepo) -> Result<(), garam_git::GitError> {
@@ -286,7 +292,8 @@ fn cancelled_operations_do_not_run() {
     s.commit_upstream("new.txt", "new\n");
     let cancel = CancelToken::new();
     cancel.cancel();
-    let err = remote::pull(s.local.git_handle(), s.local.path(), &cancel, |_| {}).unwrap_err();
+    let err =
+        remote::pull(s.local.git_handle(), s.local.path(), false, &cancel, |_| {}).unwrap_err();
     assert_eq!(err.kind(), ErrorKind::Cancelled);
     assert_eq!(ahead_behind(&s.local), (0, 0));
 }
@@ -317,5 +324,82 @@ fn askpass_answers_credential_prompts() {
     assert!(
         text.contains("password=secret for Password for 'https://garam-user@example.com': "),
         "{text}"
+    );
+}
+
+fn pull_stashing(repo: &TestRepo) -> Result<PullOutcome, garam_git::GitError> {
+    remote::pull(
+        repo.git_handle(),
+        repo.path(),
+        true,
+        &CancelToken::new(),
+        |_| {},
+    )
+}
+
+/// Upstream and local each have a commit, so pulling has to merge.
+fn diverged() -> Setup {
+    let s = Setup::new();
+    s.commit_upstream("theirs.txt", "theirs\n");
+    s.local.write("mine.txt", "mine\n");
+    s.local.commit_all("local work");
+    s
+}
+
+#[test]
+fn local_changes_in_the_way_block_a_pull_until_stashed() {
+    let s = diverged();
+    // Any staged change stops a merge.
+    s.local.write("notes.txt", "note\n");
+    s.local.git(["add", "notes.txt"]);
+    s.local.write("file.txt", "edited\n");
+
+    let err = pull(&s.local).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::PullBlockedByLocalChanges);
+
+    assert_eq!(pull_stashing(&s.local).unwrap(), PullOutcome::Updated);
+    assert_eq!(ahead_behind(&s.local), (2, 0));
+    assert!(s.local.path().join("theirs.txt").exists());
+    // The changes are back, the staged one still staged.
+    let status = status::status(s.local.git_handle(), s.local.path()).unwrap();
+    let file = |p: &str| status.files.iter().find(|f| f.path == p).unwrap().clone();
+    assert!(file("notes.txt").staged.is_some());
+    assert!(file("file.txt").unstaged.is_some());
+    assert!(s.local.git(["stash", "list"]).stdout_str().is_empty());
+}
+
+#[test]
+fn a_rebase_pull_is_blocked_the_same_way() {
+    let s = diverged();
+    s.local.git(["config", "pull.rebase", "true"]);
+    s.local.write("file.txt", "edited\n");
+    let err = pull(&s.local).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::PullBlockedByLocalChanges);
+    assert_eq!(pull_stashing(&s.local).unwrap(), PullOutcome::Updated);
+    assert_eq!(
+        std::fs::read_to_string(s.local.path().join("file.txt")).unwrap(),
+        "edited\n"
+    );
+}
+
+#[test]
+fn stashed_changes_that_clash_are_left_conflicted_and_kept() {
+    let s = diverged();
+    s.commit_upstream("file.txt", "upstream\n");
+    s.local.git(["fetch", "--quiet"]);
+    s.local.write("file.txt", "mine\n");
+
+    assert_eq!(
+        pull_stashing(&s.local).unwrap(),
+        PullOutcome::UpdatedWithConflicts
+    );
+    let state = garam_git::conflict::state(s.local.git_handle(), s.local.path()).unwrap();
+    assert_eq!(state.files.len(), 1);
+    assert_eq!(state.operation, None);
+    assert!(
+        s.local
+            .git(["stash", "list"])
+            .stdout_str()
+            .contains("autostash")
     );
 }

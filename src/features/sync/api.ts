@@ -21,6 +21,8 @@ export type SyncRequest = {
   /** Remote to fetch from or publish to. */
   remote: string | null;
   background?: boolean;
+  /** Pull only: stash local changes first and put them back after. */
+  autostash?: boolean;
 };
 
 /** What a finished operation did; `"done"` for everything but pull. */
@@ -33,7 +35,7 @@ export type SyncResult = PullOutcome | "done";
 export async function runSync(
   client: QueryClient,
   repo: string,
-  { action, remote, background = false }: SyncRequest,
+  { action, remote, background = false, autostash = false }: SyncRequest,
 ): Promise<SyncResult | null> {
   const operationId = crypto.randomUUID();
   const store = useSyncStore.getState();
@@ -54,7 +56,7 @@ export async function runSync(
         await unwrap(commands.remoteFetch(operationId, repo, needRemote(), !background, channel));
         return "done";
       case "pull":
-        return await unwrap(commands.remotePull(operationId, repo, channel));
+        return await unwrap(commands.remotePull(operationId, repo, autostash, channel));
       case "push":
         await unwrap(commands.remotePush(operationId, repo, channel));
         return "done";
@@ -75,7 +77,7 @@ export async function runSync(
 export function useSyncActions(repo: string) {
   const client = useQueryClient();
   const pull = useMutation({
-    mutationFn: () => runSync(client, repo, { action: "pull", remote: null }),
+    mutationFn: (request: SyncRequest) => runSync(client, repo, request),
     scope: indexScope(repo),
   });
   const other = useMutation({
@@ -83,7 +85,7 @@ export function useSyncActions(repo: string) {
   });
   return {
     run: (request: SyncRequest) =>
-      request.action === "pull" ? pull.mutateAsync() : other.mutateAsync(request),
+      request.action === "pull" ? pull.mutateAsync(request) : other.mutateAsync(request),
     cancel: () => {
       const running = useSyncStore.getState().running[repo];
       if (running) void commands.operationCancel(running.operationId);
