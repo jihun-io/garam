@@ -7,6 +7,7 @@ import segmented from "../../components/ui/Segmented.module.css";
 import { Tooltip } from "../../components/ui/Tooltip";
 
 import { ChangesView } from "../changes/ChangesView";
+import { useHistoryDialog } from "../history/historyDialogStore";
 import { HistoryView } from "../history/HistoryView";
 import styles from "./RepoTabs.module.css";
 
@@ -18,6 +19,16 @@ export function RepoTabs({ repo }: { repo: string }) {
   const [view, setView] = useState<View>("changes");
   useCommand("view.changes", () => setView("changes"));
   useCommand("view.history", () => setView("history"));
+  // Both open in the history, where their results show.
+  const openHistoryDialog = useHistoryDialog((s) => s.open);
+  useCommand("branch.compare", () => {
+    setView("history");
+    openHistoryDialog({ kind: "compareBranch" });
+  });
+  useCommand("repo.recover", () => {
+    setView("history");
+    openHistoryDialog({ kind: "recover" });
+  });
 
   const list = (
     <div className={styles.bar}>

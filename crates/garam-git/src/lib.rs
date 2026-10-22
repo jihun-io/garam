@@ -9,6 +9,7 @@ pub mod branch;
 mod cancel;
 mod command;
 pub mod commit;
+pub mod compare;
 pub mod config;
 pub mod conflict;
 pub mod credential;

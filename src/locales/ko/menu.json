@@ -15,7 +15,8 @@
       "create": "새 저장소…",
       "clone": "저장소 복제…",
       "openEditor": "에디터에서 열기",
-      "openTerminal": "터미널에서 열기"
+      "openTerminal": "터미널에서 열기",
+      "recover": "잃어버린 커밋 복구…"
     },
     "settings": "설정…",
     "view": {
@@ -33,7 +34,8 @@
     "branch": {
       "create": "새 브랜치…",
       "rename": "브랜치 이름 바꾸기…",
-      "merge": "현재 브랜치에 병합…"
+      "merge": "현재 브랜치에 병합…",
+      "compare": "현재 브랜치와 비교…"
     },
     "help": {
       "shortcuts": "키보드 단축키",

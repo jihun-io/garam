@@ -21,7 +21,8 @@
     "reset": "Reset to This Commit…",
     "copyPatch": "Copy as Patch",
     "savePatch": "Save as Patch…",
-    "openOnRemote": "Open on GitHub"
+    "openOnRemote": "Open on GitHub",
+    "compare": "Compare with Selected Commit"
   },
   "detail": {
     "select": "Select a commit to see its changes.",
@@ -153,5 +154,38 @@
     "cannot_check": "Signed (can't verify)",
     "cannot_checkHint": "This computer doesn't have the public key to check the signature.",
     "unknownSigner": "an unknown signer"
+  },
+  "compare": {
+    "title": "{{base}} ↔ {{target}}",
+    "close": "Close comparison",
+    "twoDot": "What changed from {{base}} to {{target}}.",
+    "threeDot": "What {{target}} changed since it split from {{base}}.",
+    "ahead_one": "{{count}} commit only on {{target}}",
+    "ahead_other": "{{count}} commits only on {{target}}",
+    "behind_one": "{{count}} commit only on {{base}}",
+    "behind_other": "{{count}} commits only on {{base}}",
+    "more": "and {{count}} more"
+  },
+  "compareBranch": {
+    "title": "Compare with Current Branch",
+    "body": "Shows what the chosen branch changed since it split from {{current}}.",
+    "branch": "Branch to compare",
+    "detached": "the detached HEAD",
+    "cancel": "Cancel",
+    "submit": "Compare"
+  },
+  "recover": {
+    "title": "Recover Lost Commits",
+    "body": "Commits HEAD was on recently (its reflog) that no branch, tag or remote branch holds now. Creating a branch brings one back.",
+    "empty": "No lost commits.",
+    "list": "Lost commits",
+    "view": "View",
+    "createBranch": "Create Branch…",
+    "close": "Close"
+  },
+  "peek": {
+    "note": "No branch holds this commit. Create a branch to keep it.",
+    "createBranch": "Create Branch…",
+    "close": "Close"
   }
 }

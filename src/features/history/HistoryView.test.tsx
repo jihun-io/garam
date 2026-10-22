@@ -18,8 +18,10 @@ import { useCommitDrafts } from "../changes/commitDraftStore";
 import { Notifications } from "../notify/Notifications";
 import { useNotify } from "../notify/notifyStore";
 import { runCommand } from "../../lib/commands";
+import { currentPlatform } from "../../lib/platform";
 import { DEFAULT_FILTER, useHistoryFilters } from "./filterStore";
 import { useHistoryDialog } from "./historyDialogStore";
+import { useHistoryPane } from "./historyPaneStore";
 import { HistoryView } from "./HistoryView";
 
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => {}) }));
@@ -43,6 +45,10 @@ vi.mock("../../ipc/bindings", () => ({
     commitPatch: vi.fn(),
     commitPatchSave: vi.fn(),
     remoteInfo: vi.fn(),
+    compareGet: vi.fn(),
+    compareFileDiff: vi.fn(),
+    compareImages: vi.fn(),
+    lostCommits: vi.fn(),
   },
 }));
 
@@ -177,6 +183,7 @@ describe("HistoryView", () => {
     useHistoryFilters.setState({ filters: {} });
     useHistoryDialog.setState({ dialog: null });
     useCommitDrafts.setState({ drafts: {} });
+    useHistoryPane.setState({ panes: {} });
   });
 
   const openMenu = async (user: ReturnType<typeof userEvent.setup>, text: string) => {
@@ -695,6 +702,120 @@ describe("HistoryView", () => {
       commits[1].oid,
       "/tmp/2222222.patch",
     );
+  });
+
+  const comparison = {
+    base: commits[2].oid,
+    target: commits[0].oid,
+    from: commits[2].oid,
+    ahead: 2,
+    behind: 0,
+    commits: [commits[0], commits[1]],
+    files: [{ path: "src/login.tsx", origPath: null, kind: "added" as const }],
+  };
+
+  it("compares two commits picked with Cmd-click, older first", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.compareGet).mockResolvedValue(ok(comparison));
+    vi.mocked(commands.compareFileDiff).mockResolvedValue(
+      ok({ type: "text", selectable: false, hunks: [] }),
+    );
+    setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+    const list = screen.getByRole("listbox", { name: "Commits" });
+
+    const modifier = currentPlatform() === "macos" ? "Meta" : "Control";
+    await user.keyboard(`{${modifier}>}`);
+    await user.click(within(list).getByText("Commit number 3"));
+    await user.keyboard(`{/${modifier}}`);
+    expect(commands.compareGet).toHaveBeenCalledWith(
+      "/repo",
+      commits[2].oid,
+      commits[0].oid,
+      "two_dot",
+    );
+    expect(await screen.findByRole("heading", { name: "3333333 ↔ 1111111" })).toBeVisible();
+    expect(screen.getByText("2 commits only on 1111111")).toBeVisible();
+    expect(screen.getByRole("button", { name: /src\/login\.tsx/ })).toBeVisible();
+
+    // Picking a row leaves the comparison.
+    await user.click(within(list).getByText("Commit number 2"));
+    expect(await screen.findByRole("heading", { name: "Commit number 2" })).toBeVisible();
+
+    const menu = await openMenu(user, "Commit number 3");
+    await user.click(within(menu).getByRole("menuitem", { name: "Compare with Selected Commit" }));
+    expect(commands.compareGet).toHaveBeenLastCalledWith(
+      "/repo",
+      commits[2].oid,
+      commits[1].oid,
+      "two_dot",
+    );
+    await user.click(await screen.findByRole("button", { name: "Close comparison" }));
+    expect(await screen.findByRole("heading", { name: "Commit number 2" })).toBeVisible();
+  });
+
+  it("compares a branch with the current one since they split", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.compareGet).mockResolvedValue(ok(comparison));
+    vi.mocked(commands.compareFileDiff).mockResolvedValue(
+      ok({ type: "text", selectable: false, hunks: [] }),
+    );
+    setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+    useHistoryDialog.setState({ dialog: { kind: "compareBranch" } });
+
+    const dialog = await screen.findByRole("dialog", { name: "Compare with Current Branch" });
+    expect(
+      await within(dialog).findByRole("combobox", { name: "Branch to compare" }),
+    ).toHaveTextContent("origin/main");
+    await user.click(within(dialog).getByRole("button", { name: "Compare" }));
+    expect(commands.compareGet).toHaveBeenCalledWith(
+      "/repo",
+      "refs/heads/main",
+      "refs/remotes/origin/main",
+      "three_dot",
+    );
+    expect(await screen.findByRole("heading", { name: "main ↔ origin/main" })).toBeVisible();
+    expect(screen.getByText("What origin/main changed since it split from main.")).toBeVisible();
+  });
+
+  it("lists lost commits to view or bring back", async () => {
+    const user = userEvent.setup();
+    const lost = {
+      ...commit(7, { summary: "fix: work I reset away" }),
+      action: "reset: moving to HEAD~1",
+      visitedAt: now - 60,
+    };
+    vi.mocked(commands.lostCommits).mockResolvedValue(ok([lost]));
+    setup();
+    vi.mocked(commands.commitDetail).mockImplementation(async (_repo, oid) =>
+      ok(detail([lost, ...commits].find((c) => c.oid === oid)!)),
+    );
+    await screen.findByRole("heading", { name: "Add login screen" });
+    useHistoryDialog.setState({ dialog: { kind: "recover" } });
+
+    let dialog = await screen.findByRole("dialog", { name: "Recover Lost Commits" });
+    const item = await within(dialog).findByText(/reset: moving to HEAD~1/);
+    expect(item).toHaveTextContent("7777777");
+    expect(await axeViolations(dialog)).toEqual([]);
+    await user.click(within(dialog).getByRole("button", { name: "View" }));
+    expect(await screen.findByRole("heading", { name: "fix work I reset away" })).toBeVisible();
+    expect(
+      screen.getByText("No branch holds this commit. Create a branch to keep it."),
+    ).toBeVisible();
+
+    useHistoryDialog.setState({ dialog: { kind: "recover" } });
+    dialog = await screen.findByRole("dialog", { name: "Recover Lost Commits" });
+    await user.click(await within(dialog).findByRole("button", { name: "Create Branch…" }));
+    expect(useBranchDialog.getState().dialog).toEqual({ kind: "create", from: lost });
+  });
+
+  it("says when nothing is lost", async () => {
+    vi.mocked(commands.lostCommits).mockResolvedValue(ok([]));
+    setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+    useHistoryDialog.setState({ dialog: { kind: "recover" } });
+    expect(await screen.findByText("No lost commits.")).toBeVisible();
   });
 
   it("explains an empty history", async () => {

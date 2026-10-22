@@ -15,7 +15,8 @@
       "create": "New Repository…",
       "clone": "Clone Repository…",
       "openEditor": "Open in Editor",
-      "openTerminal": "Open in Terminal"
+      "openTerminal": "Open in Terminal",
+      "recover": "Recover Lost Commits…"
     },
     "settings": "Settings…",
     "view": {
@@ -33,7 +34,8 @@
     "branch": {
       "create": "New Branch…",
       "rename": "Rename Branch…",
-      "merge": "Merge into Current Branch…"
+      "merge": "Merge into Current Branch…",
+      "compare": "Compare with Current Branch…"
     },
     "help": {
       "shortcuts": "Keyboard Shortcuts",

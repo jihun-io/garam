@@ -18,10 +18,13 @@ import { useNotify } from "../notify/notifyStore";
 import { SidebarSplitter } from "../settings/SidebarSplitter";
 import { useCommitActions, useHistory, useHistoryMarkers, useRemoteWebUrl, useRevert } from "./api";
 import { CommitDetailView } from "./CommitDetailView";
+import { CompareView } from "./CompareView";
 import { CommitList, type CommitActions } from "./CommitList";
 import { isUnfiltered, useHistoryFilter, useHistoryFilters, useSettledFilter } from "./filterStore";
 import { HistoryDialogs } from "./HistoryDialogs";
 import { useHistoryDialog } from "./historyDialogStore";
+import { useHistoryPane } from "./historyPaneStore";
+import styles from "./History.module.css";
 import { HistorySearch } from "./HistorySearch";
 import { buildGraph } from "./graph";
 import { toMarks } from "./refs";
@@ -49,6 +52,14 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
   const setDraft = useCommitDrafts((s) => s.set);
   const { showError, showInfo } = useNotify();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const pane = useHistoryPane((s) => s.panes[repo]);
+  const showPane = useHistoryPane((s) => s.show);
+  const closePane = useHistoryPane((s) => s.close);
+  // Picking a row goes back from a comparison to that row.
+  const select = (id: string) => {
+    setSelectedId(id);
+    closePane(repo);
+  };
   const head = status.data?.branch.oid ?? null;
 
   // Uncommitted changes, commits waiting to be pulled and stashes join the
@@ -136,6 +147,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
         })
         .catch(showError),
     openOnRemote: (commit) => void openUrl(`${webUrl}/commit/${commit.oid}`).catch(showError),
+    compare: (commit) => compareWithSelected(commit.oid),
     available: (commit) => {
       const sync = marks.sync.get(commit.oid);
       // Listed from HEAD, so already on it (except commits not pulled yet).
@@ -148,12 +160,68 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
           commit.oid === head && commit.parents.length <= 1 && (sync === "unpushed" || !hasRemote),
         // Not there until pushed.
         openOnRemote: webUrl !== null && sync !== "unpushed",
+        compare: selected !== null && selected.kind !== "wip" && selected.id !== commit.oid,
       };
     },
   };
 
+  /** Compares the selected row with `id`, the older one as the base. */
+  function compareWithSelected(id: string) {
+    if (!selected || selected.kind === "wip" || selected.id === id) return select(id);
+    const other = rows.find((r) => r.id === id);
+    if (!other || other.kind === "wip") return;
+    const [base, target] =
+      rows.indexOf(other) > rows.indexOf(selected) ? [other, selected] : [selected, other];
+    const label = (row: typeof other) => shortHash(row.id);
+    showPane(repo, {
+      kind: "compare",
+      base: base.id,
+      target: target.id,
+      mode: "two_dot",
+      baseLabel: label(base),
+      targetLabel: label(target),
+    });
+  }
+
   let main;
-  if (history.isError) {
+  if (pane?.kind === "compare") {
+    main = <CompareView repo={repo} pane={pane} onClose={() => closePane(repo)} />;
+  } else if (pane?.kind === "commit") {
+    main = (
+      <div className={styles.peek}>
+        <div className={styles.peekBar}>
+          <p>{t("peek.note")}</p>
+          <Button
+            onClick={() =>
+              openBranchDialog({
+                kind: "create",
+                from: {
+                  oid: pane.oid,
+                  parents: [],
+                  authorName: "",
+                  authorEmail: "",
+                  authoredAt: 0,
+                  summary: shortHash(pane.oid),
+                },
+              })
+            }
+          >
+            {t("peek.createBranch")}
+          </Button>
+          <Button variant="ghost" onClick={() => closePane(repo)}>
+            {t("peek.close")}
+          </Button>
+        </div>
+        <CommitDetailView
+          repo={repo}
+          oid={pane.oid}
+          badges={[]}
+          sync={undefined}
+          onCopyHash={copyHash}
+        />
+      </div>
+    );
+  } else if (history.isError) {
     main = (
       <div className={changesStyles.error}>
         <ErrorMessage error={toAppError(history.error)} />
@@ -203,7 +271,8 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
           head={head}
           marks={marks}
           selectedId={selected?.id ?? null}
-          onSelect={setSelectedId}
+          onSelect={select}
+          onCompare={compareWithSelected}
           hasMore={hasNextPage}
           loadMore={loadMore}
           actions={actions}

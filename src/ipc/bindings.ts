@@ -118,6 +118,14 @@ export const commands = {
 	commitCheckout: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_checkout", { repo, oid })),
 	/**  Tags `oid`; annotated when `message` is given. */
 	tagCreate: (repo: string, name: string, oid: string, message: string | null) => typedError<null, AppError>(__TAURI_INVOKE("tag_create", { repo, name, oid, message })),
+	/**  Compares two commits or branches (commit ids or full ref names). */
+	compareGet: (repo: string, base: string, target: string, mode: CompareMode) => typedError<Comparison, AppError>(__TAURI_INVOKE("compare_get", { repo, base, target, mode })),
+	/**  One file's diff in a comparison. */
+	compareFileDiff: (repo: string, from: string, target: string, file: CommitFile, ignoreWhitespace: boolean) => typedError<FileDiff, AppError>(__TAURI_INVOKE("compare_file_diff", { repo, from, target, file, ignoreWhitespace })),
+	/**  An image file at the two ends of a comparison. */
+	compareImages: (repo: string, from: string, target: string, file: CommitFile) => typedError<ImageVersions, AppError>(__TAURI_INVOKE("compare_images", { repo, from, target, file })),
+	/**  Commits HEAD was on that no branch, tag or remote branch holds now. */
+	lostCommits: (repo: string) => typedError<LostCommit[], AppError>(__TAURI_INVOKE("lost_commits", { repo })),
 	remoteInfo: (repo: string) => typedError<RemoteInfo, AppError>(__TAURI_INVOKE("remote_info", { repo })),
 	/**
 	 *  Fetches `remote`. With `interactive: false` (background fetch), nothing
@@ -303,6 +311,32 @@ export type CommitSummary = {
 	/**  Seconds since the Unix epoch. */
 	authoredAt: number,
 	summary: string,
+};
+
+export type CompareMode = 
+/**  What changed from `base` to `target` (`git diff base target`). */
+"two_dot" | 
+/**
+ *  What `target` changed since it split from `base` (`base...target`),
+ *  as a pull request shows it.
+ */
+"three_dot";
+
+export type Comparison = {
+	base: string,
+	target: string,
+	/**
+	 *  The commit the diff starts from: `base`, or the merge base for a
+	 *  three-dot comparison of branches that share history.
+	 */
+	from: string,
+	/**  Commits on `target` that `base` lacks. */
+	ahead: number,
+	/**  Commits on `base` that `target` lacks. */
+	behind: number,
+	/**  The first of the `ahead` commits, newest first. */
+	commits: CommitSummary[],
+	files: CommitFile[],
 };
 
 export type ConflictFile = {
@@ -504,6 +538,20 @@ export type LineRef = {
 	kind: LineKind,
 	line: number,
 };
+
+/**
+ *  A commit HEAD was on that no branch, tag or remote branch holds now,
+ *  e.g. after a reset or a deleted branch.
+ */
+export type LostCommit = {
+	/**
+	 *  git's note on how HEAD got there, e.g. `commit: Fix x` or
+	 *  `reset: moving to HEAD~1`.
+	 */
+	action: string,
+	/**  When HEAD was there, in seconds since the Unix epoch. */
+	visitedAt: number,
+} & CommitSummary;
 
 export type MergeOutcome = "up_to_date" | "fast_forward" | "merged";
 

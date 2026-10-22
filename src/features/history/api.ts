@@ -6,7 +6,14 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { commands, unwrap, type CommitFile, type HistoryFilter, type ResetMode } from "../../ipc";
+import {
+  commands,
+  unwrap,
+  type CommitFile,
+  type CompareMode,
+  type HistoryFilter,
+  type ResetMode,
+} from "../../ipc";
 import { changesKeys, indexScope } from "../changes/api";
 import { useRemoteInfo } from "../sync/api";
 import { githubWebUrl } from "./message";
@@ -24,10 +31,13 @@ export const historyKeys = {
   list: (repo: string, head: string | null, filter: HistoryFilter, refs: string) =>
     ["history", repo, "list", head, filter, refs] as const,
   detail: (repo: string, oid: string) => ["history", repo, "commit", oid] as const,
-  diff: (repo: string, oid: string, path: string, ignoreWhitespace: boolean) =>
-    ["history", repo, "commit", oid, "diff", path, ignoreWhitespace] as const,
-  images: (repo: string, oid: string, path: string) =>
-    ["history", repo, "commit", oid, "images", path] as const,
+  diff: (repo: string, source: string, path: string, ignoreWhitespace: boolean) =>
+    ["history", repo, "diff", source, path, ignoreWhitespace] as const,
+  images: (repo: string, source: string, path: string) =>
+    ["history", repo, "images", source, path] as const,
+  comparison: (repo: string, base: string, target: string, mode: CompareMode) =>
+    ["repo", repo, "comparison", base, target, mode] as const,
+  lost: (repo: string) => ["repo", repo, "lost-commits"] as const,
   signature: (repo: string, oid: string) => ["history", repo, "commit", oid, "signature"] as const,
 };
 
@@ -74,26 +84,64 @@ export function useCommitDetail(repo: string, oid: string | null) {
   });
 }
 
-export function useCommitFileDiff(
+/** Where a file's diff comes from: one commit, or the ends of a comparison. */
+export type DiffSource =
+  { kind: "commit"; oid: string } | { kind: "compare"; from: string; target: string };
+
+const sourceKey = (source: DiffSource) =>
+  source.kind === "commit" ? source.oid : `${source.from}..${source.target}`;
+
+export function useFileDiff(
   repo: string,
-  oid: string,
+  source: DiffSource,
   file: CommitFile | null,
   ignoreWhitespace: boolean,
 ) {
   return useQuery({
-    queryKey: historyKeys.diff(repo, oid, file?.path ?? "", ignoreWhitespace),
-    queryFn: () => unwrap(commands.commitFileDiff(repo, oid, file!, ignoreWhitespace)),
+    queryKey: historyKeys.diff(repo, sourceKey(source), file?.path ?? "", ignoreWhitespace),
+    queryFn: () =>
+      unwrap(
+        source.kind === "commit"
+          ? commands.commitFileDiff(repo, source.oid, file!, ignoreWhitespace)
+          : commands.compareFileDiff(repo, source.from, source.target, file!, ignoreWhitespace),
+      ),
     enabled: file !== null,
     staleTime: Infinity,
   });
 }
 
-export function useCommitImages(repo: string, oid: string, file: CommitFile, enabled: boolean) {
+export function useFileImages(
+  repo: string,
+  source: DiffSource,
+  file: CommitFile,
+  enabled: boolean,
+) {
   return useQuery({
-    queryKey: historyKeys.images(repo, oid, file.path),
-    queryFn: () => unwrap(commands.commitImages(repo, oid, file)),
+    queryKey: historyKeys.images(repo, sourceKey(source), file.path),
+    queryFn: () =>
+      unwrap(
+        source.kind === "commit"
+          ? commands.commitImages(repo, source.oid, file)
+          : commands.compareImages(repo, source.from, source.target, file),
+      ),
     enabled,
     staleTime: Infinity,
+  });
+}
+
+/** Under the repo prefix: branches move, and the comparison with them. */
+export function useComparison(repo: string, base: string, target: string, mode: CompareMode) {
+  return useQuery({
+    queryKey: historyKeys.comparison(repo, base, target, mode),
+    queryFn: () => unwrap(commands.compareGet(repo, base, target, mode)),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useLostCommits(repo: string) {
+  return useQuery({
+    queryKey: historyKeys.lost(repo),
+    queryFn: () => unwrap(commands.lostCommits(repo)),
   });
 }
 

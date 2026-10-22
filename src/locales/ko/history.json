@@ -21,7 +21,8 @@
     "reset": "이 커밋으로 리셋…",
     "copyPatch": "패치로 복사",
     "savePatch": "패치로 저장…",
-    "openOnRemote": "GitHub에서 열기"
+    "openOnRemote": "GitHub에서 열기",
+    "compare": "선택한 커밋과 비교"
   },
   "detail": {
     "select": "커밋을 선택하면 변경 내용을 볼 수 있습니다.",
@@ -153,5 +154,38 @@
     "cannot_check": "서명됨 (확인할 수 없음)",
     "cannot_checkHint": "서명을 확인할 공개 키가 이 컴퓨터에 없습니다.",
     "unknownSigner": "알 수 없는 사람"
+  },
+  "compare": {
+    "title": "{{base}} ↔ {{target}}",
+    "close": "비교 닫기",
+    "twoDot": "{{base}}에서 {{target}}까지 바뀐 내용입니다.",
+    "threeDot": "{{target}}이(가) {{base}}에서 갈라진 뒤 바뀐 내용입니다.",
+    "ahead_one": "{{target}}에만 있는 커밋 {{count}}개",
+    "ahead_other": "{{target}}에만 있는 커밋 {{count}}개",
+    "behind_one": "{{base}}에만 있는 커밋 {{count}}개",
+    "behind_other": "{{base}}에만 있는 커밋 {{count}}개",
+    "more": "외 {{count}}개"
+  },
+  "compareBranch": {
+    "title": "현재 브랜치와 비교",
+    "body": "고른 브랜치가 {{current}}에서 갈라진 뒤 바꾼 내용을 보여줍니다.",
+    "branch": "비교할 브랜치",
+    "detached": "분리된 HEAD",
+    "cancel": "취소",
+    "submit": "비교"
+  },
+  "recover": {
+    "title": "잃어버린 커밋 복구",
+    "body": "HEAD가 최근에 지나간 커밋(reflog) 가운데 지금 어느 브랜치·태그·원격 브랜치에도 없는 커밋입니다. 브랜치를 만들면 되살아납니다.",
+    "empty": "잃어버린 커밋이 없습니다.",
+    "list": "잃어버린 커밋",
+    "view": "보기",
+    "createBranch": "브랜치 만들기…",
+    "close": "닫기"
+  },
+  "peek": {
+    "note": "어느 브랜치에도 없는 커밋입니다. 되살리려면 브랜치를 만드세요.",
+    "createBranch": "브랜치 만들기…",
+    "close": "닫기"
   }
 }

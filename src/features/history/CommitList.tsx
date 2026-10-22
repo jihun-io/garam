@@ -7,6 +7,7 @@ import { Icon } from "../../components/Icon";
 import menu from "../../components/ui/Menu.module.css";
 import { Tooltip } from "../../components/ui/Tooltip";
 import type { CommitSummary } from "../../ipc";
+import { currentPlatform } from "../../lib/platform";
 import { useRelativeTime } from "../../lib/time";
 import { CommitTitle } from "./CommitTitle";
 import type { Graph } from "./graph";
@@ -34,12 +35,14 @@ export type CommitActions = {
   copyPatch: Action;
   savePatch: Action;
   openOnRemote: Action;
+  compare: Action;
   /** Which actions make sense for this commit right now. */
   available: (commit: CommitSummary) => {
     cherryPick: boolean;
     revert: boolean;
     undo: boolean;
     openOnRemote: boolean;
+    compare: boolean;
   };
 };
 
@@ -50,6 +53,7 @@ export function CommitList({
   marks,
   selectedId,
   onSelect,
+  onCompare,
   hasMore,
   loadMore,
   actions,
@@ -61,6 +65,8 @@ export function CommitList({
   marks: HistoryMarks;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** Cmd/Ctrl-click: compare this row with the selected one. */
+  onCompare: (id: string) => void;
   hasMore: boolean;
   loadMore: () => void;
   actions: CommitActions;
@@ -124,7 +130,15 @@ export function CommitList({
               data-kind={row.kind}
               data-sync={marks.sync.get(row.id)}
               style={style}
-              onMouseDown={() => onSelect(row.id)}
+              onMouseDown={(e) => {
+                // A right click opens the menu and keeps the selection, so
+                // "compare with selected" can refer to it.
+                if (e.button !== 0) return;
+                // On macOS, Ctrl-click is a right click.
+                const compare = currentPlatform() === "macos" ? e.metaKey : e.ctrlKey;
+                if (compare && row.kind !== "wip") onCompare(row.id);
+                else onSelect(row.id);
+              }}
             >
               {graph && <GraphCell row={graph.rows[item.index]} height={item.size} shape={shape} />}
               <RowText row={row} marks={marks} />
@@ -195,6 +209,7 @@ function CommitMenu({ commit, actions }: { commit: CommitSummary; actions: Commi
       {item(t("menu.copyPatch"), actions.copyPatch)}
       {item(t("menu.savePatch"), actions.savePatch)}
       {can.openOnRemote && item(t("menu.openOnRemote"), actions.openOnRemote)}
+      {can.compare && item(t("menu.compare"), actions.compare)}
       <ContextMenu.Separator className={menu.separator} />
       {item(t("menu.createBranch"), actions.createBranch)}
       {item(t("menu.createTag"), actions.createTag)}

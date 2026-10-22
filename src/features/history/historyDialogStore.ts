@@ -2,10 +2,10 @@ import { create } from "zustand";
 
 import type { CommitSummary } from "../../ipc";
 
-export type HistoryDialog = {
-  kind: "reset" | "checkout" | "tag";
-  commit: CommitSummary;
-};
+export type HistoryDialog =
+  | { kind: "reset" | "checkout" | "tag"; commit: CommitSummary }
+  | { kind: "compareBranch" }
+  | { kind: "recover" };
 
 export const useHistoryDialog = create<{
   dialog: HistoryDialog | null;

@@ -24,10 +24,11 @@ import { isImage, splitPath, type DisplayKind } from "../changes/fileState";
 import { useNotify } from "../notify/notifyStore";
 import {
   useCommitDetail,
-  useCommitFileDiff,
-  useCommitImages,
   useCommitSignature,
+  useFileDiff,
+  useFileImages,
   useRemoteWebUrl,
+  type DiffSource,
 } from "./api";
 import { CommitTitle } from "./CommitTitle";
 import { useDiffOptions } from "./diffOptionsStore";
@@ -110,8 +111,6 @@ function Loaded({
 }) {
   const { t, i18n } = useTranslation(["history", "changes"]);
   const relativeTime = useRelativeTime();
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const selected = commit.files.find((f) => f.path === selectedPath) ?? commit.files[0] ?? null;
   const date = new Date(commit.authoredAt * 1000);
   const hash = shortHash(commit.oid);
   const webUrl = useRemoteWebUrl(repo);
@@ -186,57 +185,77 @@ function Loaded({
         </p>
       </header>
 
-      {commit.files.length === 0 ? (
-        <p className={diffStyles.notice}>{t("detail.noFiles")}</p>
-      ) : (
-        <div className={styles.split}>
-          <nav
-            className={styles.files}
-            aria-label={t("detail.files", { count: commit.files.length })}
-          >
-            <p className={styles.filesTitle}>{t("detail.files", { count: commit.files.length })}</p>
-            <ul className={styles.fileList}>
-              {commit.files.map((file) => {
-                const kind = displayKind(file.kind);
-                const { dir, name } = splitPath(file.path);
-                return (
-                  <li key={file.path}>
-                    <button
-                      type="button"
-                      className={styles.file}
-                      aria-current={file.path === selected?.path ? "true" : undefined}
-                      onClick={() => setSelectedPath(file.path)}
-                    >
-                      <Tooltip content={file.path} whenTruncated>
-                        <span className={styles.fileName}>
-                          <span className={styles.fileDir}>{dir}</span>
-                          {name}
-                        </span>
-                      </Tooltip>
-                      <Tooltip content={t(`changes:kind.${kind}`)} side="right">
-                        <span className={`${styles.fileKind} ${styles[kind]}`}>
-                          <Icon name={kind} label={t(`changes:kind.${kind}`)} />
-                        </span>
-                      </Tooltip>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-          {selected && <CommitFileDiff repo={repo} oid={commit.oid} file={selected} />}
-        </div>
-      )}
+      <ChangedFiles repo={repo} files={commit.files} source={{ kind: "commit", oid: commit.oid }} />
     </div>
   );
 }
 
-function CommitFileDiff({ repo, oid, file }: { repo: string; oid: string; file: CommitFile }) {
+/** Files a commit or comparison changed, beside the selected file's diff. */
+export function ChangedFiles({
+  repo,
+  files,
+  source,
+}: {
+  repo: string;
+  files: CommitFile[];
+  source: DiffSource;
+}) {
+  const { t } = useTranslation(["history", "changes"]);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const selected = files.find((f) => f.path === selectedPath) ?? files[0] ?? null;
+  if (files.length === 0) return <p className={diffStyles.notice}>{t("detail.noFiles")}</p>;
+  return (
+    <div className={styles.split}>
+      <nav className={styles.files} aria-label={t("detail.files", { count: files.length })}>
+        <p className={styles.filesTitle}>{t("detail.files", { count: files.length })}</p>
+        <ul className={styles.fileList}>
+          {files.map((file) => {
+            const kind = displayKind(file.kind);
+            const { dir, name } = splitPath(file.path);
+            return (
+              <li key={file.path}>
+                <button
+                  type="button"
+                  className={styles.file}
+                  aria-current={file.path === selected?.path ? "true" : undefined}
+                  onClick={() => setSelectedPath(file.path)}
+                >
+                  <Tooltip content={file.path} whenTruncated>
+                    <span className={styles.fileName}>
+                      <span className={styles.fileDir}>{dir}</span>
+                      {name}
+                    </span>
+                  </Tooltip>
+                  <Tooltip content={t(`changes:kind.${kind}`)} side="right">
+                    <span className={`${styles.fileKind} ${styles[kind]}`}>
+                      <Icon name={kind} label={t(`changes:kind.${kind}`)} />
+                    </span>
+                  </Tooltip>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+      {selected && <FileDiffPane repo={repo} source={source} file={selected} />}
+    </div>
+  );
+}
+
+function FileDiffPane({
+  repo,
+  source,
+  file,
+}: {
+  repo: string;
+  source: DiffSource;
+  file: CommitFile;
+}) {
   const { t } = useTranslation(["changes", "history"]);
   const { ignoreWhitespace, setIgnoreWhitespace } = useDiffOptions();
   const image = isImage(file.path);
-  const diff = useCommitFileDiff(repo, oid, image ? null : file, ignoreWhitespace);
-  const images = useCommitImages(repo, oid, file, image);
+  const diff = useFileDiff(repo, source, image ? null : file, ignoreWhitespace);
+  const images = useFileImages(repo, source, file, image);
   const kind = displayKind(file.kind);
 
   let body;

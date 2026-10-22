@@ -119,12 +119,15 @@ async function buildMenu(t: TFunction<["menu", "repos"]>, items: Map<CommandId, 
     command("repo.openEditor"),
     command("repo.openTerminal"),
     command("repo.reveal"),
+    separator(),
+    command("repo.recover"),
   ]);
   const branch = submenu(t("menu:menus.branch"), [
     command("branch.create"),
     command("branch.rename"),
     separator(),
     command("branch.merge"),
+    command("branch.compare"),
   ]);
   const window = mac
     ? submenu(t("menu:menus.window"), [

@@ -5,27 +5,43 @@ import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
 import { FormDialog } from "../../components/ui/Dialog";
 import { Field } from "../../components/ui/Field";
-import { toAppError, type AppError, type CommitSummary, type ResetMode } from "../../ipc";
+import { Loading } from "../../components/ui/Loading";
+import { Select, type SelectOption } from "../../components/ui/Select";
+import {
+  toAppError,
+  type AppError,
+  type Branch,
+  type CommitSummary,
+  type ResetMode,
+} from "../../ipc";
 import { shortHash } from "../../lib/hash";
+import { useRelativeTime } from "../../lib/time";
+import { useBranches } from "../branches/api";
 import branchStyles from "../branches/branches.module.css";
 import { useBranchDialog } from "../branches/branchDialogStore";
 import { useStatus } from "../changes/api";
 import { useNotify } from "../notify/notifyStore";
-import { useCommitActions } from "./api";
+import { useCommitActions, useLostCommits } from "./api";
+import { CommitTitle } from "./CommitTitle";
+import styles from "./History.module.css";
 import { useHistoryDialog } from "./historyDialogStore";
+import { useHistoryPane } from "./historyPaneStore";
 
 /** Renders whichever history dialog is open for `repo`. */
 export function HistoryDialogs({ repo }: { repo: string }) {
   const { dialog, close } = useHistoryDialog();
   if (!dialog) return null;
-  const props = { repo, commit: dialog.commit, onClose: close };
   switch (dialog.kind) {
     case "reset":
-      return <ResetDialog {...props} />;
+      return <ResetDialog repo={repo} commit={dialog.commit} onClose={close} />;
     case "checkout":
-      return <CheckoutDialog {...props} />;
+      return <CheckoutDialog repo={repo} commit={dialog.commit} onClose={close} />;
     case "tag":
-      return <TagDialog {...props} />;
+      return <TagDialog repo={repo} commit={dialog.commit} onClose={close} />;
+    case "compareBranch":
+      return <CompareBranchDialog repo={repo} onClose={close} />;
+    case "recover":
+      return <RecoverDialog repo={repo} onClose={close} />;
   }
 }
 
@@ -206,6 +222,133 @@ function TagDialog({ repo, commit, onClose }: DialogProps) {
         onChange={(e) => setMessage(e.target.value)}
       />
       {error && <ErrorMessage error={error} />}
+    </FormDialog>
+  );
+}
+
+/** Picks a branch to compare with the current one, three-dot. */
+function CompareBranchDialog({ repo, onClose }: { repo: string; onClose: () => void }) {
+  const { t } = useTranslation("history");
+  const id = useId();
+  const status = useStatus(repo);
+  const branches = useBranches(repo);
+  const showPane = useHistoryPane((s) => s.show);
+  const current = status.data?.branch.head ?? null;
+  const options: SelectOption<string>[] = (branches.data ?? [])
+    .filter((b) => !(b.kind === "local" && b.name === current))
+    .map((b) => ({ value: refName(b), label: b.name }));
+  const [choice, setChoice] = useState<string | null>(null);
+  const target = choice ?? options[0]?.value ?? null;
+  const currentLabel = current ?? t("compareBranch.detached");
+
+  const submit = () => {
+    const head = status.data?.branch.oid;
+    if (!target || !head) return;
+    showPane(repo, {
+      kind: "compare",
+      base: current ? `refs/heads/${current}` : head,
+      target,
+      mode: "three_dot",
+      baseLabel: currentLabel,
+      targetLabel: options.find((o) => o.value === target)?.label ?? target,
+    });
+    onClose();
+  };
+
+  return (
+    <FormDialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title={t("compareBranch.title")}
+      onSubmit={submit}
+      footer={
+        <>
+          <Button onClick={onClose}>{t("compareBranch.cancel")}</Button>
+          <Button type="submit" variant="primary" disabled={!target || !status.data?.branch.oid}>
+            {t("compareBranch.submit")}
+          </Button>
+        </>
+      }
+    >
+      <p>{t("compareBranch.body", { current: currentLabel })}</p>
+      {target && (
+        <div className={styles.filterRow}>
+          <label className={styles.filterLabel} htmlFor={id}>
+            {t("compareBranch.branch")}
+          </label>
+          <Select id={id} value={target} options={options} onChange={setChoice} />
+        </div>
+      )}
+    </FormDialog>
+  );
+}
+
+function refName(branch: Branch): string {
+  return `refs/${branch.kind === "local" ? "heads" : "remotes"}/${branch.name}`;
+}
+
+/** Commits HEAD left behind, each one a branch away from coming back. */
+function RecoverDialog({ repo, onClose }: { repo: string; onClose: () => void }) {
+  const { t } = useTranslation("history");
+  const relativeTime = useRelativeTime();
+  const lost = useLostCommits(repo);
+  const openBranchDialog = useBranchDialog((s) => s.open);
+  const showPane = useHistoryPane((s) => s.show);
+
+  let body;
+  if (lost.isError) body = <ErrorMessage error={toAppError(lost.error)} />;
+  else if (!lost.data) body = <Loading />;
+  else if (lost.data.length === 0) body = <p>{t("recover.empty")}</p>;
+  else {
+    body = (
+      <ul className={styles.lostList} aria-label={t("recover.list")}>
+        {lost.data.map((entry) => (
+          <li key={entry.oid} className={styles.lost}>
+            <span className={styles.lostText}>
+              <span className={styles.summary}>
+                <CommitTitle summary={entry.summary} />
+              </span>
+              <span className={styles.meta}>
+                {shortHash(entry.oid)} · {relativeTime(entry.visitedAt)} · {entry.action}
+              </span>
+            </span>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                showPane(repo, { kind: "commit", oid: entry.oid });
+                onClose();
+              }}
+            >
+              {t("recover.view")}
+            </Button>
+            <Button
+              onClick={() => {
+                onClose();
+                openBranchDialog({ kind: "create", from: entry });
+              }}
+            >
+              {t("recover.createBranch")}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <FormDialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title={t("recover.title")}
+      onSubmit={onClose}
+      footer={
+        <Button type="submit" variant="primary">
+          {t("recover.close")}
+        </Button>
+      }
+    >
+      <p>{t("recover.body")}</p>
+      {body}
     </FormDialog>
   );
 }

@@ -27,6 +27,8 @@ export const SHORTCUTS = {
   "branch.create": "CmdOrCtrl+Shift+N",
   "branch.rename": "CmdOrCtrl+Shift+R",
   "branch.merge": "CmdOrCtrl+Shift+M",
+  "branch.compare": null,
+  "repo.recover": null,
   "help.shortcuts": "CmdOrCtrl+/",
   "help.report": null,
 } as const satisfies Record<string, string | null>;

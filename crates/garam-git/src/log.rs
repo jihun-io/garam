@@ -143,7 +143,7 @@ fn looks_like_hash(query: &str) -> bool {
 
 /// `git log` of `revs` (options and commits) as commit summaries,
 /// limited to `paths` when given.
-fn log_records(
+pub(crate) fn log_records(
     git: &Git,
     repo: &Path,
     revs: &[String],
@@ -374,7 +374,7 @@ fn parse_refs(output: &str) -> ParsedRefs {
     parsed
 }
 
-fn parse_summary(record: &str) -> Result<CommitSummary, GitError> {
+pub(crate) fn parse_summary(record: &str) -> Result<CommitSummary, GitError> {
     let f: Vec<&str> = record.trim_start_matches('\n').splitn(6, '\x1f').collect();
     let [oid, parents, name, email, date, summary] = f[..] else {
         return Err(GitError::Parse(format!("log record: {record:?}")));
@@ -489,7 +489,7 @@ fn changed_files(
 }
 
 /// Parses `-z --name-status`: `M\0path\0` or `R100\0old\0new\0`.
-fn parse_name_status(output: &str) -> Vec<CommitFile> {
+pub(crate) fn parse_name_status(output: &str) -> Vec<CommitFile> {
     let mut fields = output.split('\0').filter(|f| !f.is_empty());
     let mut files = Vec::new();
     while let Some(status) = fields.next() {
@@ -537,6 +537,18 @@ pub fn file_diff(
         Some(parent) => parent.trim().to_owned(),
         None => diff::empty_tree(git, repo)?,
     };
+    diff_between(git, repo, &base, oid, file, ignore_whitespace)
+}
+
+/// Diff of one file from tree-ish `from` to `to`.
+pub(crate) fn diff_between(
+    git: &Git,
+    repo: &Path,
+    from: &str,
+    to: &str,
+    file: &CommitFile,
+    ignore_whitespace: bool,
+) -> Result<FileDiff, GitError> {
     let mut paths = vec![file.path.as_str()];
     if let Some(orig) = &file.orig_path {
         paths.push(orig);
@@ -553,7 +565,7 @@ pub fn file_diff(
     if ignore_whitespace {
         command = command.arg("--ignore-all-space");
     }
-    let output = command.args([base.as_str(), oid]).paths(paths).run()?;
+    let output = command.args([from, to]).paths(paths).run()?;
     if output.stdout.len() > MAX_DIFF_BYTES {
         return Ok(FileDiff::TooLarge);
     }
