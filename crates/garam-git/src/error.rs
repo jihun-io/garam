@@ -40,6 +40,9 @@ pub enum ErrorKind {
     /// The commits aren't consecutive on the current branch, or a merge
     /// is among or after them.
     CannotSquash,
+    /// The commits aren't the newest ones on the current branch's
+    /// first-parent line, or a merge is among them.
+    CannotReorder,
     /// Commit or stash changes to tracked files first.
     UncommittedChanges,
     UnrelatedHistories,
@@ -110,6 +113,9 @@ pub enum GitError {
     #[error("these commits can't be squashed")]
     CannotSquash,
 
+    #[error("these commits can't be reordered")]
+    CannotReorder,
+
     #[error("tracked files have uncommitted changes")]
     UncommittedChanges,
 
@@ -159,6 +165,7 @@ impl GitError {
             Self::InvalidTagName(_) => ErrorKind::InvalidTagName,
             Self::HeadMoved => ErrorKind::HeadMoved,
             Self::CannotSquash => ErrorKind::CannotSquash,
+            Self::CannotReorder => ErrorKind::CannotReorder,
             Self::UncommittedChanges => ErrorKind::UncommittedChanges,
             Self::DetachedHead => ErrorKind::DetachedHead,
             Self::NoUpstream => ErrorKind::NoUpstream,
@@ -178,6 +185,7 @@ impl GitError {
             | Self::DetachedHead
             | Self::HeadMoved
             | Self::CannotSquash
+            | Self::CannotReorder
             | Self::UncommittedChanges
             | Self::NoUpstream
             | Self::RemoteBranchNotFound

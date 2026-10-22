@@ -110,7 +110,8 @@
     "squashed_one": "Squashed {{count}} commit into one.",
     "squashed_other": "Squashed {{count}} commits into one.",
     "cherryPickedOnto_one": "Switched to {{branch}} and cherry-picked {{count}} commit.",
-    "cherryPickedOnto_other": "Switched to {{branch}} and cherry-picked {{count}} commits."
+    "cherryPickedOnto_other": "Switched to {{branch}} and cherry-picked {{count}} commits.",
+    "reordered": "Reordered the commits."
   },
   "reset": {
     "title": "Reset to This Commit",
@@ -244,5 +245,19 @@
     "none": "There's no other local branch to cherry-pick onto.",
     "cancel": "Cancel",
     "submit": "Cherry-pick"
+  },
+  "drag": {
+    "many_one": "{{count}} commit",
+    "many_other": "{{count}} commits",
+    "onto": "→ Cherry-pick onto {{branch}}",
+    "alreadyThere": "Those commits are already on the current branch.",
+    "move": "→ Move here"
+  },
+  "reorder": {
+    "title": "Reorder Commits",
+    "body": "This reorders commits you've already pushed. Afterwards you'll need to force push, which affects others using this branch.",
+    "recover": "If it goes wrong, Recover Lost Commits… in the Repository menu brings them back.",
+    "cancel": "Cancel",
+    "submit": "Reorder"
   }
 }

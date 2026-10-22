@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -6,6 +6,7 @@ import { commands, type Branch, type FileChange } from "../../ipc";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { Notifications } from "../notify/Notifications";
 import { useNotify } from "../notify/notifyStore";
+import { useCommitDrag } from "../history/commitDragStore";
 import { useHistoryPane } from "../history/historyPaneStore";
 import { useBranchDialog } from "./branchDialogStore";
 import { AutoStashBanner } from "./AutoStashBanner";
@@ -125,6 +126,36 @@ describe("BranchControls", () => {
     await user.pointer({ keys: "[MouseRight]", target: screen.getAllByText("main")[1] });
     const own = await screen.findByRole("menu");
     expect(within(own).queryByRole("menuitem", { name: /Compare with/ })).toBeNull();
+  });
+
+  it("opens for dragged commits and takes them on local branches", async () => {
+    setup();
+    const button = await screen.findByRole("button", { name: "Current branch main" });
+    expect(button).toHaveAttribute("data-drop-branch", "main");
+    act(() =>
+      useCommitDrag.getState().set({ commits: [], x: 0, y: 0, over: null, insertAt: null }),
+    );
+    fireEvent.mouseEnter(button);
+    const local = await screen.findByRole("region", { name: "Branches" });
+    expect(within(local).getByText("feature").closest("button")).toHaveAttribute(
+      "data-drop-branch",
+      "feature",
+    );
+    const remote = screen.getByRole("region", { name: "Remote branches" });
+    expect(within(remote).getByText("origin/review").closest("button")).not.toHaveAttribute(
+      "data-drop-branch",
+    );
+
+    // The branch under the pointer is marked.
+    act(() =>
+      useCommitDrag.getState().set({ commits: [], x: 0, y: 0, over: "feature", insertAt: null }),
+    );
+    expect(within(local).getByText("feature").closest("button")).toHaveAttribute("data-drop-over");
+    expect(within(local).getByText("main").closest("button")).not.toHaveAttribute("data-drop-over");
+
+    // Done dragging: the list goes away again.
+    act(() => useCommitDrag.getState().set(null));
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Branches" })).toBeNull());
   });
 
   it("switches straight away when there are no changes", async () => {

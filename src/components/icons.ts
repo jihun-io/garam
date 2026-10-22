@@ -73,6 +73,7 @@ export const Icons = {
   remoteBranch: Cloud,
   tag: Tag,
   detachedHead: GitCommit,
+  commit: GitCommit,
   stash: Archive,
 
   // Appearance

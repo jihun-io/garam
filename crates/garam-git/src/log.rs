@@ -794,6 +794,78 @@ pub fn squash(git: &Git, repo: &Path, oids: &[String], message: &str) -> Result<
     Ok(squashed)
 }
 
+/// Rebuilds the newest commits of HEAD's first-parent line in the order
+/// given (newest first): `order` must be exactly those commits, as many as
+/// it lists, with no merge among them. Runs an interactive rebase with that
+/// todo list, so a conflict stops it like any rebase, to continue or abort.
+pub fn reorder(git: &Git, repo: &Path, order: &[String]) -> Result<(), GitError> {
+    for oid in order {
+        check_oid(oid)?;
+    }
+    let count = u32::try_from(order.len()).map_err(|_| GitError::CannotReorder)?;
+    if count < 2 || crate::commit::head_oid(git, repo)?.is_none() {
+        return Err(GitError::CannotReorder);
+    }
+    let line = log_records(
+        git,
+        repo,
+        &["--first-parent".into(), "HEAD".into()],
+        &[],
+        0,
+        count,
+    )?;
+    let mut sorted_line: Vec<&str> = line.iter().map(|c| c.oid.as_str()).collect();
+    let mut sorted_order: Vec<&str> = order.iter().map(String::as_str).collect();
+    sorted_line.sort_unstable();
+    sorted_order.sort_unstable();
+    if sorted_line != sorted_order || line.iter().any(|c| c.parents.len() > 1) {
+        return Err(GitError::CannotReorder);
+    }
+    if line
+        .iter()
+        .map(|c| c.oid.as_str())
+        .eq(order.iter().map(String::as_str))
+    {
+        return Ok(());
+    }
+    if has_tracked_changes(git, repo)? {
+        return Err(GitError::UncommittedChanges);
+    }
+
+    // git reads the todo list from an "editor" that just copies ours in.
+    let todo: String = order
+        .iter()
+        .rev()
+        .map(|oid| format!("pick {oid}\n"))
+        .collect();
+    let git_dir = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["rev-parse", "--absolute-git-dir"])
+        .run()?;
+    let todo_path = Path::new(git_dir.stdout_str().trim()).join("garam-reorder-todo");
+    std::fs::write(&todo_path, todo)?;
+    let quoted = todo_path.to_string_lossy().replace('\'', "'\\''");
+    let base = line[line.len() - 1].parents.first().cloned();
+    let result = git
+        .command()
+        .cwd(repo)
+        .config("rebase.updateRefs", "false")
+        .config("rebase.missingCommitsCheck", "ignore")
+        .env("GIT_SEQUENCE_EDITOR", format!("cat '{quoted}' >"))
+        .args([
+            "rebase",
+            "--interactive",
+            "--no-autosquash",
+            "--no-autostash",
+        ])
+        .arg(base.as_deref().unwrap_or("--root"))
+        .run();
+    let _ = std::fs::remove_file(&todo_path);
+    result.map(|_| ())
+}
+
 fn has_tracked_changes(git: &Git, repo: &Path) -> Result<bool, GitError> {
     let output = git
         .command()

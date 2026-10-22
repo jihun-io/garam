@@ -112,6 +112,8 @@ export const commands = {
 	commitCherryPick: (repo: string, oids: string[]) => typedError<CherryPickOutcome, AppError>(__TAURI_INVOKE("commit_cherry_pick", { repo, oids })),
 	/**  Combines consecutive commits on HEAD into one; returns its id. */
 	commitSquash: (repo: string, oids: string[], message: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_squash", { repo, oids, message })),
+	/**  Rebuilds HEAD's newest commits in `order` (newest first). */
+	commitReorder: (repo: string, order: string[]) => typedError<null, AppError>(__TAURI_INVOKE("commit_reorder", { repo, order })),
 	/**  Switches to `branch` and applies `oids` (oldest first) there. */
 	commitCherryPickOnto: (repo: string, branch: string, oids: string[]) => typedError<CherryPickOutcome, AppError>(__TAURI_INVOKE("commit_cherry_pick_onto", { repo, branch, oids })),
 	/**  Moves the current branch to `oid`. */
@@ -421,6 +423,11 @@ export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "
  *  is among or after them.
  */
 "cannot_squash" | 
+/**
+ *  The commits aren't the newest ones on the current branch's
+ *  first-parent line, or a merge is among them.
+ */
+"cannot_reorder" | 
 /**  Commit or stash changes to tracked files first. */
 "uncommitted_changes" | "unrelated_histories" | 
 /**  The remote has commits the local branch doesn't; pull first. */

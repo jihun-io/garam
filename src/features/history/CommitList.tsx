@@ -1,6 +1,7 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ContextMenu } from "radix-ui";
 import { Fragment, useEffect, useRef, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { Icon } from "../../components/Icon";
@@ -9,6 +10,7 @@ import { Tooltip } from "../../components/ui/Tooltip";
 import type { CommitSummary } from "../../ipc";
 import { currentPlatform } from "../../lib/platform";
 import { useRelativeTime } from "../../lib/time";
+import { branchUnder, rowUnder, useCommitDrag, type CommitDrag } from "./commitDragStore";
 import { CommitTitle } from "./CommitTitle";
 import type { Graph } from "./graph";
 import { GraphCell, type NodeShape } from "./GraphCell";
@@ -20,6 +22,8 @@ import { stashTitle, type HistoryRow } from "./rows";
 export type SelectHow = "single" | "toggle" | "range";
 
 const ROW_HEIGHT = 48;
+/** How far the pointer moves before a press becomes a drag. */
+const DRAG_DISTANCE = 4;
 /** Start loading the next page this many rows before the end. */
 const PREFETCH_ROWS = 20;
 
@@ -69,6 +73,9 @@ export function CommitList({
   selectedIds,
   focusId,
   onSelect,
+  onDrop,
+  canReorder,
+  onReorder,
   hasMore,
   loadMore,
   actions,
@@ -83,6 +90,12 @@ export function CommitList({
   focusId: string | null;
   /** `toggle`: Cmd/Ctrl-click; `range`: Shift-click or Shift+arrow. */
   onSelect: (id: string, how: SelectHow) => void;
+  /** Commits (newest first) dropped on a branch. */
+  onDrop: (commits: CommitSummary[], branch: string) => void;
+  /** Whether these commits can be moved within the list. */
+  canReorder: (commits: CommitSummary[]) => boolean;
+  /** Commits (newest first) dropped before row `insertAt`. */
+  onReorder: (commits: CommitSummary[], insertAt: number) => void;
   hasMore: boolean;
   loadMore: () => void;
   actions: CommitActions;
@@ -98,10 +111,66 @@ export function CommitList({
   const items = virtualizer.getVirtualItems();
   const lastIndex = items[items.length - 1]?.index ?? 0;
   const selectedIndex = rows.findIndex((r) => r.id === focusId);
+  const drag = useCommitDrag((s) => s.drag);
+  const setDrag = useCommitDrag((s) => s.set);
+  const press = useRef<{
+    id: string;
+    x: number;
+    y: number;
+    commits: CommitSummary[];
+    keep: boolean;
+  } | null>(null);
   // Several selected commits, newest first, for the menu on any of them.
   const selection = rows.flatMap((r) =>
     selectedIds.has(r.id) && r.kind === "commit" ? [r.commit] : [],
   );
+
+  // Pressing a commit and moving the pointer drags it (or all selected
+  // commits): onto a branch to cherry-pick there, or between rows of the
+  // list to move it.
+  useEffect(() => {
+    const move = (e: MouseEvent) => {
+      const pressed = press.current;
+      if (!pressed) return;
+      const current = useCommitDrag.getState().drag;
+      if (!current && Math.hypot(e.clientX - pressed.x, e.clientY - pressed.y) < DRAG_DISTANCE) {
+        return;
+      }
+      setDrag({
+        commits: pressed.commits,
+        x: e.clientX,
+        y: e.clientY,
+        over: branchUnder(e.target),
+        insertAt: canReorder(pressed.commits) ? rowUnder(e.target, e.clientY) : null,
+      });
+    };
+    const up = (e: MouseEvent) => {
+      const pressed = press.current;
+      press.current = null;
+      const current = useCommitDrag.getState().drag;
+      if (current) {
+        setDrag(null);
+        const branch = branchUnder(e.target);
+        if (branch) onDrop(current.commits, branch);
+        else if (current.insertAt !== null) onReorder(current.commits, current.insertAt);
+      } else if (pressed?.keep) {
+        onSelect(pressed.id, "single");
+      }
+    };
+    const key = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape" || !useCommitDrag.getState().drag) return;
+      press.current = null;
+      setDrag(null);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    window.addEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      window.removeEventListener("keydown", key);
+    };
+  }, [onDrop, onReorder, canReorder, onSelect, setDrag]);
 
   useEffect(() => {
     if (hasMore && lastIndex >= rows.length - PREFETCH_ROWS) loadMore();
@@ -131,6 +200,9 @@ export function CommitList({
       onKeyDown={onKeyDown}
     >
       <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+        {drag?.insertAt != null && drag.over === null && (
+          <div className={styles.insertLine} style={{ top: drag.insertAt * ROW_HEIGHT - 1 }} />
+        )}
         {items.map((item) => {
           const style = { height: item.size, transform: `translateY(${item.start}px)` };
           const row = rows[item.index];
@@ -151,6 +223,7 @@ export function CommitList({
               className={styles.row}
               data-kind={row.kind}
               data-sync={marks.sync.get(row.id)}
+              data-row-index={item.index}
               style={style}
               onMouseDown={(e) => {
                 // A right click opens the menu and keeps the selection, so
@@ -159,7 +232,20 @@ export function CommitList({
                 // On macOS, Ctrl-click is a right click.
                 const toggle = currentPlatform() === "macos" ? e.metaKey : e.ctrlKey;
                 if (e.shiftKey) e.preventDefault();
-                onSelect(row.id, e.shiftKey ? "range" : toggle ? "toggle" : "single");
+                const how = e.shiftKey ? "range" : toggle ? "toggle" : "single";
+                // Pressing one of several selected commits may start dragging
+                // them all, so it picks only that one if no drag follows.
+                const keep = how === "single" && selection.length > 1 && selectedIds.has(row.id);
+                if (!keep) onSelect(row.id, how);
+                if (how === "single" && row.kind === "commit") {
+                  press.current = {
+                    id: row.id,
+                    x: e.clientX,
+                    y: e.clientY,
+                    commits: keep ? selection : [row.commit],
+                    keep,
+                  };
+                }
               }}
             >
               {graph && <GraphCell row={graph.rows[item.index]} height={item.size} shape={shape} />}
@@ -181,6 +267,27 @@ export function CommitList({
           );
         })}
       </div>
+      {drag && createPortal(<DragGhost drag={drag} />, document.body)}
+    </div>
+  );
+}
+
+/** Follows the pointer while commits are dragged. */
+function DragGhost({ drag }: { drag: CommitDrag }) {
+  const { t } = useTranslation("history");
+  const label =
+    drag.commits.length === 1
+      ? drag.commits[0].summary
+      : t("drag.many", { count: drag.commits.length });
+  return (
+    <div className={styles.dragGhost} style={{ left: drag.x + 12, top: drag.y + 12 }} aria-hidden>
+      <Icon name="commit" size={14} />
+      <span className={styles.dragLabel}>{label}</span>
+      {drag.over ? (
+        <span className={styles.dragTarget}>{t("drag.onto", { branch: drag.over })}</span>
+      ) : (
+        drag.insertAt !== null && <span className={styles.dragTarget}>{t("drag.move")}</span>
+      )}
     </div>
   );
 }

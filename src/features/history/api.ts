@@ -194,6 +194,12 @@ export function useCommitActions(repo: string) {
       onSettled,
       scope,
     }),
+    /** The newest commits of HEAD, newest first, in their new order. */
+    reorder: useMutation({
+      mutationFn: (order: string[]) => unwrap(commands.commitReorder(repo, order)),
+      onSettled,
+      scope,
+    }),
     squash: useMutation({
       mutationFn: ({ oids, message }: { oids: string[]; message: string }) =>
         unwrap(commands.commitSquash(repo, oids, message)),

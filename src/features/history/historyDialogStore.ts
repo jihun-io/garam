@@ -5,7 +5,7 @@ import type { CommitSummary } from "../../ipc";
 export type HistoryDialog =
   | { kind: "reset" | "checkout" | "tag"; commit: CommitSummary }
   /** Newest first. */
-  | { kind: "squash" | "cherryPickOnto"; commits: CommitSummary[] }
+  | { kind: "squash" | "cherryPickOnto" | "reorder"; commits: CommitSummary[] }
   | { kind: "compareBranch" }
   | { kind: "recover" };
 

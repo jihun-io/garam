@@ -7,7 +7,13 @@ import { EmptyMessage } from "../../components/EmptyMessage";
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
 import { Loading } from "../../components/ui/Loading";
-import { commands, toAppError, unwrap } from "../../ipc";
+import {
+  commands,
+  toAppError,
+  unwrap,
+  type CherryPickOutcome,
+  type CommitSummary,
+} from "../../ipc";
 import { runCommand } from "../../lib/commands";
 import { shortHash } from "../../lib/hash";
 import { useBranchDialog } from "../branches/branchDialogStore";
@@ -221,6 +227,65 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
     },
   };
 
+  // Commits that can move: this branch's own line, shown in full.
+  const line = rows.filter((r) => r.kind === "commit" && marks.sync.get(r.id) !== "incoming");
+  function canReorder(commits: CommitSummary[]) {
+    return (
+      filter.scope.kind === "head" &&
+      graphed &&
+      commits.every((c) => line.some((r) => r.id === c.oid) && c.parents.length <= 1)
+    );
+  }
+
+  /** Moves dragged commits (newest first) to before row `insertAt`. */
+  function reorder(commits: CommitSummary[], insertAt: number) {
+    const moving = new Set(commits.map((c) => c.oid));
+    const before = line.flatMap((r) => (r.kind === "commit" ? [r.commit] : []));
+    const rest = before.filter((c) => !moving.has(c.oid));
+    // Where the drop lands among the commits that stay.
+    const at = line.filter((r) => rows.indexOf(r) < insertAt && !moving.has(r.id)).length;
+    const after = [...rest.slice(0, at), ...commits, ...rest.slice(at)];
+    // Only down to the deepest commit that moved.
+    let depth = after.length - 1;
+    while (depth >= 0 && after[depth].oid === before[depth].oid) depth--;
+    if (depth < 0) return;
+    const order = after.slice(0, depth + 1);
+    const unpushed = new Set(markers.data?.unpushed ?? []);
+    if (hasRemote && order.some((c) => !unpushed.has(c.oid))) {
+      openDialog({ kind: "reorder", commits: order });
+    } else {
+      commitActions.reorder.mutate(
+        order.map((c) => c.oid),
+        { onSuccess: () => showInfo(t("done.reordered")), onError: showError },
+      );
+    }
+  }
+
+  /** Cherry-picks dragged commits (newest first) onto `branch`. */
+  function dropOnBranch(commits: CommitSummary[], branch: string) {
+    const oids = commits.map((c) => c.oid).reverse();
+    const report = ({ skipped }: CherryPickOutcome, done: string) =>
+      showInfo([done, skipped > 0 ? t("done.skipped", { count: skipped }) : ""].join(" "));
+    if (branch !== status.data?.branch.head) {
+      commitActions.cherryPickOnto.mutate(
+        { branch, oids },
+        {
+          onSuccess: (outcome) =>
+            report(outcome, t("done.cherryPickedOnto", { count: outcome.picked, branch })),
+          onError: showError,
+        },
+      );
+    } else if (!actions.many.available(commits).cherryPick) {
+      showInfo(t("drag.alreadyThere"));
+    } else {
+      commitActions.cherryPick.mutate(oids, {
+        onSuccess: (outcome) =>
+          report(outcome, t("done.cherryPickedMany", { count: outcome.picked })),
+        onError: showError,
+      });
+    }
+  }
+
   /** Compares the selected row with `id`, the older one as the base. */
   function compareWithSelected(id: string) {
     if (!selected || selected.kind === "wip" || selected.id === id) return select(id);
@@ -346,6 +411,9 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
           selectedIds={new Set(selectedRows.map((r) => r.id))}
           focusId={current.focus}
           onSelect={select}
+          onDrop={dropOnBranch}
+          canReorder={canReorder}
+          onReorder={reorder}
           hasMore={hasNextPage}
           loadMore={loadMore}
           actions={actions}

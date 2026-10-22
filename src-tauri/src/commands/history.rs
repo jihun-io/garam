@@ -187,6 +187,13 @@ pub async fn commit_cherry_pick_onto(
     .await
 }
 
+/// Rebuilds HEAD's newest commits in `order` (newest first).
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_reorder(repo: String, order: Vec<String>) -> AppResult<()> {
+    blocking(move || Ok(log::reorder(&Git::locate()?, Path::new(&repo), &order)?)).await
+}
+
 /// Combines consecutive commits on HEAD into one; returns its id.
 #[tauri::command]
 #[specta::specta]

@@ -1,11 +1,12 @@
 import { ContextMenu, Popover } from "radix-ui";
-import { useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "../../components/ui/Button";
 import menu from "../../components/ui/Menu.module.css";
 import type { Branch, BranchStatus } from "../../ipc";
 import { useRelativeTime } from "../../lib/time";
+import { dropTarget, useCommitDrag } from "../history/commitDragStore";
 import { useHistoryPane } from "../history/historyPaneStore";
 import { refName, useBranches } from "./api";
 import { useBranchDialog } from "./branchDialogStore";
@@ -15,6 +16,9 @@ import { Icon } from "../../components/Icon";
 import { runCommand, shortcutFor, useCommand } from "../../lib/commands";
 import { ToolbarButton } from "../../components/ui/ToolbarButton";
 import { Tooltip } from "../../components/ui/Tooltip";
+
+/** How long dragged commits hover over the button before the list opens. */
+const OPEN_ON_DRAG_MS = 400;
 
 /** Toolbar button showing the current branch, with a searchable list. */
 export function BranchPicker({
@@ -33,6 +37,18 @@ export function BranchPicker({
   const showPane = useHistoryPane((s) => s.show);
   const [open, setOpen] = useState(false);
   useCommand("view.branches", () => setOpen(true));
+  const dragging = useCommitDrag((s) => s.drag !== null);
+  // The branch under the dragged commits; `:hover` doesn't follow a drag
+  // that began elsewhere in every web view.
+  const dropOver = useCommitDrag((s) => s.drag?.over ?? null);
+  const hover = useRef<number | undefined>(undefined);
+  const openedByDrag = useRef(false);
+  // A list opened for a drop closes when the drag ends, dropped or not.
+  useEffect(() => {
+    if (dragging || !openedByDrag.current) return;
+    openedByDrag.current = false;
+    setOpen(false);
+  }, [dragging]);
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const current = status.head;
@@ -99,6 +115,8 @@ export function BranchPicker({
           <button
             type="button"
             data-branch-item
+            {...(branch.kind === "local" ? dropTarget(branch.name) : {})}
+            data-drop-over={(branch.kind === "local" && dropOver === branch.name) || undefined}
             className={styles.item}
             aria-current={branch.isHead ? "true" : undefined}
             onClick={() => choose(branch)}
@@ -166,6 +184,17 @@ export function BranchPicker({
       <Tooltip content={t("picker.tooltip")} shortcut={shortcutFor("view.branches")}>
         <Popover.Trigger asChild>
           <ToolbarButton
+            {...(current ? dropTarget(current) : {})}
+            data-drop-over={(current !== null && dropOver === current) || undefined}
+            onMouseEnter={() => {
+              // Hovering with dragged commits opens the list to drop them on.
+              if (!useCommitDrag.getState().drag) return;
+              hover.current = window.setTimeout(() => {
+                openedByDrag.current = true;
+                setOpen(true);
+              }, OPEN_ON_DRAG_MS);
+            }}
+            onMouseLeave={() => window.clearTimeout(hover.current)}
             icon="branch"
             caption={t("picker.caption")}
             value={label}

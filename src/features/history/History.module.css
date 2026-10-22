@@ -625,3 +625,44 @@
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+
+/* Dragging commits to a branch */
+
+.dragGhost {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 320px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--text-sm);
+  pointer-events: none;
+}
+
+.dragLabel {
+  overflow: hidden;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dragTarget {
+  flex: none;
+  color: var(--color-ink-muted);
+}
+
+/* Where dragged commits would move to in the list. */
+.insertLine {
+  position: absolute;
+  z-index: 1;
+  right: 6px;
+  left: 6px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-river);
+  pointer-events: none;
+}

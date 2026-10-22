@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -38,6 +38,7 @@ vi.mock("../../ipc/bindings", () => ({
     commitCherryPick: vi.fn(),
     commitSquash: vi.fn(),
     commitCherryPickOnto: vi.fn(),
+    commitReorder: vi.fn(),
     commitReset: vi.fn(),
     commitUndo: vi.fn(),
     commitCheckout: vi.fn(),
@@ -1023,6 +1024,124 @@ describe("HistoryView", () => {
       await screen.findByText("Switched to release and cherry-picked 2 commits."),
     ).toBeVisible();
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  /** A spot to drop dragged commits on, as the branch list provides. */
+  function dropSpot(branch: string) {
+    const spot = document.createElement("div");
+    spot.setAttribute("data-drop-branch", branch);
+    document.body.append(spot);
+    return spot;
+  }
+
+  it("drags commits onto a branch to cherry-pick them there", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.commitCherryPickOnto).mockResolvedValue(ok({ picked: 2, skipped: 0 }));
+    setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+    const list = screen.getByRole("listbox", { name: "Commits" });
+    await user.keyboard("{Shift>}");
+    await user.click(within(list).getByText("Commit number 2"));
+    await user.keyboard("{/Shift}");
+
+    // Pressing one of the selected commits keeps the selection for the drag.
+    const release = dropSpot("release");
+    fireEvent.mouseDown(within(list).getByText("Add login screen"), {
+      button: 0,
+      clientX: 10,
+      clientY: 10,
+    });
+    fireEvent.mouseMove(release, { clientX: 300, clientY: 40 });
+    expect(await screen.findByText("2 commits")).toBeVisible();
+    expect(screen.getByText("→ Cherry-pick onto release")).toBeVisible();
+    fireEvent.mouseUp(release);
+
+    await waitFor(() =>
+      expect(commands.commitCherryPickOnto).toHaveBeenCalledWith("/repo", "release", [
+        commits[1].oid,
+        commits[0].oid,
+      ]),
+    );
+    expect(
+      await screen.findByText("Switched to release and cherry-picked 2 commits."),
+    ).toBeVisible();
+    expect(screen.queryByText("2 commits")).toBeNull();
+    release.remove();
+  });
+
+  it("cancels a drag with Escape and says when commits are already here", async () => {
+    setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+    const list = screen.getByRole("listbox", { name: "Commits" });
+    const main = dropSpot("main");
+
+    const row = within(list).getByText("Commit number 2");
+    fireEvent.mouseDown(row, { button: 0, clientX: 10, clientY: 10 });
+    fireEvent.mouseMove(main, { clientX: 300, clientY: 40 });
+    expect(await screen.findByText("→ Cherry-pick onto main")).toBeVisible();
+    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.mouseUp(main);
+    expect(screen.queryByText("→ Cherry-pick onto main")).toBeNull();
+    expect(commands.commitCherryPick).not.toHaveBeenCalled();
+
+    // A commit from the current branch onto the current branch.
+    fireEvent.mouseDown(row, { button: 0, clientX: 10, clientY: 10 });
+    fireEvent.mouseMove(main, { clientX: 300, clientY: 40 });
+    fireEvent.mouseUp(main);
+    expect(
+      await screen.findByText("Those commits are already on the current branch."),
+    ).toBeVisible();
+    expect(commands.commitCherryPick).not.toHaveBeenCalled();
+    main.remove();
+  });
+
+  /** Drags the row with `text` onto the top half of the row with `onto`. */
+  function dragRow(list: HTMLElement, text: string, onto: string) {
+    const row = within(list).getByText(text);
+    fireEvent.mouseDown(row, { button: 0, clientX: 10, clientY: 10 });
+    const target = within(list).getByText(onto);
+    // jsdom rows have no size, so y = 0 is the top half.
+    fireEvent.mouseMove(target, { clientX: 10, clientY: 0 });
+    return target;
+  }
+
+  it("drags a commit to a new place in the list to reorder", async () => {
+    vi.mocked(commands.commitReorder).mockResolvedValue(ok(null));
+    setup({ ...markers, unpushed: commits.map((c) => c.oid) });
+    await screen.findByRole("heading", { name: "Add login screen" });
+    const list = screen.getByRole("listbox", { name: "Commits" });
+
+    const target = dragRow(list, "Commit number 3", "Add login screen");
+    expect(await screen.findByText("→ Move here")).toBeVisible();
+    fireEvent.mouseUp(target);
+    await waitFor(() =>
+      expect(commands.commitReorder).toHaveBeenCalledWith("/repo", [
+        commits[2].oid,
+        commits[0].oid,
+        commits[1].oid,
+      ]),
+    );
+    expect(await screen.findByText("Reordered the commits.")).toBeVisible();
+
+    // Dropping where it already is does nothing.
+    vi.mocked(commands.commitReorder).mockClear();
+    fireEvent.mouseUp(dragRow(list, "Commit number 2", "Commit number 2"));
+    expect(commands.commitReorder).not.toHaveBeenCalled();
+  });
+
+  it("asks before reordering pushed commits", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.commitReorder).mockResolvedValue(ok(null));
+    setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+    const list = screen.getByRole("listbox", { name: "Commits" });
+
+    fireEvent.mouseUp(dragRow(list, "Commit number 2", "Add login screen"));
+    const dialog = await screen.findByRole("dialog", { name: "Reorder Commits" });
+    expect(within(dialog).getByText(/you'll need to force push/)).toBeVisible();
+    expect(commands.commitReorder).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Reorder" }));
+    expect(commands.commitReorder).toHaveBeenCalledWith("/repo", [commits[1].oid, commits[0].oid]);
   });
 
   it("explains an empty history", async () => {

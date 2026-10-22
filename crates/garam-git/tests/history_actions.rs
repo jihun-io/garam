@@ -339,3 +339,75 @@ fn cherry_picking_onto_another_branch_needs_a_clean_tree() {
     let err = log::cherry_pick_onto(git, repo.path(), "--detach", &[main_work]).unwrap_err();
     assert_eq!(err.kind(), ErrorKind::InvalidBranchName);
 }
+
+#[test]
+fn reorders_the_latest_commits() {
+    let repo = linear();
+    let (three, two, one) = (
+        rev(&repo, "HEAD"),
+        rev(&repo, "HEAD~1"),
+        rev(&repo, "HEAD~2"),
+    );
+    // Move "one" to the top.
+    log::reorder(repo.git_handle(), repo.path(), &[one, three, two]).unwrap();
+    assert_eq!(subjects(&repo), ["one", "three", "two", "base"]);
+    for name in ["one", "two", "three"] {
+        assert!(repo.path().join(format!("{name}.txt")).exists());
+    }
+    let state = conflict::state(repo.git_handle(), repo.path()).unwrap();
+    assert_eq!(state.operation, None);
+}
+
+#[test]
+fn reorders_down_to_the_first_commit() {
+    let repo = linear();
+    let order: Vec<_> = ["HEAD~3", "HEAD", "HEAD~1", "HEAD~2"]
+        .iter()
+        .map(|r| rev(&repo, r))
+        .collect();
+    log::reorder(repo.git_handle(), repo.path(), &order).unwrap();
+    assert_eq!(subjects(&repo), ["base", "three", "two", "one"]);
+}
+
+#[test]
+fn reorder_conflicts_stop_the_rebase() {
+    let repo = TestRepo::new();
+    repo.write("a.txt", "a\n");
+    repo.commit_all("base");
+    repo.write("a.txt", "a\nb\n");
+    repo.commit_all("add b");
+    repo.write("a.txt", "a\nb\nc\n");
+    repo.commit_all("add c");
+    let order = [rev(&repo, "HEAD~1"), rev(&repo, "HEAD")];
+    let err = log::reorder(repo.git_handle(), repo.path(), &order).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::RebaseConflict);
+    let state = conflict::state(repo.git_handle(), repo.path()).unwrap();
+    assert_eq!(state.operation, Some(Operation::Rebase));
+}
+
+#[test]
+fn refuses_reorders_it_cannot_do_cleanly() {
+    let repo = linear();
+    let git = repo.git_handle();
+    let err = |order: &[String]| log::reorder(git, repo.path(), order).unwrap_err().kind();
+    let (three, two, one) = (
+        rev(&repo, "HEAD"),
+        rev(&repo, "HEAD~1"),
+        rev(&repo, "HEAD~2"),
+    );
+
+    // Not the newest commits.
+    assert_eq!(err(&[one.clone(), two.clone()]), ErrorKind::CannotReorder);
+    // Just one.
+    assert_eq!(err(std::slice::from_ref(&three)), ErrorKind::CannotReorder);
+    // Uncommitted changes.
+    repo.write("one.txt", "changed\n");
+    assert_eq!(
+        err(&[two.clone(), three.clone()]),
+        ErrorKind::UncommittedChanges
+    );
+    repo.git(["checkout", "--quiet", "--", "one.txt"]);
+    // Same order: nothing to do.
+    log::reorder(git, repo.path(), &[three, two, one]).unwrap();
+    assert_eq!(subjects(&repo), ["three", "two", "one", "base"]);
+}

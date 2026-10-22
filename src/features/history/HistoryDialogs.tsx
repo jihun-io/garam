@@ -42,6 +42,8 @@ export function HistoryDialogs({ repo }: { repo: string }) {
       return <TagDialog repo={repo} commit={dialog.commit} onClose={close} />;
     case "cherryPickOnto":
       return <CherryPickOntoDialog repo={repo} commits={dialog.commits} onClose={close} />;
+    case "reorder":
+      return <ReorderDialog repo={repo} order={dialog.commits} onClose={close} />;
     case "squash":
       return <SquashDialog repo={repo} commits={dialog.commits} onClose={close} />;
     case "compareBranch":
@@ -534,6 +536,60 @@ function CherryPickOntoDialog({
           </div>
         )
       )}
+      {error && <ErrorMessage error={error} />}
+    </FormDialog>
+  );
+}
+
+/** Confirms reordering commits that were already pushed. */
+function ReorderDialog({
+  repo,
+  order,
+  onClose,
+}: {
+  repo: string;
+  /** Newest first, in the new order. */
+  order: CommitSummary[];
+  onClose: () => void;
+}) {
+  const { t } = useTranslation("history");
+  const { reorder } = useCommitActions(repo);
+  const showInfo = useNotify((s) => s.showInfo);
+  const { busy, error, submit } = useSubmit(
+    () => reorder.mutateAsync(order.map((c) => c.oid)),
+    () => {
+      showInfo(t("done.reordered"));
+      onClose();
+    },
+  );
+  return (
+    <FormDialog
+      open
+      onOpenChange={(open) => !open && !busy && onClose()}
+      title={t("reorder.title")}
+      onSubmit={submit}
+      dismissible={!busy}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={busy} autoFocus>
+            {t("reorder.cancel")}
+          </Button>
+          <Button type="submit" variant="danger" disabled={busy}>
+            {t("reorder.submit")}
+          </Button>
+        </>
+      }
+    >
+      <p>{t("reorder.body")}</p>
+      <ol className={styles.compareCommits}>
+        {order.map((commit) => (
+          <li key={commit.oid}>
+            <span className={styles.compareHash}>{shortHash(commit.oid)}</span>{" "}
+            <CommitTitle summary={commit.summary} />
+          </li>
+        ))}
+      </ol>
+      <p className={styles.dialogNote}>{t("reorder.recover")}</p>
       {error && <ErrorMessage error={error} />}
     </FormDialog>
   );
