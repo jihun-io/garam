@@ -7,8 +7,17 @@
   background: var(--color-surface);
 }
 
-.bannerTitle {
+.bannerTitle,
+.kind {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-weight: 600;
+}
+
+.bannerIcon,
+.kindIcon {
+  color: var(--color-modified-ink);
 }
 
 .panel {
@@ -28,10 +37,6 @@
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-line);
   background: var(--color-bg);
-}
-
-.kind {
-  font-weight: 600;
 }
 
 .buttons {

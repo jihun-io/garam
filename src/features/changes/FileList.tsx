@@ -100,7 +100,6 @@ export function FileList({
                   className={styles.row}
                   style={{ transform: `translateY(${item.start}px)`, height: ROW_HEIGHT }}
                   onMouseDown={() => onSelect(file.path)}
-                  title={file.origPath ? `${file.origPath} → ${file.path}` : file.path}
                 >
                   <Checkbox
                     state={checkState(file)}
@@ -110,10 +109,15 @@ export function FileList({
                     onChange={() => onToggle(file)}
                     onMouseDown={(e) => e.stopPropagation()}
                   />
-                  <span className={styles.path}>
-                    {dir && <span className={styles.dir}>{dir}</span>}
-                    <span className={styles.name}>{name}</span>
-                  </span>
+                  <Tooltip
+                    content={file.origPath ? `${file.origPath} → ${file.path}` : file.path}
+                    whenTruncated
+                  >
+                    <span className={styles.path}>
+                      {dir && <span className={styles.dir}>{dir}</span>}
+                      <span className={styles.name}>{name}</span>
+                    </span>
+                  </Tooltip>
                   <Tooltip content={t(`kind.${kind}`)} side="right">
                     <span className={`${styles.kind} ${styles[kind]}`}>
                       <Icon name={kind} label={t(`kind.${kind}`)} />

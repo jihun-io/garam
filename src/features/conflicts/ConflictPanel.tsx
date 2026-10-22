@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
+import { Icon } from "../../components/Icon";
 import { Button } from "../../components/ui/Button";
 import { FormDialog } from "../../components/ui/Dialog";
 import { toAppError, type ConflictState, type Operation } from "../../ipc";
@@ -16,7 +17,10 @@ export function ConflictBanner({ state }: { state: ConflictState }) {
   const remaining = state.files.length;
   return (
     <div className={styles.banner} role="status">
-      <p className={styles.bannerTitle}>{t(`operation.${state.operation}`)}</p>
+      <p className={styles.bannerTitle}>
+        <Icon name="conflicted" className={styles.bannerIcon} />
+        {t(`operation.${state.operation}`)}
+      </p>
       <p>{remaining > 0 ? t("remaining", { count: remaining }) : t("ready")}</p>
     </div>
   );

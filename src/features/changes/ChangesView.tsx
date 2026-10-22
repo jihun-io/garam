@@ -2,13 +2,16 @@ import { DropdownMenu } from "radix-ui";
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { EmptyMessage } from "../../components/EmptyMessage";
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Checkbox } from "../../components/ui/Checkbox";
+import { Loading } from "../../components/ui/Loading";
 import menu from "../../components/ui/Menu.module.css";
 import { toAppError, type FileChange } from "../../ipc";
 import { AutoStashBanner } from "../branches/AutoStashBanner";
 import { useConflicts } from "../conflicts/api";
 import { ConflictBanner, ConflictPanel } from "../conflicts/ConflictPanel";
+import { CommandList } from "../menu/CommandList";
 import { useNotify } from "../notify/notifyStore";
 import { SidebarSplitter } from "../settings/SidebarSplitter";
 import { useChangeActions, useStatus } from "./api";
@@ -41,7 +44,16 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
       </div>
     );
   }
-  if (!status.data) return null;
+  if (!status.data) {
+    return (
+      <div className={styles.root}>
+        <aside className={styles.sidebar}>{tabs}</aside>
+        <div className={styles.main}>
+          <Loading />
+        </div>
+      </div>
+    );
+  }
 
   const { files, branch } = status.data;
   // Keep a selection whenever there are files; fall back to the first.
@@ -118,10 +130,9 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
             conflict={conflicts.data?.files.find((f) => f.path === selected?.path)}
           />
         ) : (
-          <div className={styles.empty}>
-            <h2 className={styles.emptyTitle}>{t("empty.title")}</h2>
-            <p className={styles.emptyBody}>{t("empty.body")}</p>
-          </div>
+          <EmptyMessage icon="success" title={t("empty.title")} body={t("empty.body")}>
+            <CommandList ids={["repo.openEditor", "repo.openTerminal", "repo.reveal"]} />
+          </EmptyMessage>
         )}
       </div>
 

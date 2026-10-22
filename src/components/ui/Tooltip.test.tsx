@@ -23,6 +23,41 @@ describe("Tooltip", () => {
   });
 });
 
+describe("Tooltip whenTruncated", () => {
+  // jsdom has no layout; give the trigger the widths a browser would.
+  const sized = (scrollWidth: number) => (el: HTMLElement | null) => {
+    if (!el) return;
+    Object.defineProperty(el, "scrollWidth", { configurable: true, value: scrollWidth });
+    Object.defineProperty(el, "clientWidth", { configurable: true, value: 100 });
+  };
+  const renderPath = (scrollWidth: number) => {
+    render(
+      <TooltipProvider>
+        <Tooltip content="src/features/changes/FileList.tsx" whenTruncated>
+          <span tabIndex={0} ref={sized(scrollWidth)}>
+            src/features/…
+          </span>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+  };
+
+  it("reveals cut-off text", async () => {
+    const user = userEvent.setup();
+    renderPath(240);
+    await user.tab();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("FileList.tsx");
+  });
+
+  it("stays hidden when everything fits", async () => {
+    const user = userEvent.setup();
+    renderPath(80);
+    await user.tab();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+});
+
 describe("Icon", () => {
   it("is hidden from screen readers unless labelled", () => {
     const { container } = render(

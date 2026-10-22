@@ -68,3 +68,22 @@
 .value {
   font-weight: 600;
 }
+
+.placeholder .icon {
+  opacity: 0.4;
+}
+
+.placeholder .text {
+  gap: 6px;
+}
+
+.bar {
+  width: 70%;
+  height: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-hover);
+}
+
+.barShort {
+  width: 45%;
+}

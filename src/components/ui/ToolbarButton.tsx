@@ -57,3 +57,22 @@ export function ToolbarButton({
     </button>
   );
 }
+
+/**
+ * Holds a toolbar button's place while its data loads, so the toolbar
+ * doesn't shift when it arrives.
+ */
+export function ToolbarPlaceholder({ icon, className }: { icon: IconName; className?: string }) {
+  return (
+    <div
+      className={[styles.button, styles.placeholder, className].filter(Boolean).join(" ")}
+      aria-hidden="true"
+    >
+      <Icon name={icon} size={20} className={styles.icon} />
+      <span className={styles.text}>
+        <span className={styles.bar} />
+        <span className={`${styles.bar} ${styles.barShort}`} />
+      </span>
+    </div>
+  );
+}

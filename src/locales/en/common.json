@@ -1,5 +1,6 @@
 {
   "appName": "Garam",
+  "loading": "Loading…",
   "language": {
     "label": "Language",
     "system": "System language"

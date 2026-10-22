@@ -1,7 +1,9 @@
 import { useCallback, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { EmptyMessage } from "../../components/EmptyMessage";
 import { ErrorMessage } from "../../components/ErrorMessage";
+import { Loading } from "../../components/ui/Loading";
 import { toAppError, type CommitSummary } from "../../ipc";
 import { shortHash } from "../../lib/hash";
 import { useBranchDialog } from "../branches/branchDialogStore";
@@ -57,11 +59,9 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
   } else if (selected) {
     main = <CommitDetailView repo={repo} oid={selected.oid} onCopyHash={copyHash} />;
   } else if (history.data) {
-    main = (
-      <div className={changesStyles.empty}>
-        <p className={changesStyles.emptyBody}>{t("list.empty")}</p>
-      </div>
-    );
+    main = <EmptyMessage icon="history" title={t("list.empty")} />;
+  } else {
+    main = <Loading />;
   }
 
   return (

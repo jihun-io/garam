@@ -2,6 +2,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
+import { Icon } from "../../components/Icon";
+import { Loading } from "../../components/ui/Loading";
+import { Tooltip } from "../../components/ui/Tooltip";
 import { toAppError, type ChangeKind, type CommitDetail, type CommitFile } from "../../ipc";
 import { shortHash } from "../../lib/hash";
 import { relativeTime } from "../../lib/time";
@@ -46,7 +49,7 @@ export function CommitDetailView({
       </div>
     );
   }
-  if (!detail.data) return null;
+  if (!detail.data) return <Loading />;
   return <Loaded key={oid} repo={repo} commit={detail.data} onCopyHash={onCopyHash} />;
 }
 
@@ -71,23 +74,29 @@ function Loaded({
         <h2 className={styles.commitSummary}>{commit.summary}</h2>
         {commit.body && <p className={styles.commitBody}>{commit.body}</p>}
         <p className={styles.commitMeta}>
-          <span title={commit.authorEmail}>{commit.authorName}</span>
-          <time dateTime={date.toISOString()} title={date.toLocaleString(i18n.language)}>
-            {relativeTime(commit.authoredAt, i18n.language)}
-          </time>
+          <Tooltip content={commit.authorEmail}>
+            <span>{commit.authorName}</span>
+          </Tooltip>
+          <Tooltip content={date.toLocaleString(i18n.language)}>
+            <time dateTime={date.toISOString()}>
+              {relativeTime(commit.authoredAt, i18n.language)}
+            </time>
+          </Tooltip>
           {commit.committerName !== commit.authorName && (
             <span>{t("detail.committedBy", { name: commit.committerName })}</span>
           )}
           {commit.parents.length > 1 && <span>{t("detail.merge")}</span>}
-          <button
-            type="button"
-            className={styles.hash}
-            onClick={() => onCopyHash(commit.oid)}
-            aria-label={t("detail.copyHash", { hash })}
-            title={commit.oid}
-          >
-            {hash}
-          </button>
+          <Tooltip content={t("detail.copyHash", { hash })}>
+            <button
+              type="button"
+              className={styles.hash}
+              onClick={() => onCopyHash(commit.oid)}
+              aria-label={t("detail.copyHash", { hash })}
+            >
+              {hash}
+              <Icon name="copy" size={12} />
+            </button>
+          </Tooltip>
         </p>
       </header>
 
@@ -111,15 +120,18 @@ function Loaded({
                       className={styles.file}
                       aria-current={file.path === selected?.path ? "true" : undefined}
                       onClick={() => setSelectedPath(file.path)}
-                      title={file.path}
                     >
-                      <span className={styles.fileName}>
-                        <span className={styles.fileDir}>{dir}</span>
-                        {name}
-                      </span>
-                      <span className={`${styles.fileKind} ${styles[kind]}`}>
-                        {t(`changes:kind.${kind}`)}
-                      </span>
+                      <Tooltip content={file.path} whenTruncated>
+                        <span className={styles.fileName}>
+                          <span className={styles.fileDir}>{dir}</span>
+                          {name}
+                        </span>
+                      </Tooltip>
+                      <Tooltip content={t(`changes:kind.${kind}`)} side="right">
+                        <span className={`${styles.fileKind} ${styles[kind]}`}>
+                          <Icon name={kind} label={t(`changes:kind.${kind}`)} />
+                        </span>
+                      </Tooltip>
                     </button>
                   </li>
                 );
@@ -146,7 +158,7 @@ function CommitFileDiff({ repo, oid, file }: { repo: string; oid: string; file: 
       </div>
     );
   } else if (!diff.data) {
-    body = null;
+    body = <Loading />;
   } else if (diff.data.type === "binary") {
     body = <p className={diffStyles.notice}>{t("diff.binary")}</p>;
   } else if (diff.data.type === "too_large") {
@@ -164,7 +176,9 @@ function CommitFileDiff({ repo, oid, file }: { repo: string; oid: string; file: 
   return (
     <section className={diffStyles.root} aria-label={file.path}>
       <header className={diffStyles.header}>
-        <span className={diffStyles.headerPath}>{file.path}</span>
+        <Tooltip content={file.path} whenTruncated>
+          <span className={diffStyles.headerPath}>{file.path}</span>
+        </Tooltip>
         {file.origPath && (
           <span className={diffStyles.headerMeta}>
             {t("diff.renamedFrom", { path: file.origPath })}

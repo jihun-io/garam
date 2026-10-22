@@ -119,7 +119,6 @@ export function RepoPicker({
                         className={styles.item}
                         aria-current={repo.path === selected?.path ? "true" : undefined}
                         onClick={() => choose(repo)}
-                        title={repo.path}
                       >
                         <span className={styles.itemName}>{repo.name}</span>
                         {repo.missing && (

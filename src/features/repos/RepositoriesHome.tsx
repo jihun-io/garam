@@ -1,3 +1,4 @@
+import { Loading } from "../../components/ui/Loading";
 import { useCommand } from "../../lib/commands";
 
 import { DropOverlay } from "./DropOverlay";
@@ -17,8 +18,8 @@ export function RepositoriesHome({ gitVersion }: { gitVersion: string }) {
   useCommand("repo.create", () => openDialog({ kind: "create" }));
   useCommand("repo.clone", () => openDialog({ kind: "clone" }));
 
-  // The list is local and fast; render nothing for the brief first load.
-  if (!repositories.data) return null;
+  // The list is local and fast; Loading shows only if it isn't.
+  if (!repositories.data) return <Loading />;
   const { repositories: list, selected } = repositories.data;
 
   return (

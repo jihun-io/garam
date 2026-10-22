@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 
+import { Loading } from "../../components/ui/Loading";
 import { toAppError } from "../../ipc";
 import { RepositoriesHome } from "../repos/RepositoriesHome";
 import styles from "./Startup.module.css";
@@ -14,9 +15,7 @@ export function StartupGate() {
   if (gitInfo.isPending) {
     return (
       <main className={styles.screen}>
-        <p className={styles.muted} role="status">
-          {t("checking")}
-        </p>
+        <Loading label={t("checking")} />
       </main>
     );
   }

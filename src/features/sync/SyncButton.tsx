@@ -17,7 +17,7 @@ import styles from "./SyncButton.module.css";
 import { useSyncStore, type SyncAction } from "./syncStore";
 import { useBackgroundFetch } from "./useBackgroundFetch";
 import { Icon } from "../../components/Icon";
-import { ToolbarButton } from "../../components/ui/ToolbarButton";
+import { ToolbarButton, ToolbarPlaceholder } from "../../components/ui/ToolbarButton";
 import { Tooltip } from "../../components/ui/Tooltip";
 
 /** Re-renders every `ms` so relative times stay current. */
@@ -88,7 +88,16 @@ export function SyncButton({ repo }: { repo: string }) {
     ready && !busy && (tracked ? (branch?.ahead ?? 0) > 0 : canPublish),
   );
 
-  if (!ready || !branch || !primary || !info.data) return null;
+  // Hold the place while loading; without remotes there is nothing to sync.
+  if (status.isError || info.isError) return null;
+  if (!branch || !info.data) {
+    return (
+      <div className={styles.root}>
+        <ToolbarPlaceholder icon="fetch" className={styles.main} />
+      </div>
+    );
+  }
+  if (!ready || !primary) return null;
   const primaryShortcut = shortcutFor(
     primary.action === "fetch"
       ? "sync.fetch"

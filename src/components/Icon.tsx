@@ -1,7 +1,7 @@
 import { Icons, type IconName } from "./icons";
 import styles from "./Icon.module.css";
 
-export type IconSize = 12 | 14 | 16 | 20;
+export type IconSize = 12 | 14 | 16 | 20 | 32;
 
 /**
  * An icon from the app's set. Decorative by default; pass `label` when the

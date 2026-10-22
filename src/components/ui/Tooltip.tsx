@@ -1,5 +1,5 @@
 import { Tooltip as RadixTooltip } from "radix-ui";
-import type { ReactElement, ReactNode } from "react";
+import { useRef, useState, type ReactElement, type ReactNode } from "react";
 
 import styles from "./Tooltip.module.css";
 
@@ -21,16 +21,27 @@ export function Tooltip({
   shortcut,
   children,
   side = "bottom",
+  whenTruncated = false,
 }: {
   content: ReactNode;
   /** Already formatted, e.g. from `shortcutFor`. */
   shortcut?: string | null;
   children: ReactElement;
   side?: "top" | "right" | "bottom" | "left";
+  /** Show only while the child's text is cut off, to reveal all of it. */
+  whenTruncated?: boolean;
 }) {
+  // Typed as a button for Radix; with `asChild` it is whatever the child is.
+  const ref = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  const control = whenTruncated
+    ? { open, onOpenChange: (next: boolean) => setOpen(next && isTruncated(ref.current)) }
+    : {};
   return (
-    <RadixTooltip.Root>
-      <RadixTooltip.Trigger asChild>{children}</RadixTooltip.Trigger>
+    <RadixTooltip.Root {...control}>
+      <RadixTooltip.Trigger asChild ref={ref}>
+        {children}
+      </RadixTooltip.Trigger>
       <RadixTooltip.Portal>
         <RadixTooltip.Content className={styles.content} side={side} sideOffset={6}>
           {content}
@@ -39,4 +50,8 @@ export function Tooltip({
       </RadixTooltip.Portal>
     </RadixTooltip.Root>
   );
+}
+
+function isTruncated(el: HTMLElement | null): boolean {
+  return el !== null && el.scrollWidth > el.clientWidth;
 }

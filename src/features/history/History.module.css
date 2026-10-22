@@ -58,6 +58,7 @@
 /* Commit detail */
 
 .detail {
+  container: commit-detail / inline-size;
   display: grid;
   grid-template-rows: auto 1fr;
   height: 100%;
@@ -96,6 +97,9 @@
 }
 
 .hash {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   padding: 1px var(--space-1);
   border: 1px solid var(--color-line);
   border-radius: var(--radius-sm);
@@ -109,9 +113,13 @@
   border-color: var(--color-ink-faint);
 }
 
+.hash svg {
+  color: var(--color-ink-muted);
+}
+
 .split {
   display: grid;
-  grid-template-columns: minmax(180px, 260px) 1fr;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
   min-height: 0;
 }
 
@@ -120,6 +128,20 @@
   flex-direction: column;
   min-height: 0;
   border-right: 1px solid var(--color-line);
+}
+
+/* Too narrow for files beside the diff: stack them instead. */
+@container commit-detail (width < 560px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, auto) minmax(0, 1fr);
+  }
+
+  .files {
+    max-height: 9rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-line);
+  }
 }
 
 .filesTitle {
@@ -171,8 +193,8 @@
 }
 
 .fileKind {
+  display: inline-flex;
   flex: none;
-  font-size: var(--text-sm);
 }
 
 .added {

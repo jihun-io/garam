@@ -1,5 +1,6 @@
 {
   "appName": "가람",
+  "loading": "불러오는 중…",
   "language": {
     "label": "언어",
     "system": "시스템 언어"

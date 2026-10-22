@@ -15,6 +15,15 @@
   opacity: 0.55;
 }
 
+/* A dimmed accent still looks pressable; disabled filled buttons go grey. */
+.primary:disabled,
+.danger:disabled {
+  border-color: var(--color-line);
+  background: var(--color-hover);
+  color: var(--color-ink-muted);
+  opacity: 1;
+}
+
 .primary {
   border-color: var(--color-river-strong);
   background: var(--color-river);
@@ -45,7 +54,7 @@
 .danger {
   border-color: var(--color-danger);
   background: var(--color-danger);
-  color: #fff;
+  color: var(--color-on-danger);
 }
 
 .danger:hover:not(:disabled) {

@@ -59,7 +59,8 @@ describe("conflict resolution", () => {
 
   it("explains the stopped merge and replaces the commit form", async () => {
     setup(stopped);
-    const banner = await screen.findByRole("status");
+    // The banner's title; the loading indicator is a status too.
+    const banner = (await screen.findByText("Merge in progress")).closest('[role="status"]');
     expect(banner).toHaveTextContent("Merge in progress");
     expect(banner).toHaveTextContent("1 conflicted file left");
     expect(screen.getByRole("button", { name: "Commit merge" })).toBeDisabled();
@@ -92,7 +93,7 @@ describe("conflict resolution", () => {
   it("marks a cleaned-up file resolved right away", async () => {
     const user = userEvent.setup();
     setup({ operation: "rebase", files: [{ ...stopped.files[0], hasMarkers: false }] });
-    expect(await screen.findByRole("status")).toHaveTextContent("Rebase in progress");
+    expect(await screen.findByText("Rebase in progress")).toBeVisible();
     await user.click(await screen.findByRole("button", { name: "Mark as resolved" }));
     expect(commands.conflictMarkResolved).toHaveBeenCalledWith("/repo", "a.txt");
   });
@@ -100,9 +101,7 @@ describe("conflict resolution", () => {
   it("continues once everything is resolved", async () => {
     const user = userEvent.setup();
     setup({ operation: "merge", files: [] });
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "All conflicts are resolved. You can continue.",
-    );
+    expect(await screen.findByText("All conflicts are resolved. You can continue.")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Commit merge" }));
     expect(commands.conflictContinue).toHaveBeenCalledWith("/repo");
     expect(await screen.findByText("Merge committed.")).toBeVisible();

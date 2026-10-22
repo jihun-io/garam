@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runCommand, useCommand } from "../../lib/commands";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { AppMenu } from "./AppMenu";
+import { CommandList } from "./CommandList";
 import { HelpCommands } from "./HelpCommands";
 
 type FakeItem = {
@@ -119,5 +120,22 @@ describe("help commands", () => {
     expect(within(dialog).getByText("Commit")).toBeVisible();
     await user.click(within(dialog).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("command list", () => {
+  it("offers only the commands a screen provides, with shortcuts", async () => {
+    const user = userEvent.setup();
+    const reveal = vi.fn();
+    function Offer() {
+      useCommand("repo.reveal", reveal);
+      return <CommandList ids={["repo.openEditor", "repo.reveal"]} />;
+    }
+    renderWithQuery(<Offer />);
+    const button = await screen.findByRole("button", { name: /Show in file manager/ });
+    expect(button).toHaveTextContent("Ctrl+Shift+F");
+    expect(screen.queryByRole("button", { name: /Open in Editor/ })).toBeNull();
+    await user.click(button);
+    expect(reveal).toHaveBeenCalled();
   });
 });

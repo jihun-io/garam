@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
+import { Loading } from "../../components/ui/Loading";
 import {
   toAppError,
   type ConflictFile,
@@ -17,6 +18,7 @@ import { displayKind, isImage } from "./fileState";
 import styles from "./DiffView.module.css";
 import { useNotify } from "../notify/notifyStore";
 import { Icon } from "../../components/Icon";
+import { Tooltip } from "../../components/ui/Tooltip";
 
 type Row = { type: "hunk"; hunk: Hunk } | { type: "line"; line: DiffLine };
 
@@ -42,7 +44,9 @@ export function DiffView({
   const kind = displayKind(file);
   const header = (
     <header className={styles.header}>
-      <span className={styles.headerPath}>{file.path}</span>
+      <Tooltip content={file.path} whenTruncated>
+        <span className={styles.headerPath}>{file.path}</span>
+      </Tooltip>
       {file.origPath && (
         <span className={styles.headerMeta}>{t("diff.renamedFrom", { path: file.origPath })}</span>
       )}
@@ -58,7 +62,7 @@ export function DiffView({
       </div>
     );
   } else if (!diff.data) {
-    body = null;
+    body = <Loading />;
   } else if (diff.data.type === "binary") {
     body = isImage(file.path) ? (
       <ImageDiff repo={repo} file={file} />
@@ -339,7 +343,7 @@ function Line({ line, selection }: { line: DiffLine; selection?: Selection | "sp
 function ImageDiff({ repo, file }: { repo: string; file: FileChange }) {
   const { t } = useTranslation("changes");
   const images = useImages(repo, file, true);
-  if (!images.data) return null;
+  if (!images.data) return <Loading />;
   const side = (label: string, src: string | null) => (
     <figure className={styles.imageSide}>
       <figcaption className={styles.imageLabel}>{label}</figcaption>

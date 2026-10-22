@@ -4,14 +4,17 @@ import { useTranslation } from "react-i18next";
 import type { AppError } from "../ipc";
 import styles from "./ErrorMessage.module.css";
 
-/** Shows a translated message for an AppError, with the raw detail on demand. */
-export function ErrorMessage({ error }: { error: AppError }) {
+/**
+ * Shows a translated message for an AppError, with the raw detail on demand.
+ * `plain` drops the box, for containers that already frame it.
+ */
+export function ErrorMessage({ error, plain = false }: { error: AppError; plain?: boolean }) {
   const { t } = useTranslation(["errors", "common"]);
   const [open, setOpen] = useState(false);
   const detailId = useId();
 
   return (
-    <div className={styles.root} role="alert">
+    <div className={plain ? styles.plain : styles.root} role="alert">
       <p>{t(error.kind, { replace: error.params })}</p>
       {error.detail && (
         <>

@@ -4,6 +4,7 @@ import { useEffect, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import menu from "../../components/ui/Menu.module.css";
+import { Tooltip } from "../../components/ui/Tooltip";
 import type { CommitSummary } from "../../ipc";
 import { relativeTime } from "../../lib/time";
 import styles from "./History.module.css";
@@ -92,7 +93,9 @@ export function CommitList({
                   style={style}
                   onMouseDown={() => onSelect(commit.oid)}
                 >
-                  <span className={styles.summary}>{commit.summary}</span>
+                  <Tooltip content={commit.summary} whenTruncated>
+                    <span className={styles.summary}>{commit.summary}</span>
+                  </Tooltip>
                   <span className={styles.meta}>
                     {commit.authorName} · {relativeTime(commit.authoredAt, i18n.language)}
                   </span>

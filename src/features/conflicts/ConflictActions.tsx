@@ -2,6 +2,7 @@ import { DropdownMenu } from "radix-ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Icon } from "../../components/Icon";
 import { Button } from "../../components/ui/Button";
 import { FormDialog } from "../../components/ui/Dialog";
 import menu from "../../components/ui/Menu.module.css";
@@ -30,7 +31,10 @@ export function ConflictActions({ repo, file }: { repo: string; file: ConflictFi
 
   return (
     <div className={styles.actions} role="group" aria-label={t("file.label")}>
-      <p className={styles.kind}>{t(`kind.${file.kind}`)}</p>
+      <p className={styles.kind}>
+        <Icon name="conflicted" className={styles.kindIcon} />
+        {t(`kind.${file.kind}`)}
+      </p>
       <div className={styles.buttons}>
         <Button onClick={() => choose("mine")} disabled={busy}>
           {t("file.useMine")}
@@ -40,7 +44,10 @@ export function ConflictActions({ repo, file }: { repo: string; file: ConflictFi
         </Button>
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
-            <Button disabled={busy}>{t("file.openEditor")}</Button>
+            <Button disabled={busy}>
+              {t("file.openEditor")}
+              <Icon name="dropdown" size={12} />
+            </Button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content className={menu.content} sideOffset={4}>

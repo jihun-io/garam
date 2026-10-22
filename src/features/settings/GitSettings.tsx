@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
+import { Loading } from "../../components/ui/Loading";
 import { toAppError, type GlobalKey } from "../../ipc";
 import { useGitGlobal, useSetGitGlobal } from "./api";
 import { Setting } from "./controls";
@@ -10,7 +11,7 @@ import styles from "./SettingsDialog.module.css";
 export function GitSettings() {
   const { t } = useTranslation("settings");
   const global = useGitGlobal();
-  if (!global.data) return null;
+  if (!global.data) return <Loading />;
   return (
     <>
       <p className={styles.hint}>{t("git.hint")}</p>

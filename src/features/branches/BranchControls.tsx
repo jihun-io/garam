@@ -1,3 +1,4 @@
+import { ToolbarPlaceholder } from "../../components/ui/ToolbarButton";
 import type { Branch } from "../../ipc";
 import { useCommand } from "../../lib/commands";
 import { useStatus } from "../changes/api";
@@ -18,7 +19,8 @@ export function BranchControls({ repo }: { repo: string }) {
   useCommand("branch.create", () => openDialog({ kind: "create" }), !!status.data);
   useCommand("branch.rename", () => head && openDialog({ kind: "rename", branch: head }), !!head);
   useCommand("branch.merge", () => openDialog({ kind: "merge" }), !!head);
-  if (!status.data) return null;
+  if (status.isError) return null;
+  if (!status.data) return <ToolbarPlaceholder icon="branch" />;
   const { branch, files } = status.data;
 
   // Only ask what to do with changes when there are any.
