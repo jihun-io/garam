@@ -4,12 +4,17 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  /* WebKit hands a swipe that starts at a scroll container's edge to the
+     root instead of rubber-banding the container. `contain` keeps the
+     gesture on the container so it bounces at its own edge. Only affects
+     elements that actually scroll. */
+  overscroll-behavior: contain;
 }
 
 html {
   font-size: 13px;
   /* The window itself never scrolls, so a trackpad swipe should not
-     rubber-band the whole app. Scroll containers keep their own bounce. */
+     rubber-band the whole app. */
   overscroll-behavior: none;
 }
 
