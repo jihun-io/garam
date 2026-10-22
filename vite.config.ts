@@ -9,6 +9,12 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(() => ({
   plugins: [react()],
 
+  // Shiki is only imported lazily, so Vite would find it mid-session, bundle
+  // it again and break the grammar chunks the page already asked for.
+  optimizeDeps: {
+    include: ["shiki/core", "shiki/engine/javascript", "shiki/langs"],
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

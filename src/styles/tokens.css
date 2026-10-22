@@ -39,6 +39,15 @@
   --color-deleted-strong: #ffd4cf; /* oklch(90.5% 0.05 25) */
   --color-hunk-bg: #ebedf0; /* oklch(94.5% 0.005 265) */
 
+  /* Syntax: code text only, on the content surface and diff lines. Hues
+     kept away from the status green and red. */
+  --color-syntax-keyword: #8e2873; /* oklch(46% 0.16 340) */
+  --color-syntax-string: #005d84; /* oklch(45% 0.1 235) */
+  --color-syntax-constant: #2953a5; /* oklch(46% 0.14 262) */
+  --color-syntax-function: #643b9a; /* oklch(45% 0.15 300) */
+  --color-syntax-type: #006166; /* oklch(44% 0.09 200) */
+  --color-syntax-comment: #595b5f; /* = ink-muted */
+
   /* Overlays only: translucency is a modifier, never a palette color. */
   --color-scrim: rgba(18, 19, 21, 0.28);
   --shadow-control: 0 1px 1px rgba(18, 19, 21, 0.05);
@@ -126,6 +135,12 @@
   --color-deleted-bg: #2d1b19; /* oklch(24.5% 0.03 25) */
   --color-deleted-strong: #572825; /* oklch(34% 0.07 25) */
   --color-hunk-bg: #1d1e21; /* oklch(23.5% 0.006 265) */
+  --color-syntax-keyword: #f89ad9; /* oklch(80% 0.136 340) */
+  --color-syntax-string: #86c7ed; /* oklch(80% 0.085 235) */
+  --color-syntax-constant: #93beff; /* oklch(80% 0.119 262) */
+  --color-syntax-function: #caaaff; /* oklch(80% 0.128 300) */
+  --color-syntax-type: #80cdd1; /* oklch(80% 0.076 200) */
+  --color-syntax-comment: #a5a8ac; /* = ink-muted */
   --color-on-accent: #10161a;
   --color-on-danger: #10161a;
   --color-scrim: rgba(0, 0, 0, 0.5);

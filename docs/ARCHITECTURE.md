@@ -115,6 +115,8 @@ garam-git/src/
 
 각 줄이 이미 스테이지됐는지는 보조 diff 두 개로 계산한다. 삭제 줄은 HEAD → index diff에서 지워졌으면 스테이지된 것이고, 추가 줄은 index → 작업 폴더 diff에서 추가로 나오지 않으면(이미 index에 있으면) 스테이지된 것이다.
 
+diff 본문은 구문 강조를 한다(`src/features/changes/syntax/`). 어떤 문법을 쓸지는 GitHub Linguist의 파일 이름·확장자·shebang 표로 정한다. 이 표는 `pnpm languages`(`scripts/gen-languages.mjs`)가 `linguist-languages`와 Shiki 문법 목록을 맞춰 `languages.json`으로 만든다. Shiki와 각 언어 문법은 처음 쓸 때 불러오고, WebAssembly가 필요 없는 JavaScript 정규식 엔진을 쓴다(CSP를 넓히지 않음). hunk마다 이전 쪽(문맥+삭제 줄)과 이후 쪽(문맥+추가 줄)을 각각 이어진 코드로 토큰화해 여러 줄 주석·문자열이 이어지게 한다. 2만 줄이 넘는 diff는 강조하지 않고, 토큰화는 12ms마다 화면에 양보한다.
+
 프론트의 diff 쿼리 키에는 파일의 staged/unstaged 상태가 들어간다. 상태가 바뀌면 줄 표시도 새로 계산해야 하기 때문이다. index를 쓰는 요청(스테이지, 줄 스테이지, 변경 취소, 커밋)은 `index.lock` 충돌을 피하려고 저장소마다 순서대로 실행한다(TanStack Query mutation `scope`).
 
 ### 2.6 브랜치 전환과 자동 보관
@@ -230,6 +232,7 @@ struct AppError {
 | UI 상태   | Zustand (선택된 파일, 패널 크기 등)                                            |
 | 목록      | `@tanstack/react-virtual` (파일 목록, 커밋 목록, 큰 diff)                      |
 | i18n      | i18next + react-i18next, 네임스페이스별 JSON                                   |
+| 구문 강조 | Shiki(TextMate 문법, JS 정규식 엔진, 지연 로딩) + GitHub Linguist 언어 판별    |
 | 테스트    | Vitest + Testing Library, IPC는 목(mock)으로 대체                              |
 | 린트·포맷 | ESLint, Prettier (Rust는 `cargo fmt`, `clippy`)                                |
 
@@ -264,6 +267,6 @@ struct AppError {
 
 ## 8. 아직 정하지 않은 것
 
-- 인앱 diff 구문 강조(Shiki 지연 로딩 검토), 커밋 그래프 렌더링 방식(Canvas 대 SVG)
+- 커밋 그래프 렌더링 방식(Canvas 대 SVG)
 - Windows에서 git 번들 여부 (MVP는 시스템 git만 사용)
 - 자동 업데이트 배포 채널(GitHub Releases + Tauri updater 검토)

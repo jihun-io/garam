@@ -280,7 +280,9 @@ function FileDiffPane({
       </p>
     );
   } else {
-    body = <TextDiff key={`${file.path}:${ignoreWhitespace}`} hunks={diff.data.hunks} />;
+    body = (
+      <TextDiff key={`${file.path}:${ignoreWhitespace}`} path={file.path} hunks={diff.data.hunks} />
+    );
   }
 
   return (

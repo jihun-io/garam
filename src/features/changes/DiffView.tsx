@@ -1,5 +1,5 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
@@ -16,6 +16,8 @@ import { ConflictActions } from "../conflicts/ConflictActions";
 import { useChangeActions, useDiff, useImages } from "./api";
 import { displayKind, isImage } from "./fileState";
 import { hunkWordChanges, type Range } from "./wordDiff";
+import { useSyntaxTokens, type SyntaxToken } from "./syntax/highlight";
+import { lineSegments } from "./syntax/segments";
 import styles from "./DiffView.module.css";
 import { useNotify } from "../notify/notifyStore";
 import { Icon } from "../../components/Icon";
@@ -86,6 +88,7 @@ export function DiffView({
     body = (
       <TextDiff
         key={file.path}
+        path={file.path}
         hunks={diff.data.hunks}
         onStageLines={
           diff.data.selectable
@@ -126,9 +129,12 @@ function refOfKey(key: LineKey): LineRef {
  * margin: click or drag to choose which lines are in the commit.
  */
 export function TextDiff({
+  path,
   hunks,
   onStageLines,
 }: {
+  /** The file's path, which decides how its code is highlighted. */
+  path: string;
   hunks: Hunk[];
   onStageLines?: (selected: LineRef[]) => void;
 }) {
@@ -144,6 +150,7 @@ export function TextDiff({
   );
   // Which words changed in lines that replaced other lines.
   const words = useMemo(() => hunkWordChanges(hunks), [hunks]);
+  const syntax = useSyntaxTokens(path, hunks);
   const staged = useMemo(() => {
     const keys = new Set<LineKey>();
     for (const line of hunks.flatMap((h) => h.lines)) {
@@ -299,6 +306,7 @@ export function TextDiff({
               <Line
                 line={row.line}
                 words={words.get(row.line)}
+                tokens={syntax?.get(row.line)}
                 selection={
                   selectable && key
                     ? {
@@ -382,11 +390,14 @@ type Selection = {
 function Line({
   line,
   words,
+  tokens,
   selection,
 }: {
   line: DiffLine;
   /** Changed stretches of the text, marked more strongly than the line. */
   words?: Range[];
+  /** Syntax colors, once worked out. */
+  tokens?: SyntaxToken[];
   selection?: Selection | "spacer";
 }) {
   const { t } = useTranslation("changes");
@@ -427,7 +438,11 @@ function Line({
         {MARKER[line.kind]}
       </span>
       <span className={styles.text}>
-        {words ? <MarkedText text={line.text} ranges={words} /> : line.text}
+        {words || tokens ? (
+          <StyledText text={line.text} tokens={tokens} ranges={words} />
+        ) : (
+          line.text
+        )}
         {line.noNewline && (
           <span className={styles.noNewline}>
             <Icon name="noNewline" size={12} />
@@ -438,21 +453,44 @@ function Line({
   );
 }
 
-/** `text` with `ranges` wrapped in highlight spans. */
-function MarkedText({ text, ranges }: { text: string; ranges: Range[] }) {
-  const parts: ReactNode[] = [];
-  let at = 0;
-  for (const [start, end] of ranges) {
-    if (start > at) parts.push(text.slice(at, start));
-    parts.push(
-      <span key={start} className={styles.word}>
-        {text.slice(start, end)}
-      </span>,
+/** `text` in its syntax colors, with `ranges` wrapped in highlight spans. */
+function StyledText({
+  text,
+  tokens,
+  ranges,
+}: {
+  text: string;
+  tokens?: SyntaxToken[];
+  ranges?: Range[];
+}) {
+  return lineSegments(text, tokens, ranges).map((segment) => {
+    let at = segment.start;
+    const parts = segment.tokens.map((token) => {
+      const key = at;
+      at += token.text.length;
+      return token.color || token.italic || token.bold ? (
+        <span
+          key={key}
+          style={{
+            color: token.color,
+            fontStyle: token.italic ? "italic" : undefined,
+            fontWeight: token.bold ? 650 : undefined,
+          }}
+        >
+          {token.text}
+        </span>
+      ) : (
+        token.text
+      );
+    });
+    return segment.marked ? (
+      <span key={segment.start} className={styles.word}>
+        {parts}
+      </span>
+    ) : (
+      parts
     );
-    at = end;
-  }
-  if (at < text.length) parts.push(text.slice(at));
-  return <>{parts}</>;
+  });
 }
 
 function ImageDiff({ repo, file }: { repo: string; file: FileChange }) {

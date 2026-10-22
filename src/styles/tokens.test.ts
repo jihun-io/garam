@@ -50,3 +50,18 @@ describe.each(Object.entries(themes))("%s theme text", (_, tokens) => {
     expect(failing).toEqual([]);
   });
 });
+
+// Code text sits on the content surface and on diff lines, changed words included.
+const SYNTAX = ["keyword", "string", "constant", "function", "type", "comment"];
+
+describe.each(Object.entries(themes))("%s theme syntax colors", (_, tokens) => {
+  const color = (name: string) => resolve(tokens[`color-${name}`]);
+
+  it.each(SYNTAX)("%s meets WCAG AA (4.5:1) on code backgrounds", (name) => {
+    const failing = ["surface", "added-bg", "deleted-bg", "added-strong", "deleted-strong"]
+      .map((where) => [where, contrast(color(`syntax-${name}`), color(where))] as const)
+      .filter(([, ratio]) => ratio < 4.5)
+      .map(([where, ratio]) => `${where} ${ratio.toFixed(2)}`);
+    expect(failing).toEqual([]);
+  });
+});
