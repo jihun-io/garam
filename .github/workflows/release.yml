@@ -1,0 +1,187 @@
+name: Release
+
+# Pushing a `v*` tag builds every platform and uploads the installers to a
+# draft GitHub Release, which is published by hand after checking it.
+# Running the workflow manually builds the same installers as workflow
+# artifacts without creating a release, to test signing and notarization.
+#
+# Secrets: APPLE_CERTIFICATE (base64 .p12), APPLE_CERTIFICATE_PASSWORD,
+# KEYCHAIN_PASSWORD, APPLE_API_KEY (key id), APPLE_API_ISSUER,
+# APPLE_API_KEY_P8 (.p8 contents). Windows builds are not code signed yet.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      release-id: ${{ steps.release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check that the tag matches the app version
+        id: version
+        run: |
+          version=$(jq -r .version src-tauri/tauri.conf.json)
+          for other in "$(jq -r .version package.json)" \
+            "$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"; do
+            if [ "$other" != "$version" ]; then
+              echo "::error::Versions differ: tauri.conf.json has $version, another file has $other"
+              exit 1
+            fi
+          done
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match app version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          case "$version" in
+            *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Create draft release
+        id: release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          flags=(--draft --generate-notes --title "Garam $GITHUB_REF_NAME" --verify-tag)
+          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" "${flags[@]}"
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
+            --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\") | .id" | head -n1)
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            args: --target universal-apple-darwin --bundles app,dmg
+          - os: ubuntu-22.04
+            args: --bundles appimage,deb
+          - os: windows-latest
+            # WiX (msi) only accepts numeric versions, so prereleases ship
+            # the NSIS installer alone.
+            args: --bundles nsis
+            stable-args: --bundles nsis,msi
+    runs-on: ${{ matrix.os }}
+    # A Windows run without a Rust cache takes about 30 minutes.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libxdo-dev xdg-utils
+          version: 1
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        run: rustup toolchain install
+      - name: Add macOS targets for the universal build
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Import the signing certificate
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/build.keychain-db"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          # The intermediate that issued the Developer ID certificate, in
+          # case the .p12 holds only the leaf.
+          curl -fsSL -o "$RUNNER_TEMP/DeveloperIDG2CA.cer" \
+            https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain"
+          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$keychain"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/certificate.p12"
+          identity=$(security find-identity -v -p codesigning "$keychain" \
+            | sed -n 's/.*"\(Developer ID Application: .*\)"/\1/p' | head -n1)
+          if [ -z "$identity" ]; then
+            echo "::error::No Developer ID Application identity in the certificate"
+            exit 1
+          fi
+          echo "APPLE_SIGNING_IDENTITY=$identity" >> "$GITHUB_ENV"
+      - name: Write the notarization key
+        if: runner.os == 'macOS'
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          printf '%s\n' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/notarize.p8"
+          echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/notarize.p8" >> "$GITHUB_ENV"
+
+      - name: Choose bundles
+        id: bundles
+        shell: bash
+        env:
+          ARGS: ${{ matrix.args }}
+          STABLE_ARGS: ${{ matrix.stable-args }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+        run: |
+          if [ "$PRERELEASE" = false ] && [ -n "$STABLE_ARGS" ]; then
+            echo "args=$STABLE_ARGS" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=$ARGS" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and upload
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        with:
+          # Empty on manual runs: build only, nothing is uploaded to a release.
+          releaseId: ${{ needs.prepare.outputs.release-id }}
+          tauriScript: pnpm tauri
+          args: ${{ steps.bundles.outputs.args }}
+
+      - name: Keep installers from a manual run
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: garam-${{ needs.prepare.outputs.version }}-${{ runner.os }}
+          path: |
+            target/release/bundle/
+            target/universal-apple-darwin/release/bundle/
+          if-no-files-found: error
+
+      - name: Remove the signing keychain
+        if: always() && runner.os == 'macOS'
+        run: |
+          security delete-keychain "$RUNNER_TEMP/build.keychain-db" || true
+          rm -f "$RUNNER_TEMP/notarize.p8"

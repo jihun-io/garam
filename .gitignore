@@ -26,3 +26,10 @@ dist-ssr
 # Rust / Tauri
 /target/
 /src-tauri/gen/schemas
+
+# Signing material (certificates, notarization and updater keys)
+/.signing/
+*.p12
+*.p8
+*.pem
+*.key

@@ -33,6 +33,23 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "Garam contributors",
+    "copyright": "Copyright (c) 2026 Garam contributors",
+    "homepage": "https://github.com/jihun-io/garam",
+    "category": "DeveloperTool",
+    "shortDescription": "A friendly cross-platform Git client",
+    "license": "MIT",
+    "linux": {
+      "deb": {
+        "depends": ["git"]
+      }
+    },
+    "windows": {
+      "nsis": {
+        "languages": ["English", "Korean"],
+        "displayLanguageSelector": false
+      }
+    },
     "icon": [
       "icons/32x32.png",
       "icons/48x48.png",

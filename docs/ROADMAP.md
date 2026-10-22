@@ -98,6 +98,9 @@ UI 개선은 `docs/UI.md` 계획(1~6단계)을 따른다.
   - **남은 것**: 실제 앱(웹뷰)에서 끝까지 걸리는 시간은 직접 재지 않았다. Windows·Linux 측정, 경로 필터를 빠르게 하는 changed-path 블룸 필터(만드는 데 약 25초), 새 커밋이 쌓이면 commit-graph를 다시 쓰는 일(지금은 없을 때만 만든다)
 - [x] 앱 아이콘 자산: macOS Icon Composer/ICNS, Windows ICO, Linux PNG 및 재생성 스크립트
 - [ ] macOS 서명·공증, Windows 서명, Linux 패키지 (AppImage, deb)
+  - 릴리스 워크플로(`.github/workflows/release.yml`): `v*` 태그를 푸시하면 세 OS를 빌드해 초안 Release에 올리고, 손으로 실행하면 Release 없이 설치 파일만 아티팩트로 남긴다. macOS는 유니버설(Apple Silicon + Intel) 빌드를 Developer ID로 서명하고 App Store Connect API 키로 공증한다. Linux는 AppImage와 deb(`git` 의존), Windows는 NSIS(프리릴리스가 아니면 MSI도)
+  - Windows는 v0.1에서 서명하지 않는다(SmartScreen 경고를 README에서 안내). SignPath Foundation(오픈소스 무료 서명)을 신청하고, Microsoft Store(MSIX)는 askpass 동작을 확인한 뒤에 검토한다
+  - **남은 것**: 워크플로를 실제로 돌려 서명·공증 확인(Apple 개발자 약관 재동의가 먼저 필요), 업데이터 산출물(`.sig`, `latest.json`)은 업데이터 플러그인 설정과 함께 켠다
 - [ ] 자동 업데이트
 - [ ] README (영어·한국어), 기여 가이드, 번역 기여 가이드
 
