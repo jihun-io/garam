@@ -6,8 +6,8 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
 
-use notify_debouncer_full::notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_full::{DebounceEventResult, Debouncer, RecommendedCache, new_debouncer};
+use notify_debouncer_full::notify::{self, RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{DebounceEventResult, Debouncer, NoCache, new_debouncer_opt};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
@@ -18,7 +18,10 @@ pub struct RepoChanged {
     pub path: String,
 }
 
-type Watcher = Debouncer<RecommendedWatcher, RecommendedCache>;
+// No file id cache: it only pairs up rename events, which don't matter
+// here, and on macOS and Windows building it walks and stats every file in
+// the repository (100k files in a large one) while the lock is held.
+type Watcher = Debouncer<RecommendedWatcher, NoCache>;
 
 /// One watcher per window, keyed by window label.
 #[derive(Default)]
@@ -47,7 +50,7 @@ impl RepoWatcher {
         let app = app.clone();
         let payload = RepoChanged { path: repo.clone() };
         let event_root = root.clone();
-        let mut debouncer = new_debouncer(
+        let mut debouncer = new_debouncer_opt(
             Duration::from_millis(250),
             None,
             move |result: DebounceEventResult| {
@@ -60,6 +63,8 @@ impl RepoWatcher {
                     let _ = app.emit(REPO_CHANGED_EVENT, payload.clone());
                 }
             },
+            NoCache,
+            notify::Config::default(),
         )?;
         debouncer.watch(&root, RecursiveMode::Recursive)?;
         watchers.insert(window.to_owned(), (repo, debouncer));
