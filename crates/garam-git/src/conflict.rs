@@ -114,7 +114,7 @@ fn operation(git: &Git, repo: &Path) -> Result<Option<Operation>, GitError> {
 }
 
 /// Unmerged paths with the index stages (1 base, 2 ours, 3 theirs) each has.
-fn unmerged(git: &Git, repo: &Path) -> Result<BTreeMap<String, Vec<u8>>, GitError> {
+pub(crate) fn unmerged(git: &Git, repo: &Path) -> Result<BTreeMap<String, Vec<u8>>, GitError> {
     let output = git
         .command()
         .cwd(repo)

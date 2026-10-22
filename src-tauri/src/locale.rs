@@ -7,6 +7,7 @@
 //! the `defaults` tool rather than calling Foundation directly, because the
 //! workspace forbids `unsafe` code.
 
+#[cfg(target_os = "macos")]
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 

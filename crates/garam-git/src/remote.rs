@@ -191,12 +191,14 @@ pub fn pull(
     } else {
         command
     };
-    let output = command.run().map_err(blocked_by_local_changes)?;
+    command.run().map_err(blocked_by_local_changes)?;
 
     let after = rev_parse(git, repo, "HEAD")?;
-    let text = format!("{}{}", output.stdout_str(), output.stderr_str()).to_ascii_lowercase();
+    // git words the autostash conflict differently across versions, so
+    // look at the index: a pull can't start with unmerged paths, so any
+    // left now came from putting the stashed changes back.
     Ok(
-        if text.contains("applying autostash resulted in conflicts") {
+        if autostash && !crate::conflict::unmerged(git, repo)?.is_empty() {
             PullOutcome::UpdatedWithConflicts
         } else if before == after {
             PullOutcome::UpToDate
