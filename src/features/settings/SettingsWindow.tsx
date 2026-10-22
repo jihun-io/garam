@@ -3,6 +3,7 @@ import { Tabs } from "radix-ui";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
+import { focusTabWithoutRing } from "../../components/ui/tabs";
 import { commands, unwrap } from "../../ipc";
 import { useCommand } from "../../lib/commands";
 import { AccountsSettings } from "../accounts/AccountsSettings";
@@ -58,7 +59,12 @@ export function SettingsWindow() {
         <main className={styles.body}>
           <Tabs.List className={styles.nav} aria-label={t("sections")}>
             {SECTIONS.map(({ id }) => (
-              <Tabs.Trigger key={id} value={id} className={styles.navItem}>
+              <Tabs.Trigger
+                key={id}
+                value={id}
+                className={styles.navItem}
+                onMouseDown={focusTabWithoutRing}
+              >
                 {t(`${id}.title`)}
               </Tabs.Trigger>
             ))}

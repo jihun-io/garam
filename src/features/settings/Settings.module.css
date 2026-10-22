@@ -51,6 +51,12 @@
   background: var(--color-hover);
 }
 
+/* Above its neighbors, whose hover background would cover the ring. */
+.navItem:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+
 .navItem[data-state="active"] {
   background: var(--color-selected);
   font-weight: 550;

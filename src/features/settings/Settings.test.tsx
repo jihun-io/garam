@@ -178,4 +178,16 @@ describe("settings", () => {
     await screen.findByRole("combobox", { name: "Language" });
     expect(await axeViolations(container)).toEqual([]);
   });
+
+  it("doesn't leave a keyboard focus ring on a clicked section", async () => {
+    const user = userEvent.setup();
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    setup();
+    await openSection(user, "Appearance");
+    const tab = screen.getByRole("tab", { name: "Appearance" });
+    expect(tab).toHaveFocus();
+    expect(focus.mock.contexts[0]).toBe(tab);
+    expect(focus.mock.calls[0]).toEqual([{ focusVisible: false }]);
+    focus.mockRestore();
+  });
 });
