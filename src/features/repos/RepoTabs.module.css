@@ -25,7 +25,8 @@
   background: var(--color-hover);
 }
 
-.tab[data-state="active"] {
+/* Not `data-state`: the tooltip around each tab sets its own. */
+.tab[aria-selected="true"] {
   border-color: var(--color-line);
   background: var(--color-surface);
   color: var(--color-ink);

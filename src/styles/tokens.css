@@ -58,7 +58,7 @@
      never so wide that the diff gets squeezed. The toolbar's first button
      follows it too. Limits match lib/layout.ts. */
   --sidebar-width: 320px;
-  --sidebar-actual: clamp(240px, var(--sidebar-width), max(240px, min(560px, 100vw - 480px)));
+  --sidebar-actual: clamp(256px, var(--sidebar-width), max(256px, min(560px, 100vw - 480px)));
 
   /* Space the macOS window buttons take inside the toolbar. */
   --titlebar-inset: 0px;

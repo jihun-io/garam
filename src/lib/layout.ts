@@ -1,7 +1,8 @@
 /** Sidebar width limits in CSS pixels (see `--sidebar-actual` in tokens.css). */
 export const SIDEBAR = {
   default: 320,
-  min: 240,
+  /** Keeps the toolbar's repository button (above the sidebar) at its 160px minimum. */
+  min: 256,
   /**
    * Room always left to the right of the sidebar: enough for the diff and
    * for the toolbar's branch and sync buttons at their minimum width.

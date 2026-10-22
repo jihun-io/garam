@@ -9,7 +9,7 @@ describe("sidebar width", () => {
     vi.stubGlobal("innerWidth", 800);
     expect(maxSidebarWidth()).toBe(320);
     expect(clampSidebarWidth(500)).toBe(320);
-    expect(clampSidebarWidth(100)).toBe(240);
+    expect(clampSidebarWidth(100)).toBe(256);
   });
 
   it("caps the width in wide windows", () => {
