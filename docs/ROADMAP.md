@@ -15,7 +15,7 @@
 - [x] `AppError` 형식과 프론트 오류 표시 컴포넌트
 - [x] git 설치·버전 감지, 미설치 시 안내 화면
 - [x] `TestRepo` 테스트 픽스처
-- [ ] GitHub Actions CI (3개 OS) — 워크플로 작성 완료, 원격 저장소에 push한 뒤 첫 실행으로 검증 필요
+- [x] GitHub Actions CI (3개 OS). Rust 캐시가 없으면 Windows 작업이 약 30분 걸린다
 
 **완료 조건**: 앱이 실행되고, git 버전이 표시되며, 한국어↔영어 전환이 되고, CI가 통과한다.
 
