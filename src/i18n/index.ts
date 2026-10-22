@@ -8,6 +8,7 @@ import enConflicts from "../locales/en/conflicts.json";
 import enCredentials from "../locales/en/credentials.json";
 import enErrors from "../locales/en/errors.json";
 import enHistory from "../locales/en/history.json";
+import enMenu from "../locales/en/menu.json";
 import enRepos from "../locales/en/repos.json";
 import enSettings from "../locales/en/settings.json";
 import enStartup from "../locales/en/startup.json";
@@ -19,6 +20,7 @@ import koConflicts from "../locales/ko/conflicts.json";
 import koCredentials from "../locales/ko/credentials.json";
 import koErrors from "../locales/ko/errors.json";
 import koHistory from "../locales/ko/history.json";
+import koMenu from "../locales/ko/menu.json";
 import koRepos from "../locales/ko/repos.json";
 import koSettings from "../locales/ko/settings.json";
 import koStartup from "../locales/ko/startup.json";
@@ -33,6 +35,7 @@ export const resources = {
     credentials: enCredentials,
     errors: enErrors,
     history: enHistory,
+    menu: enMenu,
     repos: enRepos,
     settings: enSettings,
     startup: enStartup,
@@ -46,6 +49,7 @@ export const resources = {
     credentials: koCredentials,
     errors: koErrors,
     history: koHistory,
+    menu: koMenu,
     repos: koRepos,
     settings: koSettings,
     startup: koStartup,
@@ -99,17 +103,8 @@ void i18n.use(initReactI18next).init({
   lng: systemLanguage(),
   fallbackLng: "en",
   defaultNS: "common",
-  ns: [
-    "branches",
-    "changes",
-    "common",
-    "credentials",
-    "errors",
-    "history",
-    "repos",
-    "startup",
-    "sync",
-  ],
+  // Every key of `resources.en`, so no namespace is forgotten.
+  ns: Object.keys(resources.en),
   interpolation: { escapeValue: false },
   contextSeparator: "#",
   returnNull: false,

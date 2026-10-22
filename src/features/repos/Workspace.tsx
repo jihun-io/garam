@@ -1,10 +1,12 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
 
+import { IconButton } from "../../components/ui/IconButton";
 import type { RepositoryEntry } from "../../ipc";
+import { shortcutFor, useCommand } from "../../lib/commands";
 import { BranchControls } from "../branches/BranchControls";
 import { useRepoWatcher } from "../changes/useRepoWatcher";
-import { IconButton } from "../../components/ui/IconButton";
 import { useSettingsDialog } from "../settings/settingsDialogStore";
 import { SyncButton } from "../sync/SyncButton";
 import { OpenInMenu } from "./OpenInMenu";
@@ -25,6 +27,15 @@ export function Workspace({
   const openSettings = useSettingsDialog((s) => s.setOpen);
   const active = selected && !selected.missing ? selected.path : null;
   useRepoWatcher(active);
+  const client = useQueryClient();
+  useCommand(
+    "view.refresh",
+    () => {
+      void client.invalidateQueries({ queryKey: ["repo", active] });
+      void client.invalidateQueries({ queryKey: ["history", active] });
+    },
+    active !== null,
+  );
 
   return (
     <div className={styles.root}>
@@ -41,7 +52,12 @@ export function Workspace({
         <div className={styles.spacer} data-tauri-drag-region />
         <div className={styles.actions}>
           {selected && <OpenInMenu path={selected.path} disabled={selected.missing} />}
-          <IconButton icon="settings" label={t("open")} onClick={() => openSettings(true)} />
+          <IconButton
+            icon="settings"
+            label={t("open")}
+            shortcut={shortcutFor("settings")}
+            onClick={() => openSettings(true)}
+          />
         </div>
       </header>
       <main className={styles.main}>

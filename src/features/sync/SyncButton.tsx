@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import menu from "../../components/ui/Menu.module.css";
 import { toAppError } from "../../ipc";
+import { shortcutFor, useCommand } from "../../lib/commands";
 import { relativeTime } from "../../lib/time";
 import { useBranches } from "../branches/api";
 import { CommitCounts } from "../branches/CommitCounts";
@@ -45,14 +46,14 @@ export function SyncButton({ repo }: { repo: string }) {
   useBackgroundFetch(repo, remote, fetchIntervalMinutes);
   useTick(60 * 1000);
 
-  if (!status.data || !info.data || info.data.remotes.length === 0) return null;
-  const branch = status.data.branch;
+  const branch = status.data?.branch;
+  const ready = !!branch && !!info.data && info.data.remotes.length > 0;
   const upstreamGone =
     branches.data?.some((b) => b.kind === "local" && b.isHead && b.upstreamGone) ?? false;
-  const primary = primaryAction(branch, upstreamGone);
-  const tracked = hasUpstream(branch, upstreamGone);
-  const upstream = branch.upstream ?? "";
-  const head = branch.head ?? "";
+  const primary = branch ? primaryAction(branch, upstreamGone) : null;
+  const tracked = branch ? hasUpstream(branch, upstreamGone) : false;
+  const upstream = branch?.upstream ?? "";
+  const head = branch?.head ?? "";
   const busy = running !== undefined;
 
   const start = (action: SyncAction) => {
@@ -77,6 +78,24 @@ export function SyncButton({ repo }: { repo: string }) {
     }
   };
 
+  // Push publishes a branch that isn't on the remote yet.
+  const canPublish = primary?.action === "publish" && !primary.disabled;
+  useCommand("sync.fetch", () => start("fetch"), ready && !busy && !!remote);
+  useCommand("sync.pull", () => start("pull"), ready && !busy && tracked);
+  useCommand(
+    "sync.push",
+    () => start(tracked ? "push" : "publish"),
+    ready && !busy && (tracked ? (branch?.ahead ?? 0) > 0 : canPublish),
+  );
+
+  if (!ready || !branch || !primary || !info.data) return null;
+  const primaryShortcut = shortcutFor(
+    primary.action === "fetch"
+      ? "sync.fetch"
+      : primary.action === "pull"
+        ? "sync.pull"
+        : "sync.push",
+  );
   const shown = running?.action ?? primary.action;
   const percent = running?.progress?.overallPercent ?? 0;
   const label = running
@@ -95,32 +114,34 @@ export function SyncButton({ repo }: { repo: string }) {
 
   return (
     <div className={styles.root}>
-      <ToolbarButton
-        icon={shown}
-        value={label}
-        caption={detail}
-        captionBelow
-        className={styles.main}
-        progress={busy ? percent : undefined}
-        disabled={busy || (primary.action === "publish" && primary.disabled)}
-        aria-busy={busy}
-        onClick={() => start(primary.action)}
-        trailing={
-          <>
-            {busy && (
-              <span
-                className="sr-only"
-                role="progressbar"
-                aria-label={label}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={percent}
-              />
-            )}
-            {tracked && <CommitCounts ahead={branch.ahead} behind={branch.behind} />}
-          </>
-        }
-      />
+      <Tooltip content={label} shortcut={primaryShortcut}>
+        <ToolbarButton
+          icon={shown}
+          value={label}
+          caption={detail}
+          captionBelow
+          className={styles.main}
+          progress={busy ? percent : undefined}
+          disabled={busy || (primary.action === "publish" && primary.disabled)}
+          aria-busy={busy}
+          onClick={() => start(primary.action)}
+          trailing={
+            <>
+              {busy && (
+                <span
+                  className="sr-only"
+                  role="progressbar"
+                  aria-label={label}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={percent}
+                />
+              )}
+              {tracked && <CommitCounts ahead={branch.ahead} behind={branch.behind} />}
+            </>
+          }
+        />
+      </Tooltip>
       {busy ? (
         <Tooltip content={t("cancel")}>
           <button type="button" className={styles.side} onClick={cancel} aria-label={t("cancel")}>

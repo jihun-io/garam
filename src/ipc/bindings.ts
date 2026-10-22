@@ -108,6 +108,11 @@ export const commands = {
 	gitGlobalGet: () => typedError<GlobalSettings, AppError>(__TAURI_INVOKE("git_global_get")),
 	/**  Sets a global git setting; an empty value removes it. */
 	gitGlobalSet: (key: GlobalKey, value: string) => typedError<null, AppError>(__TAURI_INVOKE("git_global_set", { key, value })),
+	/**
+	 *  Quits and starts the app again, e.g. so macOS's own menus pick up a new
+	 *  language.
+	 */
+	appRestart: () => __TAURI_INVOKE<void>("app_restart"),
 	externalEditors: () => typedError<ExternalEditor[], AppError>(__TAURI_INVOKE("external_editors")),
 	externalTerminals: () => typedError<ExternalTerminal[], AppError>(__TAURI_INVOKE("external_terminals")),
 	externalOpenEditor: (editorId: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_editor", { editorId, path })),

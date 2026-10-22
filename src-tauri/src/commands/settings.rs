@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use garam_git::Git;
 use garam_git::config::{self, GlobalKey, GlobalSettings};
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::error::{AppResult, blocking};
 use crate::settings::{AppSettings, SettingsStore};
@@ -17,9 +17,29 @@ pub fn settings_get(store: Store<'_>) -> AppSettings {
 
 #[tauri::command]
 #[specta::specta]
-pub async fn settings_set(store: Store<'_>, settings: AppSettings) -> AppResult<()> {
+pub async fn settings_set(
+    app: AppHandle,
+    store: Store<'_>,
+    settings: AppSettings,
+) -> AppResult<()> {
     let store = Arc::clone(&store);
-    blocking(move || store.set(settings)).await
+    let identifier = app.config().identifier.clone();
+    blocking(move || {
+        // macOS's own menu items take the language at the next launch.
+        if store.get().language != settings.language {
+            crate::locale::sync(&identifier, settings.language.as_deref());
+        }
+        store.set(settings)
+    })
+    .await
+}
+
+/// Quits and starts the app again, e.g. so macOS's own menus pick up a new
+/// language.
+#[tauri::command]
+#[specta::specta]
+pub fn app_restart(app: AppHandle) {
+    app.restart();
 }
 
 /// The operating system's accent color as `#rrggbb`, if it can be read.

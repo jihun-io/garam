@@ -18,10 +18,13 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
  */
 export function Tooltip({
   content,
+  shortcut,
   children,
   side = "bottom",
 }: {
   content: ReactNode;
+  /** Already formatted, e.g. from `shortcutFor`. */
+  shortcut?: string | null;
   children: ReactElement;
   side?: "top" | "right" | "bottom" | "left";
 }) {
@@ -31,6 +34,7 @@ export function Tooltip({
       <RadixTooltip.Portal>
         <RadixTooltip.Content className={styles.content} side={side} sideOffset={6}>
           {content}
+          {shortcut && <kbd className={styles.shortcut}>{shortcut}</kbd>}
         </RadixTooltip.Content>
       </RadixTooltip.Portal>
     </RadixTooltip.Root>

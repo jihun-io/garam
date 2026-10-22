@@ -4,7 +4,9 @@
   "close": "닫기",
   "sections": "설정 항목",
   "general": {
-    "title": "일반"
+    "title": "일반",
+    "restartHint": "macOS가 직접 넣는 일부 메뉴 항목(글쓰기 도구, 이모지 및 기호 등)은 가람을 다시 시작해야 언어가 바뀝니다.",
+    "restart": "지금 다시 시작"
   },
   "appearance": {
     "title": "모양",

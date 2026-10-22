@@ -2,6 +2,7 @@ mod askpass;
 mod commands;
 mod error;
 mod external;
+mod locale;
 mod operations;
 mod repositories;
 mod settings;
@@ -73,6 +74,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         settings::system_accent_color,
         settings::git_global_get,
         settings::git_global_set,
+        settings::app_restart,
         external::external_editors,
         external::external_terminals,
         external::external_open_editor,
@@ -98,6 +100,16 @@ pub fn run_askpass_helper() -> Option<i32> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = specta_builder();
+    let context = tauri::generate_context!();
+
+    // Before the app starts: AppKit reads the language only at launch.
+    #[cfg(target_os = "macos")]
+    if let Some(dir) = locale::macos_data_dir(&context.config().identifier) {
+        let language = settings::SettingsStore::load(dir.join("settings.json"))
+            .get()
+            .language;
+        locale::sync(&context.config().identifier, language.as_deref());
+    }
 
     #[cfg(debug_assertions)]
     export_bindings(&builder);
@@ -120,7 +132,7 @@ pub fn run() {
             app.manage(watcher::RepoWatcher::default());
             Ok(())
         })
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }
 

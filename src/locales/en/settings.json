@@ -4,7 +4,9 @@
   "close": "Close",
   "sections": "Settings sections",
   "general": {
-    "title": "General"
+    "title": "General",
+    "restartHint": "Some menu items that macOS adds itself (like Writing Tools and Emoji & Symbols) change language after Garam restarts.",
+    "restart": "Restart Now"
   },
   "appearance": {
     "title": "Appearance",

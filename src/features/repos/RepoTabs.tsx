@@ -2,6 +2,9 @@ import { Tabs } from "radix-ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { shortcutFor, useCommand } from "../../lib/commands";
+import { Tooltip } from "../../components/ui/Tooltip";
+
 import { ChangesView } from "../changes/ChangesView";
 import { HistoryView } from "../history/HistoryView";
 import styles from "./RepoTabs.module.css";
@@ -12,15 +15,21 @@ type View = "changes" | "history";
 export function RepoTabs({ repo }: { repo: string }) {
   const { t } = useTranslation("history");
   const [view, setView] = useState<View>("changes");
+  useCommand("view.changes", () => setView("changes"));
+  useCommand("view.history", () => setView("history"));
 
   const list = (
     <Tabs.List className={styles.list} aria-label={t("tabs.label")}>
-      <Tabs.Trigger value="changes" className={styles.tab}>
-        {t("tabs.changes")}
-      </Tabs.Trigger>
-      <Tabs.Trigger value="history" className={styles.tab}>
-        {t("tabs.history")}
-      </Tabs.Trigger>
+      <Tooltip content={t("tabs.changes")} shortcut={shortcutFor("view.changes")}>
+        <Tabs.Trigger value="changes" className={styles.tab}>
+          {t("tabs.changes")}
+        </Tabs.Trigger>
+      </Tooltip>
+      <Tooltip content={t("tabs.history")} shortcut={shortcutFor("view.history")}>
+        <Tabs.Trigger value="history" className={styles.tab}>
+          {t("tabs.history")}
+        </Tabs.Trigger>
+      </Tooltip>
     </Tabs.List>
   );
 

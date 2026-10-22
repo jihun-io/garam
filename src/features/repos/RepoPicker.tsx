@@ -11,7 +11,9 @@ import { useRepositoryActions } from "./api";
 import { useRepoDialog } from "./dialogStore";
 import styles from "./RepoPicker.module.css";
 import { Icon } from "../../components/Icon";
+import { shortcutFor, useCommand } from "../../lib/commands";
 import { ToolbarButton } from "../../components/ui/ToolbarButton";
+import { Tooltip } from "../../components/ui/Tooltip";
 
 export function RepoPicker({
   repositories,
@@ -22,6 +24,7 @@ export function RepoPicker({
 }) {
   const { t } = useTranslation("repos");
   const [open, setOpen] = useState(false);
+  useCommand("view.repositories", () => setOpen(true));
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLUListElement>(null);
   const { select, remove } = useRepositoryActions();
@@ -68,16 +71,18 @@ export function RepoPicker({
         if (!next) setQuery("");
       }}
     >
-      <Popover.Trigger asChild>
-        <ToolbarButton
-          icon="repository"
-          className={styles.trigger}
-          caption={t("picker.caption")}
-          value={selected?.name ?? t("picker.placeholder")}
-          trailing={<Icon name="dropdown" size={12} />}
-          aria-label={selected ? t("picker.label", { name: selected.name }) : undefined}
-        />
-      </Popover.Trigger>
+      <Tooltip content={t("picker.tooltip")} shortcut={shortcutFor("view.repositories")}>
+        <Popover.Trigger asChild>
+          <ToolbarButton
+            icon="repository"
+            className={styles.trigger}
+            caption={t("picker.caption")}
+            value={selected?.name ?? t("picker.placeholder")}
+            trailing={<Icon name="dropdown" size={12} />}
+            aria-label={selected ? t("picker.label", { name: selected.name }) : undefined}
+          />
+        </Popover.Trigger>
+      </Tooltip>
       <Popover.Portal>
         <Popover.Content className={styles.content} align="start" sideOffset={4}>
           <div className={styles.search}>

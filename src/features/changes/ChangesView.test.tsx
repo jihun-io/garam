@@ -150,6 +150,16 @@ describe("ChangesView", () => {
     ]);
   });
 
+  it("asks before discarding the selected file with Cmd+Backspace", async () => {
+    const user = userEvent.setup();
+    setup([change("a.txt", null, "modified")]);
+    const list = await screen.findByRole("listbox");
+    list.focus();
+    await user.keyboard("{Meta>}{Backspace}{/Meta}");
+    expect(await screen.findByRole("dialog", { name: "Discard changes?" })).toBeVisible();
+    expect(commands.changesDiscard).not.toHaveBeenCalled();
+  });
+
   it("commits with Cmd+Enter but not while an IME is composing", async () => {
     const user = userEvent.setup();
     setup([change("a.txt", "modified", null)]);

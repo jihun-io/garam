@@ -5,7 +5,7 @@ import i18n, { resolveLanguage, takeLegacyLanguage } from "./i18n";
 import "./styles/global.css";
 import { App, queryClient } from "./app/App";
 import { commands, unwrap } from "./ipc";
-import { preloadSettings, settingsKeys } from "./features/settings/api";
+import { preloadSettings, rememberLaunchLanguage, settingsKeys } from "./features/settings/api";
 import { resolveAccent } from "./features/settings/SettingsEffects";
 import { setSidebarWidth } from "./lib/layout";
 import { initTheme, setAppearance } from "./lib/theme";
@@ -35,6 +35,7 @@ async function start() {
     diffFontSize: settings.diffFontSize,
   });
   setSidebarWidth(settings.sidebarWidth);
+  rememberLaunchLanguage(settings.language);
   await i18n.changeLanguage(resolveLanguage(settings.language));
 
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

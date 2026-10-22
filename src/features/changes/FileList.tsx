@@ -47,7 +47,8 @@ export function FileList({
     if (selectedIndex >= 0) virtualizer.scrollToIndex(selectedIndex, { align: "auto" });
   }, [selectedIndex, virtualizer]);
 
-  // Arrow keys move the selection; Space toggles inclusion in the commit.
+  // Arrow keys move the selection; Space toggles inclusion in the commit;
+  // ⌘⌫ / Ctrl+Backspace asks to discard the selected file's changes.
   const onKeyDown = (e: KeyboardEvent) => {
     if (files.length === 0) return;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -55,6 +56,14 @@ export function FileList({
       const delta = e.key === "ArrowDown" ? 1 : -1;
       const next = Math.max(0, Math.min(files.length - 1, selectedIndex + delta));
       onSelect(files[next].path);
+    } else if (
+      (e.key === "Backspace" || e.key === "Delete") &&
+      (e.metaKey || e.ctrlKey) &&
+      selectedIndex >= 0
+    ) {
+      // Opens the confirmation; nothing is discarded without it.
+      e.preventDefault();
+      onDiscard([files[selectedIndex]]);
     } else if (
       e.key === " " &&
       selectedIndex >= 0 &&

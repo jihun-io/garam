@@ -18,7 +18,8 @@
     "search": "Filter repositories",
     "noMatches": "No repositories match “{{query}}”.",
     "missing": "Missing",
-    "remove": "Remove from list"
+    "remove": "Remove from list",
+    "tooltip": "Switch repository"
   },
   "open": {
     "menu": "Open in",

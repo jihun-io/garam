@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { IconButton } from "../../components/ui/IconButton";
 import menu from "../../components/ui/Menu.module.css";
 import { commands, unwrap } from "../../ipc";
+import { useCommand } from "../../lib/commands";
 import { currentPlatform } from "../../lib/platform";
 import { useNotify } from "../notify/notifyStore";
 import { useSettings } from "../settings/api";
@@ -17,6 +18,18 @@ export function OpenInMenu({ path, disabled }: { path: string; disabled?: boolea
   const showError = useNotify((s) => s.showError);
 
   const run = (action: Promise<unknown>) => action.catch(showError);
+  const firstEditor = editors[0];
+  useCommand(
+    "repo.openEditor",
+    () => firstEditor && void run(unwrap(commands.externalOpenEditor(firstEditor.id, path))),
+    !disabled && !!firstEditor,
+  );
+  useCommand(
+    "repo.openTerminal",
+    () => void run(unwrap(commands.externalOpenTerminal(path, settings.terminal))),
+    !disabled,
+  );
+  useCommand("repo.reveal", () => void run(unwrap(commands.externalReveal(path))), !disabled);
 
   return (
     <DropdownMenu.Root>

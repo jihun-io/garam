@@ -11,7 +11,9 @@ import { useBranchDialog } from "./branchDialogStore";
 import { CommitCounts } from "./CommitCounts";
 import styles from "./branches.module.css";
 import { Icon } from "../../components/Icon";
+import { shortcutFor, useCommand } from "../../lib/commands";
 import { ToolbarButton } from "../../components/ui/ToolbarButton";
+import { Tooltip } from "../../components/ui/Tooltip";
 
 /** Toolbar button showing the current branch, with a searchable list. */
 export function BranchPicker({
@@ -27,6 +29,7 @@ export function BranchPicker({
   const branches = useBranches(repo);
   const openDialog = useBranchDialog((s) => s.open);
   const [open, setOpen] = useState(false);
+  useCommand("view.branches", () => setOpen(true));
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const current = status.head;
@@ -130,15 +133,17 @@ export function BranchPicker({
         if (!next) setQuery("");
       }}
     >
-      <Popover.Trigger asChild>
-        <ToolbarButton
-          icon="branch"
-          caption={t("picker.caption")}
-          value={label}
-          trailing={<Icon name="dropdown" size={12} />}
-          aria-label={t("picker.label", { name: label })}
-        />
-      </Popover.Trigger>
+      <Tooltip content={t("picker.tooltip")} shortcut={shortcutFor("view.branches")}>
+        <Popover.Trigger asChild>
+          <ToolbarButton
+            icon="branch"
+            caption={t("picker.caption")}
+            value={label}
+            trailing={<Icon name="dropdown" size={12} />}
+            aria-label={t("picker.label", { name: label })}
+          />
+        </Popover.Trigger>
+      </Tooltip>
       <Popover.Portal>
         <Popover.Content className={styles.content} align="start" sideOffset={4}>
           <div className={styles.searchRow}>

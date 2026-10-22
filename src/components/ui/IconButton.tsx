@@ -10,15 +10,17 @@ export function IconButton({
   icon,
   label,
   size = 20,
+  shortcut,
   className,
   ...button
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   icon: IconName;
   label: string;
   size?: IconSize;
+  shortcut?: string | null;
 }) {
   return (
-    <Tooltip content={label}>
+    <Tooltip content={label} shortcut={shortcut}>
       <button
         type="button"
         aria-label={label}

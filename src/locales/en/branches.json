@@ -16,7 +16,8 @@
     "ahead_other": "{{count}} commits to push",
     "behind_one": "{{count}} commit to pull",
     "behind_other": "{{count}} commits to pull",
-    "gone": "Deleted on remote"
+    "gone": "Deleted on remote",
+    "tooltip": "Switch branch"
   },
   "switch": {
     "title": "Switch to {{branch}}?",

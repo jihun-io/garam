@@ -10,3 +10,9 @@
   overflow-wrap: anywhere;
   pointer-events: none;
 }
+
+.shortcut {
+  margin-left: var(--space-2);
+  font-family: var(--font-ui);
+  opacity: 0.7;
+}

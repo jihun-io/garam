@@ -18,7 +18,8 @@
     "search": "저장소 검색",
     "noMatches": "“{{query}}”와 일치하는 저장소가 없습니다.",
     "missing": "찾을 수 없음",
-    "remove": "목록에서 제거"
+    "remove": "목록에서 제거",
+    "tooltip": "저장소 바꾸기"
   },
   "open": {
     "menu": "다른 앱에서 열기",

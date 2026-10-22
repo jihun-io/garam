@@ -1,0 +1,123 @@
+import { act, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { runCommand, useCommand } from "../../lib/commands";
+import { renderWithQuery } from "../../test/renderWithQuery";
+import { AppMenu } from "./AppMenu";
+import { HelpCommands } from "./HelpCommands";
+
+type FakeItem = {
+  id?: string;
+  text?: string;
+  accelerator?: string;
+  enabled?: boolean;
+  item?: unknown;
+  items?: FakeItem[];
+  action?: () => void;
+  setEnabled: ReturnType<typeof vi.fn>;
+};
+
+const built = vi.hoisted(() => ({ menu: null as { items: unknown[] } | null }));
+
+vi.mock("@tauri-apps/api/menu", () => {
+  const make = async (opts: object) => ({ ...opts, setEnabled: vi.fn(async () => {}) });
+  return {
+    MenuItem: { new: make },
+    PredefinedMenuItem: { new: make },
+    Submenu: {
+      new: async (opts: object) => ({
+        ...opts,
+        setAsWindowsMenuForNSApp: vi.fn(async () => {}),
+        setAsHelpMenuForNSApp: vi.fn(async () => {}),
+      }),
+    },
+    Menu: {
+      new: async (opts: { items: unknown[] }) => {
+        const menu = { ...opts, setAsAppMenu: vi.fn(async () => {}) };
+        built.menu = menu;
+        return menu;
+      },
+    },
+  };
+});
+vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => {}) }));
+vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
+
+function menuNamed(text: string): FakeItem {
+  const menus = (built.menu?.items ?? []) as FakeItem[];
+  const found = menus.find((m) => m.text === text);
+  if (!found) throw new Error(`no menu ${text}`);
+  return found;
+}
+
+function itemWithId(menu: FakeItem, id: string): FakeItem {
+  const found = menu.items?.find((i) => i.id === id);
+  if (!found) throw new Error(`no item ${id}`);
+  return found;
+}
+
+function OfferPush({ enabled }: { enabled: boolean }) {
+  useCommand("sync.push", () => {}, enabled);
+  return null;
+}
+
+describe("menu bar", () => {
+  beforeEach(() => {
+    built.menu = null;
+  });
+
+  it("builds translated menus with shortcuts", async () => {
+    render(<AppMenu />);
+    await vi.waitFor(() => expect(built.menu).not.toBeNull());
+    // jsdom reports a non-Mac platform: settings and quit live in File.
+    const file = menuNamed("File");
+    expect(file.items?.map((i) => i.text ?? (i.item as string))).toEqual([
+      "New Repository…",
+      "Add Existing Repository…",
+      "Clone Repository…",
+      "Separator",
+      "Settings…",
+      "Separator",
+      "Exit",
+    ]);
+    const push = itemWithId(menuNamed("Repository"), "sync.push");
+    expect(push.text).toBe("Push");
+    expect(push.accelerator).toBe("CmdOrCtrl+Shift+P");
+    expect(itemWithId(menuNamed("Repository"), "repo.reveal").text).toBe("Show in file manager");
+  });
+
+  it("enables items while a screen offers them", async () => {
+    const { rerender } = render(
+      <>
+        <AppMenu />
+        <OfferPush enabled={false} />
+      </>,
+    );
+    await vi.waitFor(() => expect(built.menu).not.toBeNull());
+    const push = itemWithId(menuNamed("Repository"), "sync.push");
+    expect(push.enabled).toBe(false);
+
+    rerender(
+      <>
+        <AppMenu />
+        <OfferPush enabled />
+      </>,
+    );
+    await vi.waitFor(() => expect(push.setEnabled).toHaveBeenLastCalledWith(true));
+  });
+});
+
+describe("help commands", () => {
+  it("lists keyboard shortcuts", async () => {
+    const user = userEvent.setup();
+    renderWithQuery(<HelpCommands />);
+    act(() => void runCommand("help.shortcuts"));
+    const dialog = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
+    expect(within(dialog).getByText("Push")).toBeVisible();
+    expect(within(dialog).getByText("Ctrl+Shift+P")).toBeVisible();
+    expect(within(dialog).getByText("Commit")).toBeVisible();
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});

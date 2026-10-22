@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands, type BranchStatus, type RemoteEvent, type RemoteInfo } from "../../ipc";
+import { isCommandEnabled, runCommand } from "../../lib/commands";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { CredentialDialog } from "../credentials/CredentialDialog";
 import { useCredentials } from "../credentials/credentialStore";
@@ -153,6 +154,17 @@ describe("SyncButton", () => {
     expect(button).toHaveTextContent("3 commits to pull");
     await user.click(button);
     expect(await screen.findByText("Pulled from origin/main.")).toBeVisible();
+  });
+
+  it("offers sync commands to the menu and shortcuts", async () => {
+    vi.mocked(commands.remotePush).mockResolvedValue(ok(null));
+    setup({ ahead: 2 });
+    await screen.findByRole("button", { name: /Push origin/ });
+    expect(isCommandEnabled("sync.fetch")).toBe(true);
+    expect(isCommandEnabled("sync.pull")).toBe(true);
+    act(() => void runCommand("sync.push"));
+    await vi.waitFor(() => expect(commands.remotePush).toHaveBeenCalled());
+    expect(await screen.findByText("Pushed to origin/main.")).toBeVisible();
   });
 
   it("publishes a branch without an upstream", async () => {

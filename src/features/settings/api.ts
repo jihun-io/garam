@@ -54,6 +54,18 @@ export function useUpdateSettings() {
   };
 }
 
+// The language the app started with; macOS's own menus keep it until the
+// next launch.
+let launchLanguage: string | null = null;
+
+export function rememberLaunchLanguage(language: string | null) {
+  launchLanguage = language;
+}
+
+export function getLaunchLanguage() {
+  return launchLanguage;
+}
+
 /** Loads settings into the cache before the first render. */
 export async function preloadSettings(client: QueryClient): Promise<AppSettings> {
   try {
