@@ -11,7 +11,14 @@
       "current_window": "Open in this window",
       "new_window": "Open in a new window"
     },
-    "openRepositoryInHint": "A repository already open in another window brings that window to the front."
+    "openRepositoryInHint": "A repository already open in another window brings that window to the front.",
+    "updates": "Updates",
+    "updatesChoices": {
+      "automatic": "Check automatically",
+      "manual": "Only when I ask"
+    },
+    "updatesHint": "You are using Garam {{version}}.",
+    "checkNow": "Check Now"
   },
   "appearance": {
     "title": "Appearance",

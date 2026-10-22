@@ -3,6 +3,7 @@
 // Icons are imported one by one so only the ones used are bundled.
 import { Archive } from "@phosphor-icons/react/dist/csr/Archive";
 import { ArrowCircleRight } from "@phosphor-icons/react/dist/csr/ArrowCircleRight";
+import { ArrowCircleUp } from "@phosphor-icons/react/dist/csr/ArrowCircleUp";
 import { ArrowDown } from "@phosphor-icons/react/dist/csr/ArrowDown";
 import { ArrowSquareOut } from "@phosphor-icons/react/dist/csr/ArrowSquareOut";
 import { ArrowUp } from "@phosphor-icons/react/dist/csr/ArrowUp";
@@ -67,6 +68,7 @@ export const Icons = {
   info: Info,
   success: CheckCircle,
   error: WarningCircle,
+  update: ArrowCircleUp,
   history: ClockCounterClockwise,
 
   // Refs in the history

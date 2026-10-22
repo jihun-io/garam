@@ -70,6 +70,8 @@ pub struct AppSettings {
     /// Width of the changes/history sidebar in CSS pixels.
     pub sidebar_width: u32,
     pub open_repository_in: OpenRepositoryIn,
+    /// Look for a new version in the background.
+    pub check_for_updates: bool,
 }
 
 impl Default for AppSettings {
@@ -84,6 +86,7 @@ impl Default for AppSettings {
             fetch_interval_minutes: 5,
             sidebar_width: 320,
             open_repository_in: OpenRepositoryIn::default(),
+            check_for_updates: true,
         }
     }
 }

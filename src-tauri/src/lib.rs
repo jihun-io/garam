@@ -9,6 +9,7 @@ mod repositories;
 mod settings;
 mod storage;
 mod system;
+mod updater;
 mod watcher;
 mod windows;
 
@@ -25,7 +26,7 @@ use crate::repositories::RepositoryStore;
 pub fn specta_builder() -> Builder<tauri::Wry> {
     use commands::{
         branches, changes, conflicts, external, git, github, history, remote, repo, settings,
-        window,
+        update, window,
     };
     Builder::<tauri::Wry>::new().commands(collect_commands![
         git::git_info,
@@ -108,6 +109,10 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         settings::git_global_get,
         settings::git_global_set,
         settings::app_restart,
+        update::update_status,
+        update::update_check,
+        update::update_dismiss,
+        update::update_install,
         external::external_editors,
         external::external_terminals,
         external::external_open_editor,
@@ -150,6 +155,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
@@ -168,6 +174,8 @@ pub fn run() {
             app.manage(Arc::new(askpass::Askpass::start()));
             app.manage(watcher::RepoWatcher::default());
             app.manage(Arc::new(windows::RepoWindows::default()));
+            app.manage(Arc::new(updater::Updates::default()));
+            updater::start_background_checks(app.handle().clone());
             Ok(())
         })
         .on_window_event(|window, event| {

@@ -5,6 +5,7 @@ import { AppMenu } from "../features/menu/AppMenu";
 import { Notifications } from "../features/notify/Notifications";
 import { SettingsEffects } from "../features/settings/SettingsEffects";
 import { SettingsCommand, SettingsWindow } from "../features/settings/SettingsWindow";
+import { UpdateCommands, UpdateNotice } from "../features/update/UpdateNotice";
 import { currentPlatform } from "../lib/platform";
 import { queryClient } from "./App";
 
@@ -19,7 +20,10 @@ export function SettingsApp() {
         {currentPlatform() === "macos" && <AppMenu />}
         <SettingsCommand />
         <SettingsWindow />
-        <Notifications />
+        <UpdateCommands />
+        <Notifications>
+          <UpdateNotice />
+        </Notifications>
       </TooltipProvider>
     </QueryClientProvider>
   );

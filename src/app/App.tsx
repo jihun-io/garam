@@ -9,6 +9,7 @@ import { TooltipProvider } from "../components/ui/Tooltip";
 import { WindowDragArea } from "../components/WindowDragArea";
 import { SettingsEffects } from "../features/settings/SettingsEffects";
 import { SettingsCommand } from "../features/settings/SettingsWindow";
+import { UpdateCommands, UpdateNotice } from "../features/update/UpdateNotice";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,7 +26,10 @@ export function App() {
         <HelpCommands />
         <WindowDragArea />
         <StartupGate />
-        <Notifications />
+        <UpdateCommands />
+        <Notifications>
+          <UpdateNotice />
+        </Notifications>
         <CredentialDialog />
         <SettingsCommand />
       </TooltipProvider>

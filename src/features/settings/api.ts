@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fetchIntervalMinutes: 5,
   sidebarWidth: 320,
   openRepositoryIn: "ask",
+  checkForUpdates: true,
 };
 
 export function useSettings(): AppSettings {

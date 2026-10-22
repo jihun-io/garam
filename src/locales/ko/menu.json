@@ -43,6 +43,9 @@
     },
     "history": {
       "search": "기록 검색"
+    },
+    "app": {
+      "checkUpdates": "업데이트 확인…"
     }
   },
   "native": {

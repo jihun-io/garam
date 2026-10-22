@@ -26,6 +26,10 @@ pub enum AppErrorKind {
     GithubLoginExpired,
     GithubLoginDenied,
     GithubUnexpected,
+    /// The release feed couldn't be reached or read.
+    UpdateCheckFailed,
+    /// Downloading, verifying or installing the update failed.
+    UpdateInstallFailed,
 }
 
 /// Either kind of error code; serialized as a plain string, so the frontend

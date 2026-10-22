@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
@@ -9,7 +9,9 @@ import { useNotify } from "./notifyStore";
 
 const INFO_TIMEOUT_MS = 4000;
 
-export function Notifications() {
+/** Notices in the bottom-right corner; `children` (the update notice) stack
+ * above them. */
+export function Notifications({ children }: { children?: ReactNode }) {
   const { t } = useTranslation();
   const { notice, dismiss } = useNotify();
   const [hovered, setHovered] = useState(false);
@@ -22,24 +24,28 @@ export function Notifications() {
     return () => clearTimeout(timer);
   }, [notice, hovered, dismiss]);
 
-  if (!notice) return null;
-  const error = notice.type === "error";
+  const error = notice?.type === "error";
   return (
-    <div
-      className={styles.root}
-      data-type={notice.type}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <Icon name={error ? "error" : "success"} size={20} className={styles.icon} />
-      <div className={styles.body}>
-        {error ? (
-          <ErrorMessage error={notice.error} plain />
-        ) : (
-          <p role="status">{notice.message}</p>
-        )}
-      </div>
-      <IconButton icon="close" size={16} label={t("notify.dismiss")} onClick={dismiss} />
+    <div className={styles.area}>
+      {children}
+      {notice && (
+        <div
+          className={styles.root}
+          data-type={notice.type}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+        >
+          <Icon name={error ? "error" : "success"} size={20} className={styles.icon} />
+          <div className={styles.body}>
+            {notice.type === "error" ? (
+              <ErrorMessage error={notice.error} plain />
+            ) : (
+              <p role="status">{notice.message}</p>
+            )}
+          </div>
+          <IconButton icon="close" size={16} label={t("notify.dismiss")} onClick={dismiss} />
+        </div>
+      )}
     </div>
   );
 }

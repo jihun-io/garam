@@ -43,6 +43,9 @@
     },
     "history": {
       "search": "Search History"
+    },
+    "app": {
+      "checkUpdates": "Check for Updates…"
     }
   },
   "native": {

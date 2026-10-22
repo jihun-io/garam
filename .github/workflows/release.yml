@@ -1,13 +1,16 @@
 name: Release
 
-# Pushing a `v*` tag builds every platform and uploads the installers to a
-# draft GitHub Release, which is published by hand after checking it.
+# Pushing a `v*` tag builds every platform and uploads the installers and
+# the updater manifest (`latest.json`) to a draft GitHub Release, which is
+# published by hand after checking it. Installed copies update from the
+# latest published release, so prereleases never reach them.
 # Running the workflow manually builds the same installers as workflow
 # artifacts without creating a release, to test signing and notarization.
 #
 # Secrets: APPLE_CERTIFICATE (base64 .p12), APPLE_CERTIFICATE_PASSWORD,
 # KEYCHAIN_PASSWORD, APPLE_API_KEY (key id), APPLE_API_ISSUER,
-# APPLE_API_KEY_P8 (.p8 contents). Windows builds are not code signed yet.
+# APPLE_API_KEY_P8 (.p8 contents), TAURI_SIGNING_PRIVATE_KEY,
+# TAURI_SIGNING_PRIVATE_KEY_PASSWORD. Windows builds are not code signed yet.
 
 on:
   push:
@@ -164,11 +167,18 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           # Empty on manual runs: build only, nothing is uploaded to a release.
           releaseId: ${{ needs.prepare.outputs.release-id }}
           tauriScript: pnpm tauri
-          args: ${{ steps.bundles.outputs.args }}
+          # Updater artifacts need the signing key, so local `tauri build`
+          # leaves them off and only this workflow turns them on.
+          args: ${{ steps.bundles.outputs.args }} --config src-tauri/tauri.release.conf.json
+          includeUpdaterJson: true
+          # Windows users install with NSIS, so update them with it too.
+          updaterJsonPreferNsis: true
 
       # Tauri notarizes the app but not the disk image around it, and
       # Gatekeeper rejects an unnotarized image when a downloaded copy is

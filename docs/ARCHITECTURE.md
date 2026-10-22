@@ -200,6 +200,15 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - **추천**: 원격 URL의 사용자 이름(`https://jihun-io@github.com/...`) → 원격 소유자 → 작성자 이메일이 계정의 인증된 이메일·noreply 주소인 계정 순서.
 - **불일치 경고**: 저장소에 계정이 있고 작성자 이메일이 그 계정의 인증된 이메일·noreply 주소가 아니면 GitHub가 커밋을 그 계정과 연결하지 않는다. 커밋 영역과 대화상자에 알리되 커밋을 막지는 않는다.
 
+### 2.11 앱 업데이트
+
+- `tauri-plugin-updater`를 Rust에서만 쓴다(`src-tauri/src/updater.rs`). 창이 여러 개라도 확인 결과·설치 상태는 하나라서, 상태를 Rust가 들고 바뀔 때마다 `update-changed` 이벤트로 모든 창에 알린다. 프론트용 플러그인 권한은 열지 않는다.
+- 피드: `https://github.com/jihun-io/garam/releases/latest/download/latest.json`. GitHub의 "latest"는 공개된 정식 릴리스만 가리키므로 초안·프리릴리스는 설치된 앱에 가지 않는다. 릴리스 워크플로가 `latest.json`과 플랫폼별 업데이트 파일(macOS `.app.tar.gz`, Linux AppImage·deb, Windows NSIS)과 서명(`.sig`)을 올린다.
+- 서명 확인: 업데이트 파일은 Tauri 업데이터 키(minisign)로 서명하고, 앱에 박힌 공개 키(`plugins.updater.pubkey`)로 확인한다. 개인 키는 GitHub Secrets에만 둔다. 키를 잃으면 기존 사용자에게 업데이트를 보낼 수 없다.
+- 확인 시점: 시작 10초 뒤, 그 뒤로 6시간마다(설정 > 일반 > 업데이트에서 끌 수 있음). 개발 빌드는 스스로 확인하지 않는다. 메뉴 "업데이트 확인…"(macOS는 앱 메뉴, 그 외는 도움말)은 언제든 확인하고, "나중에"로 미룬 버전도 다시 보여준다.
+- 설치: macOS·Linux는 내려받아 설치한 뒤 "지금 다시 시작"으로 적용한다(`app_restart`). Windows는 NSIS 설치 프로그램이 passive 모드로 앱을 닫고 설치한다. Linux deb는 `pkexec dpkg -i`로 설치한다(플러그인이 실행 중인 패키지 종류를 보고 고른다).
+- 업데이트 산출물은 서명 키가 있어야 만들어지므로 로컬 `tauri build`에서는 끄고, 릴리스 워크플로만 `src-tauri/tauri.release.conf.json`으로 켠다.
+
 ## 3. IPC 설계
 
 - 프론트↔Rust 통신은 **Tauri 명령(`invoke`)** 으로 한다. 명령 이름은 `도메인_동작`(예: `status_get`, `branch_create`).
@@ -275,4 +284,3 @@ struct AppError {
 
 - 커밋 그래프 렌더링 방식(Canvas 대 SVG)
 - Windows에서 git 번들 여부 (MVP는 시스템 git만 사용)
-- 자동 업데이트 배포 채널(GitHub Releases + Tauri updater 검토)

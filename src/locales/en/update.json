@@ -1,0 +1,11 @@
+{
+  "available": "Garam {{version}} is available.",
+  "install": "Update",
+  "notes": "What's New",
+  "later": "Later",
+  "downloading": "Downloading the update… {{percent}}%",
+  "installing": "Installing the update…",
+  "installed": "The update is installed. Restart Garam to use it.",
+  "restart": "Restart Now",
+  "upToDate": "Garam {{version}} is the latest version."
+}

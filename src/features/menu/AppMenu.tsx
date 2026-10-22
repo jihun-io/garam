@@ -72,6 +72,7 @@ async function buildMenu(
     ? [
         submenu(t("menu:menus.app"), [
           about(),
+          command("app.checkUpdates"),
           separator(),
           command("settings"),
           separator(),
@@ -148,7 +149,7 @@ async function buildMenu(
   const help = submenu(t("menu:menus.help"), [
     command("help.shortcuts"),
     command("help.report"),
-    ...(mac ? [] : [separator(), about()]),
+    ...(mac ? [] : [separator(), command("app.checkUpdates"), about()]),
   ]);
 
   const menus = await Promise.all([...app, file, edit, view, repository, branch, help]);

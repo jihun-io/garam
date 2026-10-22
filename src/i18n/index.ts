@@ -13,6 +13,7 @@ import enRepos from "../locales/en/repos.json";
 import enSettings from "../locales/en/settings.json";
 import enStartup from "../locales/en/startup.json";
 import enSync from "../locales/en/sync.json";
+import enUpdate from "../locales/en/update.json";
 import koBranches from "../locales/ko/branches.json";
 import koChanges from "../locales/ko/changes.json";
 import koCommon from "../locales/ko/common.json";
@@ -25,6 +26,7 @@ import koRepos from "../locales/ko/repos.json";
 import koSettings from "../locales/ko/settings.json";
 import koStartup from "../locales/ko/startup.json";
 import koSync from "../locales/ko/sync.json";
+import koUpdate from "../locales/ko/update.json";
 
 export const resources = {
   en: {
@@ -40,6 +42,7 @@ export const resources = {
     settings: enSettings,
     startup: enStartup,
     sync: enSync,
+    update: enUpdate,
   },
   ko: {
     branches: koBranches,
@@ -54,6 +57,7 @@ export const resources = {
     settings: koSettings,
     startup: koStartup,
     sync: koSync,
+    update: koUpdate,
   },
 } as const;
 

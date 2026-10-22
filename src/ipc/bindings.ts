@@ -203,6 +203,15 @@ export const commands = {
 	 *  language.
 	 */
 	appRestart: () => __TAURI_INVOKE<void>("app_restart"),
+	updateStatus: () => __TAURI_INVOKE<UpdateStatus>("update_status"),
+	/**  Checks for a newer version now (the menu's "Check for Updates"). */
+	updateCheck: () => typedError<{
+	version: string,
+	currentVersion: string,
+} | null, AppError>(__TAURI_INVOKE("update_check")),
+	/**  Hides the available version until a newer one comes out. */
+	updateDismiss: () => __TAURI_INVOKE<void>("update_dismiss"),
+	updateInstall: (onProgress: Channel<UpdateProgress>) => typedError<null, AppError>(__TAURI_INVOKE("update_install", { onProgress })),
 	externalEditors: () => typedError<ExternalEditor[], AppError>(__TAURI_INVOKE("external_editors")),
 	externalTerminals: () => typedError<ExternalTerminal[], AppError>(__TAURI_INVOKE("external_terminals")),
 	externalOpenEditor: (editorId: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_editor", { editorId, path })),
@@ -261,7 +270,11 @@ export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "exter
 /**  The account's token was revoked or expired; sign in again. */
 "github_unauthorized" | 
 /**  The sign-in code expired before it was approved. */
-"github_login_expired" | "github_login_denied" | "github_unexpected";
+"github_login_expired" | "github_login_denied" | "github_unexpected" | 
+/**  The release feed couldn't be reached or read. */
+"update_check_failed" | 
+/**  Downloading, verifying or installing the update failed. */
+"update_install_failed";
 
 export type AppSettings = {
 	/**  UI language code; `None` follows the system language. */
@@ -278,6 +291,8 @@ export type AppSettings = {
 	/**  Width of the changes/history sidebar in CSS pixels. */
 	sidebarWidth: number,
 	openRepositoryIn: OpenRepositoryIn,
+	/**  Look for a new version in the background. */
+	checkForUpdates: boolean,
 };
 
 export type AutoStash = {
@@ -811,6 +826,26 @@ export type SwitchMode =
 "leave_changes";
 
 export type Theme = "system" | "light" | "dark";
+
+export type UpdateInfo = {
+	version: string,
+	currentVersion: string,
+};
+
+/**  Download progress, for the window that started the install. */
+export type UpdateProgress = {
+	downloaded: number,
+	total: number | null,
+};
+
+export type UpdateStatus = {
+	/**  A newer version, unless the user said "later" to it. */
+	available: UpdateInfo | null,
+	/**  Downloading or installing in some window. */
+	installing: boolean,
+	/**  Installed; takes effect after a restart. */
+	installed: boolean,
+};
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {
