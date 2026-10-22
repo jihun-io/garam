@@ -17,10 +17,12 @@ import { Code } from "@phosphor-icons/react/dist/csr/Code";
 import { Copy } from "@phosphor-icons/react/dist/csr/Copy";
 import { DotsThree } from "@phosphor-icons/react/dist/csr/DotsThree";
 import { FolderSimple } from "@phosphor-icons/react/dist/csr/FolderSimple";
+import { Funnel } from "@phosphor-icons/react/dist/csr/Funnel";
 import { GearSix } from "@phosphor-icons/react/dist/csr/GearSix";
 import { GitBranch } from "@phosphor-icons/react/dist/csr/GitBranch";
 import { GitCommit } from "@phosphor-icons/react/dist/csr/GitCommit";
 import { Info } from "@phosphor-icons/react/dist/csr/Info";
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
 import { MinusCircle } from "@phosphor-icons/react/dist/csr/MinusCircle";
 import { Monitor } from "@phosphor-icons/react/dist/csr/Monitor";
 import { Moon } from "@phosphor-icons/react/dist/csr/Moon";
@@ -53,6 +55,8 @@ export const Icons = {
   check: Check,
   copy: Copy,
   loading: CircleNotch,
+  search: MagnifyingGlass,
+  filter: Funnel,
 
   // Notices and empty states
   info: Info,

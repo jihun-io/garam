@@ -14,6 +14,7 @@ export const SHORTCUTS = {
   settings: "CmdOrCtrl+,",
   "view.changes": "CmdOrCtrl+1",
   "view.history": "CmdOrCtrl+2",
+  "history.search": "CmdOrCtrl+F",
   "view.repositories": "CmdOrCtrl+T",
   "view.branches": "CmdOrCtrl+B",
   "view.refresh": "CmdOrCtrl+R",

@@ -38,5 +38,35 @@
   "sync": {
     "unpushed": "아직 푸시하지 않은 커밋",
     "incoming": "아직 풀하지 않은 커밋. 풀하면 이 브랜치에 들어옵니다."
+  },
+  "search": {
+    "label": "커밋 검색",
+    "placeholder": {
+      "message": "메시지나 해시로 검색",
+      "author": "작성자 이름이나 이메일로 검색",
+      "content": "추가·삭제된 코드로 검색"
+    },
+    "noResults": "조건에 맞는 커밋이 없습니다.",
+    "noResultsBody": "검색어나 필터를 바꿔 보세요.",
+    "clear": "검색과 필터 지우기"
+  },
+  "filter": {
+    "label": "필터",
+    "active": "필터 (적용됨)",
+    "searchIn": "검색 대상",
+    "fields": {
+      "message": "메시지",
+      "author": "작성자",
+      "content": "코드"
+    },
+    "scope": "범위",
+    "scopes": {
+      "head": "현재 브랜치",
+      "all": "모든 브랜치와 태그"
+    },
+    "path": "경로",
+    "pathHint": "이 경로를 바꾼 커밋만 보여줍니다. 예: src/",
+    "firstParent": "병합 커밋은 첫 번째 부모만 따라가기",
+    "reset": "필터 초기화"
   }
 }

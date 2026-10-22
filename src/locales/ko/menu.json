@@ -38,6 +38,9 @@
     "help": {
       "shortcuts": "키보드 단축키",
       "report": "문제 신고…"
+    },
+    "history": {
+      "search": "기록 검색"
     }
   },
   "native": {

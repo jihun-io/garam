@@ -1,36 +1,54 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-import { commands, unwrap, type CommitFile } from "../../ipc";
+import { commands, unwrap, type CommitFile, type HistoryFilter } from "../../ipc";
 import { changesKeys, indexScope } from "../changes/api";
 
 export const PAGE_SIZE = 100;
 
 // Kept outside the ["repo", repo] prefix on purpose: that prefix is
-// invalidated on every file change, while history only changes with HEAD,
-// which is part of the list key. Commit details never change.
+// invalidated on every file change, while history only changes with the
+// commits it starts from, which are part of the list key. Commit details
+// never change.
 export const historyKeys = {
   // Refs move on fetch and push without HEAD changing, so markers do live
   // under the repo prefix and refresh with the file watcher.
   markers: (repo: string) => ["repo", repo, "history-markers"] as const,
-  list: (repo: string, head: string | null) => ["history", repo, "list", head] as const,
+  list: (repo: string, head: string | null, filter: HistoryFilter, refs: string) =>
+    ["history", repo, "list", head, filter, refs] as const,
   detail: (repo: string, oid: string) => ["history", repo, "commit", oid] as const,
   diff: (repo: string, oid: string, path: string) =>
     ["history", repo, "commit", oid, "diff", path] as const,
 };
 
 /**
- * HEAD's history, loaded a page at a time. `head` is HEAD's commit id
- * (`null` before the first commit, `undefined` while still unknown).
+ * The history `filter` selects, loaded a page at a time. `head` is HEAD's
+ * commit id (`null` before the first commit, `undefined` while still
+ * unknown). `refs` identifies where branches and tags point, for scopes
+ * beyond HEAD (`undefined` while still unknown). While a new search loads,
+ * the previous results stay.
  */
-export function useHistory(repo: string, head: string | null | undefined) {
+export function useHistory(
+  repo: string,
+  head: string | null | undefined,
+  filter: HistoryFilter,
+  refs: string | undefined,
+) {
   return useInfiniteQuery({
-    queryKey: historyKeys.list(repo, head ?? null),
-    queryFn: ({ pageParam }) => unwrap(commands.historyList(repo, pageParam, PAGE_SIZE)),
+    queryKey: historyKeys.list(repo, head ?? null, filter, refs ?? ""),
+    queryFn: ({ pageParam }) => unwrap(commands.historyList(repo, filter, pageParam, PAGE_SIZE)),
     initialPageParam: 0,
     getNextPageParam: (last, pages) =>
+      // A found hash can add one commit to the first page.
       last.length < PAGE_SIZE ? undefined : pages.length * PAGE_SIZE,
-    enabled: head !== undefined,
+    enabled: head !== undefined && refs !== undefined,
     staleTime: Infinity,
+    placeholderData: keepPreviousData,
   });
 }
 

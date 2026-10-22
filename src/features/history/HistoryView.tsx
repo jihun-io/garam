@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { EmptyMessage } from "../../components/EmptyMessage";
 import { ErrorMessage } from "../../components/ErrorMessage";
+import { Button } from "../../components/ui/Button";
 import { Loading } from "../../components/ui/Loading";
 import { toAppError, type CommitSummary } from "../../ipc";
 import { shortHash } from "../../lib/hash";
@@ -14,23 +15,34 @@ import { SidebarSplitter } from "../settings/SidebarSplitter";
 import { useHistory, useHistoryMarkers, useRevert } from "./api";
 import { CommitDetailView } from "./CommitDetailView";
 import { CommitList } from "./CommitList";
+import { isUnfiltered, useHistoryFilter, useHistoryFilters, useSettledFilter } from "./filterStore";
+import { HistorySearch } from "./HistorySearch";
 import { toMarks } from "./refs";
 
 /** Commit list on the left, the selected commit on the right. */
 export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
   const { t } = useTranslation("history");
   const status = useStatus(repo);
-  const history = useHistory(repo, status.data?.branch.oid);
   const markers = useHistoryMarkers(repo);
   const marks = useMemo(() => toMarks(markers.data), [markers.data]);
+  const filter = useSettledFilter(useHistoryFilter(repo));
+  const resetFilter = useHistoryFilters((s) => s.reset);
+  const unfiltered = isUnfiltered(filter);
+  // Beyond HEAD, the list depends on where every branch and tag points.
+  const refs =
+    filter.scope.kind === "head"
+      ? ""
+      : markers.data?.refs.map((r) => `${r.name}@${r.oid}`).join(" ");
+  const history = useHistory(repo, status.data?.branch.oid, filter, refs);
   const revert = useRevert(repo);
   const openBranchDialog = useBranchDialog((s) => s.open);
   const { showError, showInfo } = useNotify();
   const [selectedOid, setSelectedOid] = useState<string | null>(null);
 
-  // Commits waiting to be pulled sit above HEAD, where a pull puts them.
+  // Commits waiting to be pulled sit above HEAD, where a pull puts them;
+  // a search or filter shows only what it found.
   const own = history.data?.pages.flat() ?? [];
-  const commits = [...(markers.data?.incoming ?? []), ...own];
+  const commits = unfiltered ? [...(markers.data?.incoming ?? []), ...own] : own;
   const selected = commits.find((c) => c.oid === selectedOid) ?? own[0] ?? null;
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = history;
   const loadMore = useCallback(() => {
@@ -71,6 +83,12 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
         onCopyHash={copyHash}
       />
     );
+  } else if (history.data && !unfiltered) {
+    main = (
+      <EmptyMessage icon="search" title={t("search.noResults")} body={t("search.noResultsBody")}>
+        <Button onClick={() => resetFilter(repo)}>{t("search.clear")}</Button>
+      </EmptyMessage>
+    );
   } else if (history.data) {
     main = <EmptyMessage icon="history" title={t("list.empty")} />;
   } else {
@@ -81,6 +99,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
     <div className={changesStyles.root}>
       <aside className={changesStyles.sidebar}>
         {tabs}
+        <HistorySearch repo={repo} />
         <CommitList
           commits={commits}
           marks={marks}

@@ -1,5 +1,5 @@
 use garam_git::diff::{FileDiff, LineKind};
-use garam_git::log::{self, CommitFile, RefKind};
+use garam_git::log::{self, CommitFile, HistoryFilter, HistoryScope, RefKind, SearchField};
 use garam_git::status::ChangeKind;
 use garam_git::testing::TestRepo;
 use garam_git::{ErrorKind, status};
@@ -17,28 +17,35 @@ fn repo_with_history(count: usize) -> TestRepo {
 fn lists_commits_newest_first_in_pages() {
     let repo = repo_with_history(5);
     let git = repo.git_handle();
+    let head = HistoryFilter::default();
 
-    let first = log::list(git, repo.path(), 0, 2).unwrap();
+    let first = log::list(git, repo.path(), &head, 0, 2).unwrap();
     let summaries: Vec<_> = first.iter().map(|c| c.summary.as_str()).collect();
     assert_eq!(summaries, ["commit 4", "commit 3"]);
     assert_eq!(first[0].parents, [first[1].oid.clone()]);
     assert_eq!(first[0].author_name, "Garam Test");
 
-    let last = log::list(git, repo.path(), 4, 2).unwrap();
+    let last = log::list(git, repo.path(), &head, 4, 2).unwrap();
     assert_eq!(last.len(), 1);
     assert_eq!(last[0].summary, "commit 0");
     assert!(last[0].parents.is_empty(), "root commit");
 
-    assert!(log::list(git, repo.path(), 5, 2).unwrap().is_empty());
+    assert!(log::list(git, repo.path(), &head, 5, 2).unwrap().is_empty());
 }
 
 #[test]
 fn empty_repository_has_no_history() {
     let repo = TestRepo::new();
     assert!(
-        log::list(repo.git_handle(), repo.path(), 0, 50)
-            .unwrap()
-            .is_empty()
+        log::list(
+            repo.git_handle(),
+            repo.path(),
+            &HistoryFilter::default(),
+            0,
+            50
+        )
+        .unwrap()
+        .is_empty()
     );
 }
 
@@ -158,7 +165,7 @@ fn reverts_a_commit() {
         std::fs::read_to_string(repo.path().join("a.txt")).unwrap(),
         "one\n"
     );
-    let head = log::list(repo.git_handle(), repo.path(), 0, 1).unwrap();
+    let head = log::list(repo.git_handle(), repo.path(), &Default::default(), 0, 1).unwrap();
     assert_eq!(head[0].summary, "Revert \"change\"");
 }
 
@@ -305,4 +312,170 @@ fn unborn_branch_has_no_markers() {
     let repo = TestRepo::new();
     let markers = log::markers(repo.git_handle(), repo.path()).unwrap();
     assert_eq!(markers, log::HistoryMarkers::default());
+}
+
+fn summaries(repo: &TestRepo, filter: &HistoryFilter) -> Vec<String> {
+    log::list(repo.git_handle(), repo.path(), filter, 0, 50)
+        .unwrap()
+        .into_iter()
+        .map(|c| c.summary)
+        .collect()
+}
+
+fn search(search_in: SearchField, query: &str) -> HistoryFilter {
+    HistoryFilter {
+        query: query.to_owned(),
+        search_in,
+        ..Default::default()
+    }
+}
+
+/// main: "Add login" (by Alice) → "Fix LOGIN (a+b)" → "Tidy docs" (touches
+/// docs/), plus a `feature` branch with "Feature work".
+fn searchable_repo() -> TestRepo {
+    let repo = TestRepo::new();
+    repo.write("src/login.rs", "fn login() {}\n");
+    repo.git(["add", "--all"]);
+    repo.git([
+        "-c",
+        "user.name=Alice Kim",
+        "-c",
+        "user.email=alice@example.com",
+        "commit",
+        "--quiet",
+        "-m",
+        "Add login",
+    ]);
+    repo.write("src/login.rs", "fn login() { check_password(); }\n");
+    repo.commit_all("Fix LOGIN (a+b)");
+    repo.write("docs/guide.md", "Guide\n");
+    repo.commit_all("Tidy docs");
+    repo.git(["switch", "--quiet", "-c", "feature", "HEAD~1"]);
+    repo.write("feature.txt", "x\n");
+    repo.commit_all("Feature work");
+    repo.git(["switch", "--quiet", "main"]);
+    repo
+}
+
+#[test]
+fn searches_messages_literally_ignoring_case() {
+    let repo = searchable_repo();
+    assert_eq!(
+        summaries(&repo, &search(SearchField::Message, "login")),
+        ["Fix LOGIN (a+b)", "Add login"]
+    );
+    // Regex characters are plain text.
+    assert_eq!(
+        summaries(&repo, &search(SearchField::Message, "(a+b)")),
+        ["Fix LOGIN (a+b)"]
+    );
+    assert!(summaries(&repo, &search(SearchField::Message, "nothing")).is_empty());
+}
+
+#[test]
+fn searches_authors_and_content() {
+    let repo = searchable_repo();
+    assert_eq!(
+        summaries(&repo, &search(SearchField::Author, "ALICE@example")),
+        ["Add login"]
+    );
+    assert_eq!(
+        summaries(&repo, &search(SearchField::Content, "check_password")),
+        ["Fix LOGIN (a+b)"]
+    );
+}
+
+#[test]
+fn a_hash_in_the_search_finds_that_commit() {
+    let repo = searchable_repo();
+    let feature = repo
+        .git(["rev-parse", "feature"])
+        .stdout_str()
+        .trim()
+        .to_owned();
+    let found = log::list(
+        repo.git_handle(),
+        repo.path(),
+        &search(SearchField::Message, &feature[..10]),
+        0,
+        50,
+    )
+    .unwrap();
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].oid, feature, "found even off the current branch");
+    // Short or non-hex input is a plain message search.
+    assert!(summaries(&repo, &search(SearchField::Message, &feature[..5])).is_empty());
+}
+
+#[test]
+fn filters_by_path_and_scope() {
+    let repo = searchable_repo();
+    let path = HistoryFilter {
+        path: "docs".into(),
+        ..Default::default()
+    };
+    assert_eq!(summaries(&repo, &path), ["Tidy docs"]);
+    // Paths are never read as options.
+    let odd = HistoryFilter {
+        path: "--all".into(),
+        ..Default::default()
+    };
+    assert!(summaries(&repo, &odd).is_empty());
+
+    let feature = HistoryFilter {
+        scope: HistoryScope::Ref {
+            refname: "refs/heads/feature".into(),
+        },
+        ..Default::default()
+    };
+    assert_eq!(
+        summaries(&repo, &feature),
+        ["Feature work", "Fix LOGIN (a+b)", "Add login"]
+    );
+
+    let all = HistoryFilter {
+        scope: HistoryScope::All,
+        ..Default::default()
+    };
+    let mut every = summaries(&repo, &all);
+    every.sort();
+    assert_eq!(
+        every,
+        ["Add login", "Feature work", "Fix LOGIN (a+b)", "Tidy docs"]
+    );
+
+    for bad in ["feature", "refs/heads/missing", "--all"] {
+        let filter = HistoryFilter {
+            scope: HistoryScope::Ref {
+                refname: bad.into(),
+            },
+            ..Default::default()
+        };
+        assert!(
+            log::list(repo.git_handle(), repo.path(), &filter, 0, 50).is_err(),
+            "{bad}"
+        );
+    }
+}
+
+#[test]
+fn follows_only_first_parents_when_asked() {
+    let repo = searchable_repo();
+    repo.git([
+        "merge",
+        "--quiet",
+        "--no-ff",
+        "-m",
+        "Merge feature",
+        "feature",
+    ]);
+    let first_parent = HistoryFilter {
+        first_parent: true,
+        ..Default::default()
+    };
+    assert_eq!(
+        summaries(&repo, &first_parent),
+        ["Merge feature", "Tidy docs", "Fix LOGIN (a+b)", "Add login"]
+    );
+    assert!(summaries(&repo, &HistoryFilter::default()).contains(&"Feature work".to_owned()));
 }

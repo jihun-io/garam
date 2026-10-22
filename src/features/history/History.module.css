@@ -295,3 +295,88 @@
   align-items: center;
   gap: var(--space-1);
 }
+
+/* Search and filter */
+
+/* Same height as a list header. */
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 36px;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.searchField {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+}
+
+.searchField:focus-within {
+  border-color: var(--color-focus);
+  box-shadow: inset 0 0 0 1px var(--color-focus);
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* The filter is in effect: what the user chose, so the accent. */
+.filterOn,
+.filterOn:hover:not(:disabled) {
+  color: var(--color-river);
+}
+
+.filterPanel {
+  display: grid;
+  width: min(340px, calc(100vw - 32px));
+  border-radius: var(--radius-lg);
+  background: var(--color-raised);
+  box-shadow: var(--shadow-raised);
+}
+
+.filterOptions {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.filterRow {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.filterLabel {
+  font-weight: 550;
+}
+
+.filterCheck {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.filterFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-2);
+  border-top: 1px solid var(--color-line);
+}

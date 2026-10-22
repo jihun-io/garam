@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +8,8 @@ import { renderWithQuery } from "../../test/renderWithQuery";
 import { useBranchDialog } from "../branches/branchDialogStore";
 import { Notifications } from "../notify/Notifications";
 import { useNotify } from "../notify/notifyStore";
+import { runCommand } from "../../lib/commands";
+import { DEFAULT_FILTER, useHistoryFilters } from "./filterStore";
 import { HistoryView } from "./HistoryView";
 
 vi.mock("../../ipc/bindings", () => ({
@@ -15,6 +17,7 @@ vi.mock("../../ipc/bindings", () => ({
     statusGet: vi.fn(),
     historyList: vi.fn(),
     historyMarkers: vi.fn(),
+    branchList: vi.fn(),
     commitDetail: vi.fn(),
     commitFileDiff: vi.fn(),
     commitRevert: vi.fn(),
@@ -67,6 +70,36 @@ function setup(historyMarkers: HistoryMarkers = markers) {
   );
   vi.mocked(commands.historyList).mockResolvedValue(ok(commits));
   vi.mocked(commands.historyMarkers).mockResolvedValue(ok(historyMarkers));
+  vi.mocked(commands.branchList).mockResolvedValue(
+    ok([
+      {
+        name: "main",
+        kind: "local",
+        remote: null,
+        oid: commits[0].oid,
+        isHead: true,
+        upstream: "origin/main",
+        upstreamGone: false,
+        ahead: 1,
+        behind: 0,
+        committedAt: now,
+        subject: "Add login screen",
+      },
+      {
+        name: "origin/main",
+        kind: "remote",
+        remote: "origin",
+        oid: commits[1].oid,
+        isHead: false,
+        upstream: null,
+        upstreamGone: false,
+        ahead: 0,
+        behind: 0,
+        committedAt: now,
+        subject: "Commit number 2",
+      },
+    ]),
+  );
   vi.mocked(commands.commitDetail).mockImplementation(async (_repo, oid) =>
     ok(detail(commits.find((c) => c.oid === oid)!)),
   );
@@ -108,6 +141,7 @@ describe("HistoryView", () => {
     vi.clearAllMocks();
     useNotify.setState({ notice: null });
     useBranchDialog.setState({ dialog: null });
+    useHistoryFilters.setState({ filters: {} });
   });
 
   it("has no accessibility violations", async () => {
@@ -121,7 +155,7 @@ describe("HistoryView", () => {
     setup();
     const list = await screen.findByRole("listbox", { name: "Commits" });
     expect(await within(list).findAllByRole("option")).toHaveLength(3);
-    expect(commands.historyList).toHaveBeenCalledWith("/repo", 0, 100);
+    expect(commands.historyList).toHaveBeenCalledWith("/repo", DEFAULT_FILTER, 0, 100);
     // Fewer than a page: nothing more to load.
     expect(commands.historyList).toHaveBeenCalledTimes(1);
 
@@ -229,6 +263,103 @@ describe("HistoryView", () => {
     });
     await user.click(await screen.findByRole("menuitem", { name: "Create branch from commit…" }));
     expect(useBranchDialog.getState().dialog).toEqual({ kind: "create", from: commits[2] });
+  });
+
+  it("searches after typing settles and hides incoming commits", async () => {
+    const user = userEvent.setup();
+    setup({ ...markers, incoming: [commit(9, { summary: "Teammate's fix" })] });
+    await screen.findByText("Teammate's fix");
+
+    vi.mocked(commands.historyList).mockResolvedValue(ok([commits[2]]));
+    const search = screen.getByRole("searchbox", { name: "Search commits" });
+    await user.type(search, "number 3");
+    await waitFor(() =>
+      expect(commands.historyList).toHaveBeenLastCalledWith(
+        "/repo",
+        { ...DEFAULT_FILTER, query: "number 3" },
+        0,
+        100,
+      ),
+    );
+    // Typing runs one search, not one per keystroke.
+    expect(
+      vi.mocked(commands.historyList).mock.calls.filter(([, f]) => f.query !== ""),
+    ).toHaveLength(1);
+    const list = screen.getByRole("listbox", { name: "Commits" });
+    await waitFor(() => expect(within(list).getAllByRole("option")).toHaveLength(1));
+    expect(within(list).queryByText("Teammate's fix")).toBeNull();
+    expect(await screen.findByRole("heading", { name: "Commit number 3" })).toBeVisible();
+
+    // Escape clears the search.
+    await user.keyboard("{Escape}");
+    expect(search).toHaveValue("");
+  });
+
+  it("narrows by search field, scope, path and first parent", async () => {
+    const user = userEvent.setup();
+    setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+
+    await user.click(screen.getByRole("button", { name: "Filter" }));
+    const panel = await screen.findByRole("dialog", { name: "Filter" });
+    expect(await axeViolations(panel)).toEqual([]);
+    await user.click(within(panel).getByRole("radio", { name: "Author" }));
+    expect(screen.getByRole("searchbox")).toHaveAttribute(
+      "placeholder",
+      "Search author name or email",
+    );
+
+    await user.click(within(panel).getByRole("combobox", { name: "Scope" }));
+    await user.click(await screen.findByRole("option", { name: "origin/main" }));
+    await user.type(within(panel).getByRole("textbox", { name: "Path" }), "src/");
+    await user.click(
+      within(panel).getByRole("checkbox", { name: "Follow only the first parent of merges" }),
+    );
+
+    await waitFor(() =>
+      expect(commands.historyList).toHaveBeenLastCalledWith(
+        "/repo",
+        {
+          scope: { kind: "ref", refname: "refs/remotes/origin/main" },
+          query: "",
+          searchIn: "author",
+          path: "src/",
+          firstParent: true,
+        },
+        0,
+        100,
+      ),
+    );
+    expect(screen.getByRole("button", { name: "Filter (on)" })).toBeVisible();
+
+    // Back to the plain history at once, from the cache.
+    const calls = vi.mocked(commands.historyList).mock.calls.length;
+    await user.click(within(panel).getByRole("button", { name: "Reset filters" }));
+    expect(await screen.findByRole("button", { name: "Filter" })).toBeVisible();
+    expect(within(panel).getByRole("textbox", { name: "Path" })).toHaveValue("");
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(commands.historyList).toHaveBeenCalledTimes(calls);
+  });
+
+  it("offers to clear a search that finds nothing", async () => {
+    const user = userEvent.setup();
+    setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+    vi.mocked(commands.historyList).mockResolvedValue(ok([]));
+    await user.type(screen.getByRole("searchbox"), "zzz");
+    expect(await screen.findByText("No commits match.")).toBeVisible();
+
+    vi.mocked(commands.historyList).mockResolvedValue(ok(commits));
+    await user.click(screen.getByRole("button", { name: "Clear search and filters" }));
+    expect(screen.getByRole("searchbox")).toHaveValue("");
+    expect(await screen.findByRole("heading", { name: "Add login screen" })).toBeVisible();
+  });
+
+  it("focuses the search from the Search History command", async () => {
+    setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+    expect(runCommand("history.search")).toBe(true);
+    expect(screen.getByRole("searchbox")).toHaveFocus();
   });
 
   it("explains an empty history", async () => {

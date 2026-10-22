@@ -2,15 +2,31 @@ use std::path::Path;
 
 use garam_git::Git;
 use garam_git::diff::FileDiff;
-use garam_git::log::{self, CommitDetail, CommitFile, CommitSummary, HistoryMarkers};
+use garam_git::log::{
+    self, CommitDetail, CommitFile, CommitSummary, HistoryFilter, HistoryMarkers,
+};
 
 use crate::error::{AppResult, blocking};
 
-/// A page of HEAD's history, newest first.
+/// A page of the history `filter` selects, newest first.
 #[tauri::command]
 #[specta::specta]
-pub async fn history_list(repo: String, skip: u32, limit: u32) -> AppResult<Vec<CommitSummary>> {
-    blocking(move || Ok(log::list(&Git::locate()?, Path::new(&repo), skip, limit)?)).await
+pub async fn history_list(
+    repo: String,
+    filter: HistoryFilter,
+    skip: u32,
+    limit: u32,
+) -> AppResult<Vec<CommitSummary>> {
+    blocking(move || {
+        Ok(log::list(
+            &Git::locate()?,
+            Path::new(&repo),
+            &filter,
+            skip,
+            limit,
+        )?)
+    })
+    .await
 }
 
 /// Refs, unpushed and incoming commits, shown alongside the history.

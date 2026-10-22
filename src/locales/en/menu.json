@@ -38,6 +38,9 @@
     "help": {
       "shortcuts": "Keyboard Shortcuts",
       "report": "Report a Problem…"
+    },
+    "history": {
+      "search": "Search History"
     }
   },
   "native": {

@@ -38,5 +38,35 @@
   "sync": {
     "unpushed": "Not pushed yet",
     "incoming": "Not pulled yet. Pull to bring it into this branch."
+  },
+  "search": {
+    "label": "Search commits",
+    "placeholder": {
+      "message": "Search messages or a hash",
+      "author": "Search author name or email",
+      "content": "Search added or removed code"
+    },
+    "noResults": "No commits match.",
+    "noResultsBody": "Try a different search or filter.",
+    "clear": "Clear search and filters"
+  },
+  "filter": {
+    "label": "Filter",
+    "active": "Filter (on)",
+    "searchIn": "Search in",
+    "fields": {
+      "message": "Message",
+      "author": "Author",
+      "content": "Code"
+    },
+    "scope": "Scope",
+    "scopes": {
+      "head": "Current branch",
+      "all": "All branches and tags"
+    },
+    "path": "Path",
+    "pathHint": "Only commits that change this path. For example: src/",
+    "firstParent": "Follow only the first parent of merges",
+    "reset": "Reset filters"
   }
 }

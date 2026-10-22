@@ -11,6 +11,7 @@ export function IconButton({
   label,
   size = 20,
   shortcut,
+  filled = false,
   className,
   ...button
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -18,6 +19,8 @@ export function IconButton({
   label: string;
   size?: IconSize;
   shortcut?: string | null;
+  /** Shows the icon filled, for a setting that is in effect. */
+  filled?: boolean;
 }) {
   return (
     <Tooltip content={label} shortcut={shortcut}>
@@ -27,7 +30,7 @@ export function IconButton({
         className={[styles.button, className].filter(Boolean).join(" ")}
         {...button}
       >
-        <Icon name={icon} size={size} />
+        <Icon name={icon} size={size} filled={filled} />
       </button>
     </Tooltip>
   );

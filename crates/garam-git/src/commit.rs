@@ -58,11 +58,22 @@ pub fn commit(git: &Git, repo: &Path, message: &str, amend: bool) -> Result<Stri
 
 /// HEAD's commit id, or `None` on a branch without commits.
 pub fn head_oid(git: &Git, repo: &Path) -> Result<Option<String>, GitError> {
+    resolve_commit(git, repo, "HEAD")
+}
+
+/// The commit `rev` names, or `None` if it names none. `rev` is never read
+/// as an option.
+pub(crate) fn resolve_commit(
+    git: &Git,
+    repo: &Path,
+    rev: &str,
+) -> Result<Option<String>, GitError> {
     let output = git
         .command()
         .cwd(repo)
         .read_only()
-        .args(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"])
+        .args(["rev-parse", "--verify", "--quiet", "--end-of-options"])
+        .arg(format!("{rev}^{{commit}}"))
         .run_unchecked()?;
     match output.code {
         Some(0) => Ok(Some(output.stdout_str().trim().to_owned())),

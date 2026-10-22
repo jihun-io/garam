@@ -25,20 +25,124 @@ pub struct CommitSummary {
     pub summary: String,
 }
 
-/// Up to `limit` commits reachable from HEAD, newest first, after skipping
-/// `skip`. Empty on a branch without commits.
-pub fn list(git: &Git, repo: &Path, skip: u32, limit: u32) -> Result<Vec<CommitSummary>, GitError> {
-    if crate::commit::head_oid(git, repo)?.is_none() {
-        return Ok(Vec::new());
-    }
-    log_records(git, repo, &["HEAD"], skip, limit)
+/// Which commits the history walks.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum HistoryScope {
+    /// The checked-out branch (or detached HEAD).
+    #[default]
+    Head,
+    /// Every local branch, remote branch and tag.
+    All,
+    /// One branch, by its full name (`refs/heads/x`, `refs/remotes/o/x`).
+    Ref { refname: String },
 }
 
-/// `git log` of `revs` as commit summaries.
+/// What a history search looks at.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "snake_case")]
+pub enum SearchField {
+    /// The commit message. A query that looks like a hash also finds that
+    /// commit.
+    #[default]
+    Message,
+    /// Author name or email.
+    Author,
+    /// Added or removed text in the changes (`git log -S`).
+    Content,
+}
+
+/// Narrows the history. The default is HEAD's whole history.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryFilter {
+    pub scope: HistoryScope,
+    /// Matched literally, ignoring case. Empty matches everything.
+    pub query: String,
+    pub search_in: SearchField,
+    /// A path relative to the repository root: only commits touching it.
+    /// Empty matches every path.
+    pub path: String,
+    /// Follow only the first parent of merges, as the branch saw them.
+    pub first_parent: bool,
+}
+
+/// Up to `limit` commits matching `filter`, newest first, after skipping
+/// `skip`. Empty on a branch without commits.
+pub fn list(
+    git: &Git,
+    repo: &Path,
+    filter: &HistoryFilter,
+    skip: u32,
+    limit: u32,
+) -> Result<Vec<CommitSummary>, GitError> {
+    let head = crate::commit::head_oid(git, repo)?;
+    let mut args: Vec<String> = Vec::new();
+    if filter.first_parent {
+        args.push("--first-parent".into());
+    }
+    let query = filter.query.trim();
+    if !query.is_empty() {
+        match filter.search_in {
+            SearchField::Message => args.push(format!("--grep={query}")),
+            SearchField::Author => args.push(format!("--author={query}")),
+            SearchField::Content => args.push(format!("-S{query}")),
+        }
+        args.extend(["--regexp-ignore-case".into(), "--fixed-strings".into()]);
+    }
+    match &filter.scope {
+        HistoryScope::Head => {
+            let Some(head) = &head else {
+                return Ok(Vec::new());
+            };
+            args.push(head.clone());
+        }
+        HistoryScope::All => {
+            args.extend(["--branches", "--remotes", "--tags"].map(String::from));
+            // A detached HEAD is on no branch.
+            args.extend(head.clone());
+        }
+        HistoryScope::Ref { refname } => {
+            let oid = refname
+                .starts_with("refs/")
+                .then(|| crate::commit::resolve_commit(git, repo, refname))
+                .transpose()?
+                .flatten()
+                .ok_or_else(|| GitError::Parse(format!("not a branch: {refname:?}")))?;
+            args.push(oid);
+        }
+    }
+    let path = filter.path.trim();
+    let paths: Vec<&str> = if path.is_empty() { vec![] } else { vec![path] };
+    let mut commits = log_records(git, repo, &args, &paths, skip, limit)?;
+
+    // A hash typed into the search finds that commit, wherever it is.
+    if skip == 0
+        && filter.search_in == SearchField::Message
+        && looks_like_hash(query)
+        && let Some(oid) = crate::commit::resolve_commit(git, repo, query)?
+    {
+        commits.retain(|c| c.oid != oid);
+        let found = log_records(git, repo, &["--no-walk".into(), oid], &[], 0, 1)?;
+        commits.splice(0..0, found);
+    }
+    Ok(commits)
+}
+
+fn looks_like_hash(query: &str) -> bool {
+    (7..=64).contains(&query.len()) && query.bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+/// `git log` of `revs` (options and commits) as commit summaries,
+/// limited to `paths` when given.
 fn log_records(
     git: &Git,
     repo: &Path,
-    revs: &[&str],
+    revs: &[String],
+    paths: &[&str],
     skip: u32,
     limit: u32,
 ) -> Result<Vec<CommitSummary>, GitError> {
@@ -54,7 +158,7 @@ fn log_records(
             &format!("--max-count={limit}"),
         ])
         .args(revs)
-        .arg("--")
+        .paths(paths)
         .run()?;
     output
         .stdout_str()
@@ -141,7 +245,8 @@ pub fn markers(git: &Git, repo: &Path) -> Result<HistoryMarkers, GitError> {
     if let Some(upstream) = &parsed.upstream {
         let not_upstream = format!("^{upstream}");
         markers.unpushed = rev_list(git, repo, &["HEAD", &not_upstream])?;
-        markers.incoming = log_records(git, repo, &[upstream, "^HEAD"], 0, MAX_INCOMING)?;
+        let revs = [upstream.clone(), "^HEAD".to_owned()];
+        markers.incoming = log_records(git, repo, &revs, &[], 0, MAX_INCOMING)?;
     } else if parsed.has_remote {
         markers.unpushed = rev_list(git, repo, &["HEAD", "--not", "--remotes"])?;
     }

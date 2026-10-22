@@ -89,8 +89,8 @@ export const commands = {
 	conflictMarkResolved: (repo: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_mark_resolved", { repo, path })),
 	conflictContinue: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_continue", { repo })),
 	conflictAbort: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_abort", { repo })),
-	/**  A page of HEAD's history, newest first. */
-	historyList: (repo: string, skip: number, limit: number) => typedError<CommitSummary[], AppError>(__TAURI_INVOKE("history_list", { repo, skip, limit })),
+	/**  A page of the history `filter` selects, newest first. */
+	historyList: (repo: string, filter: HistoryFilter, skip: number, limit: number) => typedError<CommitSummary[], AppError>(__TAURI_INVOKE("history_list", { repo, filter, skip, limit })),
 	/**  Refs, unpushed and incoming commits, shown alongside the history. */
 	historyMarkers: (repo: string) => typedError<HistoryMarkers, AppError>(__TAURI_INVOKE("history_markers", { repo })),
 	commitDetail: (repo: string, oid: string) => typedError<CommitDetail, AppError>(__TAURI_INVOKE("commit_detail", { repo, oid })),
@@ -408,6 +408,21 @@ export type HeadCommit = {
 	body: string,
 };
 
+/**  Narrows the history. The default is HEAD's whole history. */
+export type HistoryFilter = {
+	scope: HistoryScope,
+	/**  Matched literally, ignoring case. Empty matches everything. */
+	query: string,
+	searchIn: SearchField,
+	/**
+	 *  A path relative to the repository root: only commits touching it.
+	 *  Empty matches every path.
+	 */
+	path: string,
+	/**  Follow only the first parent of merges, as the branch saw them. */
+	firstParent: boolean,
+};
+
 /**  Where HEAD's history stands against its remote. */
 export type HistoryMarkers = {
 	refs: RefLabel[],
@@ -419,6 +434,15 @@ export type HistoryMarkers = {
 	/**  Commits on the upstream that HEAD doesn't have yet, newest first. */
 	incoming: CommitSummary[],
 };
+
+/**  Which commits the history walks. */
+export type HistoryScope = 
+/**  The checked-out branch (or detached HEAD). */
+{ kind: "head" } | 
+/**  Every local branch, remote branch and tag. */
+{ kind: "all" } | 
+/**  One branch, by its full name (`refs/heads/x`, `refs/remotes/o/x`). */
+{ kind: "ref"; refname: string };
 
 export type Hunk = {
 	oldStart: number,
@@ -564,6 +588,18 @@ export type RepositoryList = {
 	/**  Path of the repository that was open last. */
 	selected: string | null,
 };
+
+/**  What a history search looks at. */
+export type SearchField = 
+/**
+ *  The commit message. A query that looks like a hash also finds that
+ *  commit.
+ */
+"message" | 
+/**  Author name or email. */
+"author" | 
+/**  Added or removed text in the changes (`git log -S`). */
+"content";
 
 /**  Which version to keep for a conflicted file. */
 export type Side = "mine" | "theirs";

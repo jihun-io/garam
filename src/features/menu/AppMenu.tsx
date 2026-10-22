@@ -103,6 +103,7 @@ async function buildMenu(t: TFunction<["menu", "repos"]>, items: Map<CommandId, 
   const view = submenu(t("menu:menus.view"), [
     command("view.changes"),
     command("view.history"),
+    command("history.search"),
     separator(),
     command("view.repositories"),
     command("view.branches"),
