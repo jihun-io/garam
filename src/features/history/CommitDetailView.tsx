@@ -184,7 +184,10 @@ function CommitFileDiff({ repo, oid, file }: { repo: string; oid: string; file: 
             {t("diff.renamedFrom", { path: file.origPath })}
           </span>
         )}
-        <span className={`${diffStyles.badge} ${diffStyles[kind]}`}>{t(`kind.${kind}`)}</span>
+        <span className={`${diffStyles.badge} ${diffStyles[kind]}`}>
+          <Icon name={kind} size={14} />
+          {t(`kind.${kind}`)}
+        </span>
       </header>
       {body}
     </section>

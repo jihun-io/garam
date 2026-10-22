@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { ACCENT_PRESETS, accentPairFrom, accentTokens, contrast, parseHex } from "./accent";
 
-const LIGHT_SURFACE = parseHex("#fbfcfb")!;
-const DARK_SURFACE = parseHex("#1c2428")!;
+const LIGHT_SURFACE = parseHex("#fcfdfe")!;
+const DARK_SURFACE = parseHex("#121314")!;
 
 describe("accent colors", () => {
   it("keeps every preset readable on both themes", () => {
@@ -29,6 +29,18 @@ describe("accent colors", () => {
   it("picks readable text for accent-colored buttons", () => {
     expect(accentTokens(ACCENT_PRESETS.garam.light, false)["--color-on-accent"]).toBe("#ffffff");
     expect(accentTokens(ACCENT_PRESETS.garam.dark, true)["--color-on-accent"]).toBe("#10161a");
-    expect(accentTokens("#2463c7", false)["--color-selected"]).toBe("rgba(36, 99, 199, 0.12)");
+    expect(accentTokens("#2463c7", false)["--color-selected"]).toBe("#d5dfef");
+  });
+
+  it("keeps muted text readable on selected rows for every preset", () => {
+    // `--color-ink-muted` of each theme (src/styles/tokens.css).
+    const muted = { light: parseHex("#595b5f")!, dark: parseHex("#a5a8ac")! };
+    for (const pair of Object.values(ACCENT_PRESETS)) {
+      for (const dark of [false, true]) {
+        const selected = accentTokens(dark ? pair.dark : pair.light, dark)["--color-selected"];
+        const ratio = contrast(muted[dark ? "dark" : "light"], parseHex(selected)!);
+        expect(ratio, `${pair.light} ${dark ? "dark" : "light"}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
   });
 });

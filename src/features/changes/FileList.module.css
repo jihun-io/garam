@@ -1,19 +1,23 @@
 .scroll {
   flex: 1;
   min-height: 0;
+  padding-top: var(--space-1);
   overflow-y: auto;
   outline: none;
 }
 
+/* Inset, rounded selection like the OS sidebars; the content still lines
+   up with the list header (6px inset + 6px padding = 12px). */
 .row {
   position: absolute;
   top: 0;
-  left: 0;
+  left: 6px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  width: 100%;
-  padding: 0 var(--space-3);
+  width: calc(100% - 12px);
+  padding: 0 6px;
+  border-radius: var(--radius-md);
   cursor: default;
 }
 
@@ -35,6 +39,11 @@
   color: inherit;
 }
 
+/* A checked box would vanish into the accent-filled row. */
+.scroll:focus-visible .row[aria-selected="true"] [data-checkmark] {
+  border-color: var(--color-on-accent);
+}
+
 .path {
   flex: 1;
   min-width: 0;
@@ -54,10 +63,10 @@
 }
 
 .kind {
+  display: inline-grid;
   flex: none;
+  place-items: center;
   width: 16px;
-  font-weight: 700;
-  text-align: center;
 }
 
 .added {

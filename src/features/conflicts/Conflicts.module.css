@@ -3,8 +3,11 @@
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-line);
-  border-left: 3px solid var(--color-modified-ink);
-  background: var(--color-surface);
+}
+
+.banner > p:last-child {
+  padding-left: 24px;
+  color: var(--color-ink-muted);
 }
 
 .bannerTitle,
@@ -15,9 +18,14 @@
   font-weight: 600;
 }
 
+/* Conflicts read as conflicts everywhere: the same red as the file list. */
 .bannerIcon,
 .kindIcon {
-  color: var(--color-modified-ink);
+  color: var(--color-danger);
+}
+
+.banner[data-ready] .bannerIcon {
+  color: var(--color-added-ink);
 }
 
 .panel {

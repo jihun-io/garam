@@ -50,7 +50,10 @@ export function DiffView({
       {file.origPath && (
         <span className={styles.headerMeta}>{t("diff.renamedFrom", { path: file.origPath })}</span>
       )}
-      <span className={`${styles.badge} ${styles[kind]}`}>{t(`kind.${kind}`)}</span>
+      <span className={`${styles.badge} ${styles[kind]}`}>
+        <Icon name={kind} size={14} />
+        {t(`kind.${kind}`)}
+      </span>
     </header>
   );
 

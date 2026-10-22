@@ -15,7 +15,8 @@
   /* Never make the window scroll sideways, even in a very narrow window. */
   overflow: hidden;
   border-bottom: 1px solid var(--color-line);
-  background: var(--color-surface);
+  /* Chrome, like the sidebar below it; content surfaces sit lighter. */
+  background: var(--color-bg);
 }
 
 .spacer {

@@ -4,30 +4,12 @@
   min-height: 0;
 }
 
-.list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-1);
+.bar {
   padding: var(--space-2);
   border-bottom: 1px solid var(--color-line);
 }
 
-.tab {
-  min-height: 28px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  background: none;
-  color: var(--color-ink-muted);
-  font-weight: 550;
-}
-
-.tab:hover {
-  background: var(--color-hover);
-}
-
-/* Not `data-state`: the tooltip around each tab sets its own. */
-.tab[aria-selected="true"] {
-  border-color: var(--color-line);
-  background: var(--color-surface);
-  color: var(--color-ink);
+/* Spans the sidebar, each tab taking half. */
+.list {
+  width: 100%;
 }

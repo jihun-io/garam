@@ -16,9 +16,9 @@ export function ConflictBanner({ state }: { state: ConflictState }) {
   if (!state.operation) return null;
   const remaining = state.files.length;
   return (
-    <div className={styles.banner} role="status">
+    <div className={styles.banner} role="status" data-ready={remaining === 0 || undefined}>
       <p className={styles.bannerTitle}>
-        <Icon name="conflicted" className={styles.bannerIcon} />
+        <Icon name={remaining > 0 ? "conflicted" : "success"} className={styles.bannerIcon} />
         {t(`operation.${state.operation}`)}
       </p>
       <p>{remaining > 0 ? t("remaining", { count: remaining }) : t("ready")}</p>

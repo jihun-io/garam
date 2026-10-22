@@ -1,3 +1,5 @@
+/* Push buttons, as the OS draws them (docs/DESIGN.md 1.3): bordered
+   secondary, accent-filled primary. State changes are instant. */
 .button {
   display: inline-flex;
   align-items: center;
@@ -7,40 +9,44 @@
   padding: 0 var(--space-3);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
-  font-weight: 550;
+  font-weight: 500;
   white-space: nowrap;
 }
 
-.button:disabled {
-  opacity: 0.55;
-}
-
-/* A dimmed accent still looks pressable; disabled filled buttons go grey. */
-.primary:disabled,
-.danger:disabled {
-  border-color: var(--color-line);
-  background: var(--color-hover);
-  color: var(--color-ink-muted);
-  opacity: 1;
-}
-
-.primary {
-  border-color: var(--color-river-strong);
-  background: var(--color-river);
-  color: var(--color-on-accent);
-}
-
-.primary:hover:not(:disabled) {
-  background: var(--color-river-strong);
-}
-
 .secondary {
-  border-color: var(--color-line);
+  border-color: var(--color-line-strong);
   background: var(--color-surface);
+  box-shadow: var(--shadow-control);
 }
 
 .secondary:hover:not(:disabled) {
   border-color: var(--color-ink-faint);
+}
+
+.secondary:active:not(:disabled) {
+  background: var(--color-hover);
+}
+
+.primary {
+  background: var(--color-river);
+  color: var(--color-on-accent);
+  box-shadow: var(--shadow-control);
+}
+
+.primary:hover:not(:disabled),
+.primary:active:not(:disabled) {
+  background: var(--color-river-strong);
+}
+
+.danger {
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+  box-shadow: var(--shadow-control);
+}
+
+.danger:hover:not(:disabled),
+.danger:active:not(:disabled) {
+  filter: brightness(0.92);
 }
 
 .ghost {
@@ -51,12 +57,16 @@
   background: var(--color-hover);
 }
 
-.danger {
-  border-color: var(--color-danger);
-  background: var(--color-danger);
-  color: var(--color-on-danger);
+.button:disabled {
+  opacity: 0.5;
+  box-shadow: none;
 }
 
-.danger:hover:not(:disabled) {
-  filter: brightness(0.92);
+/* A dimmed accent still looks pressable; disabled filled buttons go grey. */
+.primary:disabled,
+.danger:disabled {
+  border-color: var(--color-line);
+  background: var(--color-hover);
+  color: var(--color-ink-muted);
+  opacity: 1;
 }

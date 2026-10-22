@@ -35,8 +35,11 @@ function mix(color: Rgb, toward: Rgb, amount: number): Rgb {
 const WHITE: Rgb = [255, 255, 255];
 const BLACK: Rgb = [0, 0, 0];
 /** `--color-surface` of each theme, the background accents sit on most. */
-const LIGHT_SURFACE: Rgb = [0xfb, 0xfc, 0xfb];
-const DARK_SURFACE: Rgb = [0x1c, 0x24, 0x28];
+const LIGHT_SURFACE: Rgb = [0xfc, 0xfd, 0xfe];
+const DARK_SURFACE: Rgb = [0x12, 0x13, 0x14];
+/** `--color-bg` of each theme, under selected rows. */
+const LIGHT_BG: Rgb = [0xf2, 0xf3, 0xf5];
+const DARK_BG: Rgb = [0x18, 0x19, 0x1b];
 const DARK_INK: Rgb = [0x10, 0x16, 0x1a];
 const MIN_CONTRAST = 4.5;
 
@@ -87,7 +90,8 @@ export function accentTokens(accent: string, dark: boolean): AccentTokens {
     "--color-river": toHex(rgb),
     "--color-river-strong": toHex(strong),
     "--color-focus": toHex(rgb),
-    "--color-selected": `rgba(${rgb.join(", ")}, ${dark ? 0.16 : 0.12})`,
+    // Opaque, so a selected row looks the same on any surface.
+    "--color-selected": toHex(mix(dark ? DARK_BG : LIGHT_BG, rgb, dark ? 0.22 : 0.14)),
     "--color-on-accent": toHex(onAccent),
   };
 }

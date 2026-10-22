@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { shortcutFor, useCommand } from "../../lib/commands";
+import segmented from "../../components/ui/Segmented.module.css";
 import { Tooltip } from "../../components/ui/Tooltip";
 
 import { ChangesView } from "../changes/ChangesView";
@@ -19,18 +20,20 @@ export function RepoTabs({ repo }: { repo: string }) {
   useCommand("view.history", () => setView("history"));
 
   const list = (
-    <Tabs.List className={styles.list} aria-label={t("tabs.label")}>
-      <Tooltip content={t("tabs.changes")} shortcut={shortcutFor("view.changes")}>
-        <Tabs.Trigger value="changes" className={styles.tab}>
-          {t("tabs.changes")}
-        </Tabs.Trigger>
-      </Tooltip>
-      <Tooltip content={t("tabs.history")} shortcut={shortcutFor("view.history")}>
-        <Tabs.Trigger value="history" className={styles.tab}>
-          {t("tabs.history")}
-        </Tabs.Trigger>
-      </Tooltip>
-    </Tabs.List>
+    <div className={styles.bar}>
+      <Tabs.List className={`${segmented.track} ${styles.list}`} aria-label={t("tabs.label")}>
+        <Tooltip content={t("tabs.changes")} shortcut={shortcutFor("view.changes")}>
+          <Tabs.Trigger value="changes" className={segmented.segment}>
+            {t("tabs.changes")}
+          </Tabs.Trigger>
+        </Tooltip>
+        <Tooltip content={t("tabs.history")} shortcut={shortcutFor("view.history")}>
+          <Tabs.Trigger value="history" className={segmented.segment}>
+            {t("tabs.history")}
+          </Tabs.Trigger>
+        </Tooltip>
+      </Tabs.List>
+    </div>
   );
 
   return (

@@ -32,33 +32,32 @@
   white-space: nowrap;
 }
 
+/* The file's status in the same words and icon as the file list; color
+   only on the mark, no filled chip. */
 .badge {
+  display: inline-flex;
   flex: none;
+  align-items: center;
+  gap: var(--space-1);
   margin-left: auto;
-  padding: 1px var(--space-2);
-  border-radius: var(--radius-sm);
+  color: var(--color-ink-muted);
   font-size: var(--text-sm);
-  font-weight: 600;
 }
 
-.badge.added {
-  background: var(--color-added-bg);
+.badge.added svg {
   color: var(--color-added-ink);
 }
 
-.badge.modified {
-  background: var(--color-hover);
+.badge.modified svg {
   color: var(--color-modified-ink);
 }
 
-.badge.deleted,
-.badge.conflicted {
-  background: var(--color-deleted-bg);
+.badge.deleted svg,
+.badge.conflicted svg {
   color: var(--color-danger);
 }
 
-.badge.renamed {
-  background: var(--color-hover);
+.badge.renamed svg {
   color: var(--color-link);
 }
 
@@ -100,9 +99,19 @@
   color: var(--color-ink-muted);
 }
 
+/* One line: the range stays whole, the section name gives way, and the
+   button never wraps. */
+.hunkRange {
+  flex: none;
+  white-space: nowrap;
+}
+
 .hunkSection {
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-ink);
-  white-space: pre-wrap;
+  text-overflow: ellipsis;
+  white-space: pre;
 }
 
 .line {
@@ -251,11 +260,14 @@
 }
 
 .hunkToggle {
+  flex: none;
   margin-left: auto;
+  white-space: nowrap;
   padding: 0 var(--space-2);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
+  box-shadow: var(--shadow-control);
   color: var(--color-ink);
   font-family: var(--font-ui);
   font-size: var(--text-sm);

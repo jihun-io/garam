@@ -75,7 +75,7 @@ select:focus-visible {
 [data-radix-popper-content-wrapper] > [data-state="open"],
 [data-radix-popper-content-wrapper] > [data-state="delayed-open"],
 [data-radix-popper-content-wrapper] > [data-state="instant-open"] {
-  animation: garam-pop-in 120ms ease-out;
+  animation: garam-pop-in var(--dur-fast) var(--ease-out);
 }
 
 @keyframes garam-pop-in {

@@ -3,21 +3,24 @@
 .scroll {
   flex: 1;
   min-height: 0;
+  padding-top: var(--space-1);
   overflow-y: auto;
   outline: none;
 }
 
+/* Inset, rounded selection like the file list; rows are told apart by the
+   two-line rhythm, not by rules between them. */
 .row {
   position: absolute;
   top: 0;
-  left: 0;
+  left: 6px;
   display: grid;
   align-content: center;
   gap: 2px;
-  width: 100%;
+  width: calc(100% - 12px);
   margin: 0;
-  padding: 0 var(--space-3);
-  border-bottom: 1px solid var(--color-line);
+  padding: 0 6px;
+  border-radius: var(--radius-md);
   cursor: default;
 }
 
@@ -103,9 +106,9 @@
   align-items: center;
   gap: var(--space-1);
   padding: 1px var(--space-1);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
-  background: var(--color-bg);
+  background: var(--color-surface);
   color: var(--color-ink);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
@@ -165,10 +168,12 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  width: 100%;
+  width: calc(100% - 12px);
   min-height: 28px;
-  padding: 0 var(--space-3);
+  margin: 0 6px;
+  padding: 0 6px;
   border: 0;
+  border-radius: var(--radius-md);
   background: none;
   text-align: start;
   cursor: default;

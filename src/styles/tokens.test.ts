@@ -34,6 +34,7 @@ describe.each(Object.entries(themes))("%s theme text", (_, tokens) => {
   const backgrounds: Record<string, Rgb> = {
     bg,
     surface,
+    raised: color("raised"),
     hover: color("hover", surface),
     selected: color("selected", bg),
     "added-bg": color("added-bg"),

@@ -8,6 +8,7 @@ import type { Accent, Theme } from "../../ipc";
 import { ACCENT_PRESETS, accentPairFrom } from "../../lib/accent";
 import { useSettings, useSystemAccent, useUpdateSettings } from "./api";
 import { Setting } from "./controls";
+import segmented from "../../components/ui/Segmented.module.css";
 import styles from "./SettingsDialog.module.css";
 
 const THEMES: { value: Theme; icon: "themeSystem" | "themeLight" | "themeDark" }[] = [
@@ -38,13 +39,13 @@ export function AppearanceSettings() {
           {t("appearance.theme")}
         </span>
         <RadioGroup.Root
-          className={styles.segments}
+          className={segmented.track}
           aria-labelledby="theme-label"
           value={settings.theme}
           onValueChange={(theme) => update({ theme: theme as Theme })}
         >
           {THEMES.map(({ value, icon }) => (
-            <RadioGroup.Item key={value} value={value} className={styles.segment}>
+            <RadioGroup.Item key={value} value={value} className={segmented.segment}>
               <Icon name={icon} />
               {t(`appearance.themes.${value}`)}
             </RadioGroup.Item>

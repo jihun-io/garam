@@ -25,7 +25,7 @@
 .barFill {
   height: 100%;
   background: var(--color-river);
-  transition: width 160ms ease-out;
+  transition: width var(--dur-base) var(--ease-out);
 }
 
 .progressPhase {

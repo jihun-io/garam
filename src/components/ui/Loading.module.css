@@ -5,7 +5,7 @@
   gap: var(--space-2);
   color: var(--color-ink-muted);
   font-size: var(--text-sm);
-  animation: appear 160ms ease-out;
+  animation: appear var(--dur-base) var(--ease-out);
 }
 
 .root {

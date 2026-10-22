@@ -15,7 +15,7 @@
   position: absolute;
   inset: 0 3px;
   content: "";
-  transition: background-color 120ms ease-out;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 
 .splitter:hover::after,
