@@ -7,7 +7,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.count > span[aria-hidden] {
+.count {
   display: inline-flex;
   align-items: center;
   gap: 1px;

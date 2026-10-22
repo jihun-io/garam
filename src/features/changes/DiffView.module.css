@@ -111,16 +111,18 @@
   min-height: 20px;
 }
 
+/* Line numbers and +/- markers carry meaning (the markers repeat the
+   colors for those who can't tell them apart), so they keep text contrast. */
 .gutter {
   padding: 0 var(--space-1);
-  color: var(--color-ink-faint);
+  color: var(--color-ink-muted);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 .marker {
   text-align: center;
-  color: var(--color-ink-faint);
+  color: var(--color-ink-muted);
 }
 
 .text {
@@ -192,7 +194,7 @@
 }
 
 .imageNone {
-  color: var(--color-ink-faint);
+  color: var(--color-ink-muted);
 }
 
 /* Line selection (line-level staging). */

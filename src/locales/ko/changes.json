@@ -4,7 +4,6 @@
     "title_other": "변경된 파일 {{count}}개",
     "selectAll": "모든 파일을 커밋에 포함",
     "more": "다른 작업",
-    "include": "커밋에 {{path}} 포함",
     "discardAll": "모든 변경 취소…"
   },
   "kind": {
@@ -35,10 +34,12 @@
     "after": "이후",
     "noImage": "없음",
     "selectFile": "파일을 선택하면 변경 내용이 보입니다.",
-    "stageLine": "이 줄을 커밋에 포함",
     "stageHunk": "묶음 포함",
     "unstageHunk": "묶음 제외",
-    "lineHint": "왼쪽 여백을 클릭하거나 끌어서 커밋에 포함할 줄을 고르세요."
+    "lineHint": "왼쪽 여백을 클릭하거나 끌어서 커밋에 포함할 줄을 고르세요.",
+    "label": "변경 내용",
+    "addedLine": "추가된 줄 {{line}}: {{text}}",
+    "deletedLine": "삭제된 줄 {{line}}: {{text}}"
   },
   "commit": {
     "summary": "요약",

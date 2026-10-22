@@ -23,7 +23,7 @@ export function Workspace({
   repositories: RepositoryEntry[];
   selected: RepositoryEntry | null;
 }) {
-  const { t } = useTranslation("settings");
+  const { t } = useTranslation(["settings", "common"]);
   const openSettings = useSettingsDialog((s) => s.setOpen);
   const active = selected && !selected.missing ? selected.path : null;
   useRepoWatcher(active);
@@ -61,6 +61,8 @@ export function Workspace({
         </div>
       </header>
       <main className={styles.main}>
+        {/* For screen reader heading navigation; the toolbar shows the name. */}
+        <h1 className="sr-only">{selected?.name ?? t("common:appName")}</h1>
         {selected &&
           (selected.missing ? (
             <RepositoryOverview key={selected.path} repository={selected} />

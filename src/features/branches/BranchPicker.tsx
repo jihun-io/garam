@@ -140,12 +140,16 @@ export function BranchPicker({
             caption={t("picker.caption")}
             value={label}
             trailing={<Icon name="dropdown" size={12} />}
-            aria-label={t("picker.label", { name: label })}
           />
         </Popover.Trigger>
       </Tooltip>
       <Popover.Portal>
-        <Popover.Content className={styles.content} align="start" sideOffset={4}>
+        <Popover.Content
+          className={styles.content}
+          align="start"
+          sideOffset={4}
+          aria-label={t("picker.tooltip")}
+        >
           <div className={styles.searchRow}>
             <input
               type="search"

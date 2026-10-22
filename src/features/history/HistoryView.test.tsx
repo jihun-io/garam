@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands, type CommitDetail, type CommitSummary } from "../../ipc";
+import { axeViolations } from "../../test/axe";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { useBranchDialog } from "../branches/branchDialogStore";
 import { Notifications } from "../notify/Notifications";
@@ -94,6 +95,13 @@ describe("HistoryView", () => {
     vi.clearAllMocks();
     useNotify.setState({ notice: null });
     useBranchDialog.setState({ dialog: null });
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = setup();
+    await screen.findByRole("listbox", { name: "Commits" });
+    await screen.findByRole("region", { name: "Diff" });
+    expect(await axeViolations(container)).toEqual([]);
   });
 
   it("lists commits and shows the newest one", async () => {

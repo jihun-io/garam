@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands, type ConflictState } from "../../ipc";
+import { axeViolations } from "../../test/axe";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { ChangesView } from "../changes/ChangesView";
 import { Notifications } from "../notify/Notifications";
@@ -66,7 +67,15 @@ describe("conflict resolution", () => {
     expect(screen.getByRole("button", { name: "Commit merge" })).toBeDisabled();
     expect(screen.queryByPlaceholderText("Summary (required)")).toBeNull();
     // Ticking a conflicted file would mark it resolved with markers left in.
-    expect(screen.getByRole("checkbox", { name: "Include a.txt in the commit" })).toBeDisabled();
+    const file = screen.getByRole("option", { name: /a\.txt/ });
+    await userEvent.click(file.querySelector("[data-checkmark]")!);
+    expect(commands.changesStage).not.toHaveBeenCalled();
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = setup(stopped);
+    await screen.findByText("Merge in progress");
+    expect(await axeViolations(container)).toEqual([]);
   });
 
   it("keeps one side of a file", async () => {

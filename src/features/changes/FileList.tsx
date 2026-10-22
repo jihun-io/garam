@@ -3,7 +3,7 @@ import { ContextMenu } from "radix-ui";
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Checkbox } from "../../components/ui/Checkbox";
+import { CheckMark } from "../../components/ui/Checkbox";
 import menu from "../../components/ui/Menu.module.css";
 import { commands, type FileChange } from "../../ipc";
 import { joinPath } from "../../lib/paths";
@@ -88,6 +88,7 @@ export function FileList({
         {virtualizer.getVirtualItems().map((item) => {
           const file = files[item.index];
           const kind = displayKind(file);
+          const state = checkState(file);
           const { dir, name } = splitPath(file.path);
           const selected = file.path === selectedPath;
           return (
@@ -97,17 +98,18 @@ export function FileList({
                   id={`file-${item.index}`}
                   role="option"
                   aria-selected={selected}
+                  // The row reports inclusion itself (Space toggles it); the
+                  // box inside is only for the mouse, so it isn't a control
+                  // nested in an option for screen readers.
+                  aria-checked={state === "mixed" ? "mixed" : state === "checked"}
                   className={styles.row}
                   style={{ transform: `translateY(${item.start}px)`, height: ROW_HEIGHT }}
                   onMouseDown={() => onSelect(file.path)}
                 >
-                  <Checkbox
-                    state={checkState(file)}
+                  <CheckMark
+                    state={state}
                     disabled={kind === "conflicted"}
-                    tabIndex={-1}
-                    aria-label={t("list.include", { path: file.path })}
-                    onChange={() => onToggle(file)}
-                    onMouseDown={(e) => e.stopPropagation()}
+                    onToggle={() => onToggle(file)}
                   />
                   <Tooltip
                     content={file.origPath ? `${file.origPath} → ${file.path}` : file.path}

@@ -79,12 +79,16 @@ export function RepoPicker({
             caption={t("picker.caption")}
             value={selected?.name ?? t("picker.placeholder")}
             trailing={<Icon name="dropdown" size={12} />}
-            aria-label={selected ? t("picker.label", { name: selected.name }) : undefined}
           />
         </Popover.Trigger>
       </Tooltip>
       <Popover.Portal>
-        <Popover.Content className={styles.content} align="start" sideOffset={4}>
+        <Popover.Content
+          className={styles.content}
+          align="start"
+          sideOffset={4}
+          aria-label={t("picker.tooltip")}
+        >
           <div className={styles.search}>
             <input
               type="search"

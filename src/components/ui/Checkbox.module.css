@@ -22,22 +22,27 @@
 }
 
 .checkbox:checked,
-.checkbox:indeterminate {
+.checkbox:indeterminate,
+.checkbox[data-state="checked"],
+.checkbox[data-state="mixed"] {
   border-color: var(--color-river);
   background: var(--color-river);
 }
 
-.checkbox:checked::before {
+.checkbox:checked::before,
+.checkbox[data-state="checked"]::before {
   transform: scale(1);
   clip-path: polygon(12% 52%, 0 66%, 38% 100%, 100% 22%, 87% 9%, 37% 72%);
 }
 
-.checkbox:indeterminate::before {
+.checkbox:indeterminate::before,
+.checkbox[data-state="mixed"]::before {
   height: 2px;
   transform: scale(1);
 }
 
-.checkbox:disabled {
+.checkbox:disabled,
+.checkbox[data-disabled] {
   opacity: 0.45;
 }
 

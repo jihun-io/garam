@@ -30,6 +30,8 @@ export function ToolbarButton({
 }) {
   const captionEl = <span className={styles.caption}>{caption}</span>;
   const valueEl = <span className={styles.value}>{value}</span>;
+  // The {" "} between parts: layout ignores it, but it keeps the button's
+  // accessible name from running the lines together ("Current branchmain").
   return (
     <button
       type="button"
@@ -43,17 +45,15 @@ export function ToolbarButton({
       <span className={styles.text}>
         {captionBelow ? (
           <>
-            {valueEl}
-            {captionEl}
+            {valueEl} {captionEl}
           </>
         ) : (
           <>
-            {captionEl}
-            {valueEl}
+            {captionEl} {valueEl}
           </>
         )}
       </span>
-      {trailing}
+      {trailing && <> {trailing}</>}
     </button>
   );
 }

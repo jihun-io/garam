@@ -49,7 +49,7 @@ describe("Workspace", () => {
     const consoleError = vi.spyOn(console, "error");
     renderWithQuery(<Workspace repositories={[repo]} selected={repo} />);
 
-    expect(await screen.findByRole("button", { name: "Current branch: main" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Current branch main" })).toBeVisible();
     expect(await screen.findByRole("button", { name: /Push origin/ })).toBeVisible();
     const keyWarnings = consoleError.mock.calls.filter((args) =>
       String(args[0]).includes("same key"),

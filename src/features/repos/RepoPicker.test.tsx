@@ -32,7 +32,7 @@ describe("RepoPicker", () => {
     const user = userEvent.setup();
     renderWithQuery(<RepoPicker repositories={repos} selected={repos[0]} />);
 
-    await user.click(screen.getByRole("button", { name: "Repository: 가람" }));
+    await user.click(screen.getByRole("button", { name: "Current repository 가람" }));
     expect(screen.getByText("Missing")).toBeVisible();
 
     await user.type(screen.getByRole("searchbox"), "sites");
@@ -46,7 +46,7 @@ describe("RepoPicker", () => {
   it("explains when nothing matches", async () => {
     const user = userEvent.setup();
     renderWithQuery(<RepoPicker repositories={repos} selected={repos[0]} />);
-    await user.click(screen.getByRole("button", { name: "Repository: 가람" }));
+    await user.click(screen.getByRole("button", { name: "Current repository 가람" }));
     await user.type(screen.getByRole("searchbox"), "zzz");
     expect(screen.getByText("No repositories match “zzz”.")).toBeVisible();
   });

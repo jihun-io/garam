@@ -40,10 +40,11 @@ export function RepoTabs({ repo }: { repo: string }) {
       className={styles.root}
       activationMode="manual"
     >
-      <Tabs.Content value="changes" className={styles.content}>
+      {/* The panels hold their own controls; they aren't stops themselves. */}
+      <Tabs.Content value="changes" className={styles.content} tabIndex={-1}>
         <ChangesView repo={repo} tabs={list} />
       </Tabs.Content>
-      <Tabs.Content value="history" className={styles.content}>
+      <Tabs.Content value="history" className={styles.content} tabIndex={-1}>
         <HistoryView repo={repo} tabs={list} />
       </Tabs.Content>
     </Tabs.Root>

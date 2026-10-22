@@ -13,7 +13,6 @@
   },
   "picker": {
     "caption": "Current repository",
-    "label": "Repository: {{name}}",
     "placeholder": "Choose a repository",
     "search": "Filter repositories",
     "noMatches": "No repositories match “{{query}}”.",

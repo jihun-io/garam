@@ -4,7 +4,6 @@
     "title_other": "{{count}} changed files",
     "selectAll": "Include all files in the commit",
     "more": "More actions",
-    "include": "Include {{path}} in the commit",
     "discardAll": "Discard all changes…"
   },
   "kind": {
@@ -35,10 +34,12 @@
     "after": "After",
     "noImage": "None",
     "selectFile": "Select a file to see its changes.",
-    "stageLine": "Include this line in the commit",
     "stageHunk": "Include block",
     "unstageHunk": "Exclude block",
-    "lineHint": "Click or drag in the left margin to choose lines for the commit."
+    "lineHint": "Click or drag in the left margin to choose lines for the commit.",
+    "label": "Diff",
+    "addedLine": "Added line {{line}}: {{text}}",
+    "deletedLine": "Deleted line {{line}}: {{text}}"
   },
   "commit": {
     "summary": "Summary",

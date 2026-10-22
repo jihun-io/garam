@@ -73,7 +73,7 @@ function setup(files: FileChange[] = []) {
 }
 
 async function openPicker(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole("button", { name: "Current branch: main" }));
+  await user.click(await screen.findByRole("button", { name: "Current branch main" }));
 }
 
 describe("BranchControls", () => {

@@ -1,8 +1,9 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands, type FileChange, type RepoStatus } from "../../ipc";
+import { axeViolations } from "../../test/axe";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { ChangesView } from "./ChangesView";
 
@@ -98,6 +99,9 @@ function setup(files: FileChange[]) {
   return renderWithQuery(<ChangesView repo="/repo" />);
 }
 
+/** A line's selection box is named after the line. */
+const LINE = /^(Added|Deleted) line \d+: /;
+
 describe("ChangesView", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -116,12 +120,16 @@ describe("ChangesView", () => {
     const user = userEvent.setup();
     setup([change("a.txt", null, "modified"), change("b.txt", "modified", null)]);
 
-    await user.click(await screen.findByRole("checkbox", { name: "Include a.txt in the commit" }));
+    const a = await screen.findByRole("option", { name: /a\.txt/ });
+    expect(a).toHaveAttribute("aria-checked", "false");
+    await user.click(a.querySelector("[data-checkmark]")!);
     expect(commands.changesStage).toHaveBeenCalledWith("/repo", [
       expect.objectContaining({ path: "a.txt" }),
     ]);
 
-    await user.click(screen.getByRole("checkbox", { name: "Include b.txt in the commit" }));
+    const b = screen.getByRole("option", { name: /b\.txt/ });
+    expect(b).toHaveAttribute("aria-checked", "true");
+    await user.click(b.querySelector("[data-checkmark]")!);
     expect(commands.changesUnstage).toHaveBeenCalledWith("/repo", [
       expect.objectContaining({ path: "b.txt" }),
     ]);
@@ -229,7 +237,7 @@ describe("ChangesView", () => {
     const user = userEvent.setup();
     setup([change("a.txt", "modified", "modified")]);
     await screen.findByText("new line");
-    const boxes = screen.getAllByRole("checkbox", { name: "Include this line in the commit" });
+    const boxes = screen.getAllByRole("checkbox", { name: LINE });
     expect(boxes.map((b) => b.getAttribute("aria-checked"))).toEqual(["false", "false", "true"]);
 
     await user.click(boxes[1]);
@@ -246,13 +254,46 @@ describe("ChangesView", () => {
     expect(boxes[1]).toHaveAttribute("aria-checked", "true");
   });
 
+  it("has no accessibility violations", async () => {
+    const { container } = setup([
+      change("a.txt", null, "modified"),
+      change("b.txt", "modified", null),
+    ]);
+    await screen.findByText("new line");
+    expect(await axeViolations(container)).toEqual([]);
+  });
+
+  it("is one tab stop; arrow keys move between lines and Space includes one", async () => {
+    const user = userEvent.setup();
+    setup([change("a.txt", null, "modified")]);
+    await screen.findByText("new line");
+    const block = screen.getByRole("button", { name: "Include block" });
+    const lines = screen.getAllByRole("checkbox", { name: LINE });
+    expect([block, ...lines].filter((el) => el.tabIndex === 0)).toEqual([block]);
+
+    block.focus();
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(lines[0]).toHaveFocus());
+    expect(lines[0]).toHaveAccessibleName("Deleted line 1: old line");
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(lines[1]).toHaveFocus());
+    await user.keyboard(" ");
+    expect(commands.changesStageLines).toHaveBeenCalledWith(
+      "/repo",
+      expect.objectContaining({ path: "a.txt" }),
+      // Plus the line that was already staged.
+      [
+        { kind: "added", line: 2 },
+        { kind: "added", line: 1 },
+      ],
+    );
+  });
+
   it("drags across the margin to include several lines at once", async () => {
     const user = userEvent.setup();
     setup([change("a.txt", null, "modified")]);
     await screen.findByText("new line");
-    const [first, second] = screen.getAllByRole("checkbox", {
-      name: "Include this line in the commit",
-    });
+    const [first, second] = screen.getAllByRole("checkbox", { name: LINE });
     await user.pointer([
       { keys: "[MouseLeft>]", target: first },
       { target: second },

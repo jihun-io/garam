@@ -1,5 +1,5 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
@@ -128,6 +128,7 @@ export function TextDiff({
   hunks: Hunk[];
   onStageLines?: (selected: LineRef[]) => void;
 }) {
+  const { t } = useTranslation("changes");
   const scrollRef = useRef<HTMLDivElement>(null);
   const rows = useMemo<Row[]>(
     () =>
@@ -197,8 +198,67 @@ export function TextDiff({
 
   const selectable = onStageLines !== undefined;
 
+  // One tab stop for the whole diff: arrow keys move between the block and
+  // line controls, so a long diff doesn't take hundreds of Tab presses.
+  const controls = useMemo(() => {
+    if (!selectable) return [];
+    const list: { key: string; row: number }[] = [];
+    rows.forEach((row, index) => {
+      if (row.type === "hunk") {
+        if (row.hunk.lines.some((l) => lineRef(l))) list.push({ key: `hunk:${index}`, row: index });
+      } else {
+        const ref = lineRef(row.line);
+        if (ref) list.push({ key: keyOf(ref), row: index });
+      }
+    });
+    return list;
+  }, [rows, selectable]);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const active = controls.some((c) => c.key === activeKey) ? activeKey : (controls[0]?.key ?? null);
+  const [focusRequest, setFocusRequest] = useState(0);
+
+  useEffect(() => {
+    if (focusRequest === 0 || !active) return;
+    // The row may only now be rendered after scrolling to it.
+    const frame = requestAnimationFrame(() => {
+      scrollRef.current?.querySelector<HTMLElement>(`[data-control="${active}"]`)?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusRequest, active]);
+
+  const onControlKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    const index = controls.findIndex((c) => c.key === active);
+    const target = {
+      ArrowDown: index + 1,
+      ArrowUp: index - 1,
+      Home: 0,
+      End: controls.length - 1,
+    }[e.key];
+    if (target === undefined) return;
+    e.preventDefault();
+    const next = controls[Math.max(0, Math.min(controls.length - 1, target))];
+    if (!next) return;
+    setActiveKey(next.key);
+    virtualizer.scrollToIndex(next.row, { align: "auto" });
+    setFocusRequest((n) => n + 1);
+  };
+  const control = (key: string) => ({
+    "data-control": key,
+    tabIndex: key === active ? 0 : -1,
+    onKeyDown: onControlKeyDown,
+    onFocus: () => setActiveKey(key),
+  });
+
   return (
-    <div ref={scrollRef} className={styles.scroll}>
+    <div
+      ref={scrollRef}
+      className={styles.scroll}
+      // A read-only diff has nothing to focus inside; make it scrollable
+      // from the keyboard.
+      tabIndex={selectable ? undefined : 0}
+      role={selectable ? undefined : "region"}
+      aria-label={selectable ? undefined : t("diff.label")}
+    >
       <div
         className={`${styles.lines} ${selectable ? styles.selectable : ""}`}
         style={{ height: virtualizer.getTotalSize() }}
@@ -217,7 +277,11 @@ export function TextDiff({
                 hunk={row.hunk}
                 toggle={
                   selectable && keys.length > 0
-                    ? { allIn, onToggle: () => toggle(keys, !allIn) }
+                    ? {
+                        allIn,
+                        onToggle: () => toggle(keys, !allIn),
+                        control: control(`hunk:${item.index}`),
+                      }
                     : undefined
                 }
               />
@@ -237,6 +301,7 @@ export function TextDiff({
                         onEnter: () =>
                           drag && setDrag({ ...drag, keys: new Set(drag.keys).add(key) }),
                         onKeyboardToggle: () => toggle([key], !current.has(key)),
+                        control: control(key),
                       }
                     : selectable
                       ? "spacer"
@@ -267,7 +332,7 @@ function HunkHeader({
   toggle,
 }: {
   hunk: Hunk;
-  toggle?: { allIn: boolean; onToggle: () => void };
+  toggle?: { allIn: boolean; onToggle: () => void; control: ControlProps };
 }) {
   const { t } = useTranslation("changes");
   return (
@@ -277,7 +342,12 @@ function HunkHeader({
       </span>
       {hunk.section && <span className={styles.hunkSection}>{hunk.section}</span>}
       {toggle && (
-        <button type="button" className={styles.hunkToggle} onClick={toggle.onToggle}>
+        <button
+          type="button"
+          className={styles.hunkToggle}
+          onClick={toggle.onToggle}
+          {...toggle.control}
+        >
           {toggle.allIn ? t("diff.unstageHunk") : t("diff.stageHunk")}
         </button>
       )}
@@ -287,7 +357,15 @@ function HunkHeader({
 
 const MARKER = { context: " ", added: "+", deleted: "-" } as const;
 
+type ControlProps = {
+  "data-control": string;
+  tabIndex: number;
+  onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
+  onFocus: () => void;
+};
+
 type Selection = {
+  control: ControlProps;
   included: boolean;
   onPress: () => void;
   onEnter: () => void;
@@ -309,8 +387,12 @@ function Line({ line, selection }: { line: DiffLine; selection?: Selection | "sp
           type="button"
           role="checkbox"
           aria-checked={included}
-          aria-label={t("diff.stageLine")}
+          aria-label={t(line.kind === "added" ? "diff.addedLine" : "diff.deletedLine", {
+            line: line.newLine ?? line.oldLine,
+            text: line.text.trim().slice(0, 80),
+          })}
           className={styles.select}
+          {...selection.control}
           onMouseDown={(e) => {
             if (e.button !== 0) return;
             // Don't start a text selection while dragging over lines.

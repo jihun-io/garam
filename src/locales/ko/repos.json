@@ -13,7 +13,6 @@
   },
   "picker": {
     "caption": "현재 저장소",
-    "label": "저장소: {{name}}",
     "placeholder": "저장소 선택",
     "search": "저장소 검색",
     "noMatches": "“{{query}}”와 일치하는 저장소가 없습니다.",
