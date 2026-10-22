@@ -89,3 +89,23 @@
 ## 이후 (v0.2+)
 
 SPEC.md 7장 "GitHub Desktop과의 차별점"의 v0.2 이후 항목들, GitHub 로그인·PR 연동, 추가 언어.
+
+### GitHub 계정 로그인 (v0.2 후보)
+
+버튼 하나로 브라우저에서 GitHub에 로그인하고, 여러 계정을 등록해 저장소마다 골라 쓴다. 지금은 HTTPS 원격에서 개인 액세스 토큰을 직접 붙여 넣어야 한다(M5의 자격 증명 대화상자).
+
+- [ ] GitHub OAuth App 등록 (프로젝트 소유자가 직접 해야 함, Device Flow 사용 설정)
+- [ ] OAuth Device Flow 로그인: 버튼 → 일회용 코드를 클립보드에 복사하고 `github.com/login/device`를 시스템 브라우저로 연다 → 앱은 승인될 때까지 폴링
+- [ ] 토큰을 OS 키체인에 계정별로 저장 (macOS 키체인, Windows 자격 증명 관리자, Linux Secret Service)
+- [ ] 계정 목록·추가·로그아웃 (설정 화면, M8 이후), 계정 정보(로그인 이름, 아바타)는 GitHub API로 가져온다
+- [ ] 저장소별 계정 선택: 원격 URL의 소유자와 계정이 속한 조직으로 추천, 선택은 저장소 목록에 저장
+- [ ] 선택한 계정의 토큰을 git에 넘기기 (아래 설계)
+- [ ] GitHub Enterprise Server 호스트 지원
+
+**설계 메모**
+
+- **Device Flow를 쓰는 이유**: 웹 플로(브라우저 → loopback 리디렉션)는 토큰 교환에 client secret이 필요한데, 오픈소스 앱에 넣으면 공개된다. Device Flow는 client ID만으로 동작하고 GitHub CLI도 이 방식을 쓴다. 사용자가 코드를 붙여 넣는 단계가 하나 더 있지만, 코드를 미리 클립보드에 넣어 두면 부담이 작다.
+- **토큰 전달**: askpass보다 **credential helper**가 맞다. 사용자의 osxkeychain 같은 도우미에 다른 자격 증명이 저장돼 있으면 git이 askpass를 부르지 않기 때문이다. 네트워크 작업에 `-c credential.https://github.com.helper=`(목록 초기화)와 `-c credential.https://github.com.helper=<garam 실행 파일>`을 붙이고, askpass처럼 앱 실행 파일을 credential helper 모드로 실행해 작업 ID로 계정을 찾아 토큰을 돌려준다. 계정이 없는 저장소는 지금처럼 사용자 설정을 그대로 쓴다.
+- **보안 원칙 변경**: ARCHITECTURE.md 7장의 "자격 증명은 앱이 저장하지 않는다"를 "앱이 발급받은 GitHub 토큰만 OS 키체인에 저장한다"로 바꿔야 한다. 토큰은 파일·로그·프론트로 보내지 않는다.
+- **새 의존성**: HTTPS 클라이언트(`reqwest`, rustls)와 키체인 접근(`keyring`). 토큰이 오래 유지되므로 로그아웃할 때 GitHub에서도 토큰을 폐기한다.
+- **테스트**: Device Flow와 API는 목 서버로, credential helper 프로토콜은 `git credential fill`로 통합 테스트한다.
