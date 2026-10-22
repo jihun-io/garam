@@ -4,7 +4,7 @@
 
 ## 1. 한 줄 정의
 
-**Garam(가람)** 은 GitHub Desktop처럼 직관적이면서, 다국어 지원을 비롯해 GitHub Desktop이 제공하지 않는 기능까지 갖춘 오픈소스 크로스 플랫폼 Git GUI 클라이언트다.
+**Garam**은 GitHub Desktop처럼 직관적이면서, 다국어 지원을 비롯해 GitHub Desktop이 제공하지 않는 기능까지 갖춘 오픈소스 크로스 플랫폼 Git GUI 클라이언트다.
 
 ## 2. 목표와 비목표
 

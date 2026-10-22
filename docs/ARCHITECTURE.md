@@ -99,7 +99,7 @@ garam-git/src/
 
 ### 2.4 스테이징 모델
 
-- **index가 기준이다.** 파일 체크박스는 index 상태를 그대로 보여주고, 누르는 즉시 `git add`/`git restore --staged`를 실행한다. 그래서 터미널에서 함께 git을 써도 화면이 어긋나지 않는다. (GitHub Desktop은 선택을 앱 상태로 들고 있다가 커밋할 때 스테이징한다. 가람은 이 방식을 따르지 않는다.)
+- **index가 기준이다.** 파일 체크박스는 index 상태를 그대로 보여주고, 누르는 즉시 `git add`/`git restore --staged`를 실행한다. 그래서 터미널에서 함께 git을 써도 화면이 어긋나지 않는다. (GitHub Desktop은 선택을 앱 상태로 들고 있다가 커밋할 때 스테이징한다. Garam은 이 방식을 따르지 않는다.)
 - 체크박스 상태: 전부 스테이지됨 = 체크, 일부만 = 혼합, 없음 = 빈칸.
 - diff 뷰어는 **HEAD → 작업 폴더** 전체 변경을 보여준다(스테이지 여부와 무관). 커밋이 없는 저장소는 빈 트리와 비교한다.
 - 경로 목록은 `--pathspec-from-file=- --pathspec-file-nul`로 stdin에 넘긴다. 명령줄 길이 제한과 특수 문자 문제를 피하기 위해서다.
@@ -196,7 +196,7 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - **저장소별 계정**: 저장소 목록 항목에 계정 키를 저장한다(`repo_set_account`). 고르지 않으면 지금까지처럼 사용자의 git 설정을 그대로 쓴다.
 - **토큰을 git에 넘기기(credential helper)**: 계정이 있는 저장소의 네트워크 작업에는 `-c credential.https://<host>.helper=`(빈 값으로 사용자가 설정한 도우미 목록을 비움)와 `-c credential.https://<host>.helper=!'<garam 실행 파일>' 'garam-credential'`을 붙인다(`Git::with_credential_helper`). askpass와 같은 방식으로 **앱 실행 파일 자신**이 도우미가 되어, `main()`이 `garam-credential get`을 보면 창을 열지 않고 askpass 중계 소켓으로 앱에 물어 `username=<로그인 이름>`, `password=<토큰>`을 돌려준다. 앱은 그 작업에 맡겨 둔 계정(`Askpass::provide`)이 있고 호스트가 맞을 때만 답한다. `store`·`erase`는 아무것도 하지 않으므로 토큰이 사용자의 osxkeychain 등에 복사되지 않는다.
 - 도우미 값은 git이 셸로 실행하므로 `!`로 시작하고 경로와 인수를 작은따옴표로 감싼다(공백·따옴표가 있는 경로). `!`가 없으면 git이 `git credential-<값>`으로 해석한다.
-- 이 설정은 가람이 실행하는 git에만 붙는다. 터미널에서 실행하는 git은 사용자의 설정(`gh auth git-credential`, 원격 URL의 사용자 이름 등)을 그대로 따른다.
+- 이 설정은 Garam이 실행하는 git에만 붙는다. 터미널에서 실행하는 git은 사용자의 설정(`gh auth git-credential`, 원격 URL의 사용자 이름 등)을 그대로 따른다.
 - **추천**: 원격 URL의 사용자 이름(`https://jihun-io@github.com/...`) → 원격 소유자 → 작성자 이메일이 계정의 인증된 이메일·noreply 주소인 계정 순서.
 - **불일치 경고**: 저장소에 계정이 있고 작성자 이메일이 그 계정의 인증된 이메일·noreply 주소가 아니면 GitHub가 커밋을 그 계정과 연결하지 않는다. 커밋 영역과 대화상자에 알리되 커밋을 막지는 않는다.
 
