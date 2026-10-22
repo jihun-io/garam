@@ -19,6 +19,9 @@ struct StoredRepository {
     name: String,
     added_at: f64,
     last_opened_at: Option<f64>,
+    /// Key of the GitHub account used for this repository's remotes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    account: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -38,6 +41,9 @@ pub struct RepositoryEntry {
     pub last_opened_at: Option<f64>,
     /// The folder no longer exists (moved or deleted outside Garam).
     pub missing: bool,
+    /// Key of the signed-in GitHub account git uses for this repository's
+    /// HTTPS remotes; `None` leaves it to the user's git setup.
+    pub account: Option<String>,
 }
 
 impl From<&StoredRepository> for RepositoryEntry {
@@ -48,6 +54,7 @@ impl From<&StoredRepository> for RepositoryEntry {
             added_at: r.added_at,
             last_opened_at: r.last_opened_at,
             missing: !Path::new(&r.path).is_dir(),
+            account: r.account.clone(),
         }
     }
 }
@@ -99,6 +106,7 @@ impl RepositoryStore {
                     name: info.name,
                     added_at: now,
                     last_opened_at: Some(now),
+                    account: None,
                 };
                 let entry = RepositoryEntry::from(&stored);
                 data.repositories.push(stored);
@@ -127,6 +135,27 @@ impl RepositoryStore {
         };
         repo.last_opened_at = Some(now_ms());
         data.selected = Some(path.to_owned());
+        self.save(&mut data)
+    }
+
+    /// The account chosen for the repository at `path`.
+    pub fn account(&self, path: &str) -> Option<String> {
+        let data = self.lock();
+        data.repositories
+            .iter()
+            .find(|r| r.path == path)?
+            .account
+            .clone()
+    }
+
+    /// Chooses the account for the repository at `path` (`None`: the
+    /// user's own git setup).
+    pub fn set_account(&self, path: &str, account: Option<String>) -> AppResult<()> {
+        let mut data = self.lock();
+        let Some(repo) = data.repositories.iter_mut().find(|r| r.path == path) else {
+            return Ok(());
+        };
+        repo.account = account;
         self.save(&mut data)
     }
 
@@ -184,6 +213,32 @@ mod tests {
         assert_eq!(list.repositories.len(), 1);
         assert_eq!(list.selected, Some(repo.display().to_string()));
         assert!(list.repositories[0].missing, "folder was never created");
+    }
+
+    #[test]
+    fn remembers_the_account_per_repository() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("repositories.json");
+        let repo = dir.path().join("repo");
+        let path = repo.display().to_string();
+        let store = RepositoryStore::load(file.clone());
+        store.add(info(&repo)).unwrap();
+        assert_eq!(store.account(&path), None);
+
+        store
+            .set_account(&path, Some("github.com/1".into()))
+            .unwrap();
+        // Adding the same folder again keeps the choice.
+        store.add(info(&repo)).unwrap();
+        let reloaded = RepositoryStore::load(file);
+        assert_eq!(reloaded.account(&path).as_deref(), Some("github.com/1"));
+        assert_eq!(
+            reloaded.list().repositories[0].account.as_deref(),
+            Some("github.com/1")
+        );
+
+        reloaded.set_account(&path, None).unwrap();
+        assert_eq!(reloaded.account(&path), None);
     }
 
     #[test]

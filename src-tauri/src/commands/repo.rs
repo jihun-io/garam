@@ -118,6 +118,19 @@ pub async fn repo_select(store: Store<'_>, path: String) -> AppResult<()> {
     blocking(move || store.select(&path)).await
 }
 
+/// Chooses the GitHub account git uses for the repository's HTTPS
+/// remotes; `None` goes back to the user's own git setup.
+#[tauri::command]
+#[specta::specta]
+pub async fn repo_set_account(
+    store: Store<'_>,
+    path: String,
+    account: Option<String>,
+) -> AppResult<()> {
+    let store = Arc::clone(&store);
+    blocking(move || store.set_account(&path, account)).await
+}
+
 fn destination(parent: &str, name: &str) -> AppResult<PathBuf> {
     let name = validate_name(name)?;
     let parent = PathBuf::from(parent);

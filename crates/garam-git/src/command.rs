@@ -27,10 +27,15 @@ pub struct GitCommand<'a> {
 
 impl<'a> GitCommand<'a> {
     pub(crate) fn new(git: &'a Git) -> Self {
+        let mut global_args: Vec<OsString> = vec!["-c".into(), "core.quotePath=false".into()];
+        for (key, value) in git.configs() {
+            global_args.push("-c".into());
+            global_args.push(format!("{key}={value}").into());
+        }
         Self {
             git,
             cwd: None,
-            global_args: vec!["-c".into(), "core.quotePath=false".into()],
+            global_args,
             args: Vec::new(),
             envs: Vec::new(),
             stdin: None,

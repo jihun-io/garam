@@ -3,6 +3,8 @@
 //! The text is English because of `LC_ALL=C`; this turns it into a kind and
 //! a few values so the app can ask in the user's language.
 
+use std::path::Path;
+
 use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -71,6 +73,62 @@ pub fn parse_prompt(text: &str) -> CredentialPrompt {
     }
 }
 
+/// What git asks a credential helper for (`git credential` protocol,
+/// <https://git-scm.com/docs/git-credential#IOFMT>).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HelperRequest {
+    pub protocol: Option<String>,
+    pub host: Option<String>,
+    pub path: Option<String>,
+    pub username: Option<String>,
+}
+
+/// Reads the `key=value` lines git sends to a helper, up to a blank line.
+pub fn parse_helper_request(input: &str) -> HelperRequest {
+    let mut request = HelperRequest::default();
+    for line in input.lines() {
+        if line.is_empty() {
+            break;
+        }
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        let value = Some(value.to_owned());
+        match key {
+            "protocol" => request.protocol = value,
+            "host" => request.host = value,
+            "path" => request.path = value,
+            "username" => request.username = value,
+            _ => {}
+        }
+    }
+    request
+}
+
+/// The answer a helper writes back to git.
+pub fn format_helper_response(username: &str, password: &str) -> String {
+    format!("username={username}\npassword={password}\n")
+}
+
+/// A `credential.helper` value that runs `program` with `args`; git adds
+/// the action (`get`, `store`, `erase`) after them. A leading `!` makes git
+/// run the value through a shell (otherwise anything but a bare absolute
+/// path becomes `git credential-<value>`), so each part is single-quoted.
+pub fn helper_command(program: &Path, args: &[&str]) -> String {
+    // git's shell is sh on every platform (Git for Windows ships one), and
+    // sh wants forward slashes.
+    let program = program.to_string_lossy().replace('\\', "/");
+    let words: Vec<String> = std::iter::once(program.as_str())
+        .chain(args.iter().copied())
+        .map(shell_quote)
+        .collect();
+    format!("!{}", words.join(" "))
+}
+
+fn shell_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', r"'\''"))
+}
+
 /// The text between the first pair of `'` or `"` quotes.
 fn quoted(s: &str) -> Option<String> {
     let quote = s.chars().find(|c| *c == '\'' || *c == '"')?;
@@ -94,6 +152,36 @@ fn host_key_fingerprint(text: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_helper_requests() {
+        let request = parse_helper_request(
+            "protocol=https\nhost=github.com\nusername=jihun-io\nwwwauth[]=Basic\n\nignored=1\n",
+        );
+        assert_eq!(request.protocol.as_deref(), Some("https"));
+        assert_eq!(request.host.as_deref(), Some("github.com"));
+        assert_eq!(request.username.as_deref(), Some("jihun-io"));
+        assert_eq!(request.path, None);
+    }
+
+    #[test]
+    fn quotes_helper_commands_for_the_shell() {
+        assert_eq!(
+            helper_command(
+                Path::new("/Applications/Garam.app/Contents/MacOS/garam"),
+                &["x"]
+            ),
+            "!'/Applications/Garam.app/Contents/MacOS/garam' 'x'"
+        );
+        assert_eq!(
+            helper_command(Path::new("/Users/me/it's here/garam"), &[]),
+            r"!'/Users/me/it'\''s here/garam'"
+        );
+        assert_eq!(
+            helper_command(Path::new(r"C:\Program Files\Garam\garam.exe"), &[]),
+            "!'C:/Program Files/Garam/garam.exe'"
+        );
+    }
 
     #[test]
     fn parses_https_prompts() {

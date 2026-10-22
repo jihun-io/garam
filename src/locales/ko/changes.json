@@ -59,7 +59,8 @@
     "author": "작성자",
     "authorMissing": "설정 안 됨",
     "authorRepo": "이 저장소",
-    "authorEdit": "이 저장소의 작성자 선택"
+    "authorEdit": "이 저장소의 작성자 선택",
+    "authorMismatch": "이 이메일은 @{{login}} 계정에 없어 GitHub가 커밋을 이 계정과 연결하지 않습니다."
   },
   "discard": {
     "title": "변경 사항을 취소할까요?",
@@ -85,6 +86,16 @@
     "override": "이 저장소에서는 다른 작성자 사용",
     "overrideHint": "이 저장소의 Git 설정에 저장되므로 터미널에서 커밋해도 같은 작성자가 쓰입니다.",
     "save": "저장",
-    "cancel": "취소"
+    "cancel": "취소",
+    "titleWithAccount": "이 저장소의 계정과 작성자",
+    "account": "GitHub 계정",
+    "noAccount": "지정 안 함 (내 Git 설정 사용)",
+    "suggested": "{{account}} — 추천",
+    "noAccountHint": "push와 pull은 Git 설정대로 로그인합니다(credential helper 또는 입력 창).",
+    "accountHint": "HTTPS로 push와 pull을 할 때 Git 설정과 상관없이 @{{login}}으로 로그인합니다.",
+    "sshHint": "이 저장소의 원격은 SSH라서 계정 대신 SSH 키를 사용합니다.",
+    "author": "커밋 작성자",
+    "accountEmails": "이 계정의 이메일",
+    "mismatch": "{{email}}은 @{{login}} 계정에 없는 이메일이라 GitHub가 커밋을 이 계정과 연결하지 않습니다."
   }
 }

@@ -9,6 +9,8 @@ use crate::{GitCommand, GitError, GitVersion};
 pub struct Git {
     path: PathBuf,
     envs: Vec<(OsString, OsString)>,
+    /// `-c key=value` overrides added to every command.
+    configs: Vec<(String, String)>,
 }
 
 impl Git {
@@ -17,6 +19,7 @@ impl Git {
         Self {
             path: path.into(),
             envs: Vec::new(),
+            configs: Vec::new(),
         }
     }
 
@@ -54,6 +57,23 @@ impl Git {
         self
     }
 
+    /// Adds a `-c key=value` config override to every command run through
+    /// this handle.
+    pub fn with_config(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.configs.push((key.into(), value.into()));
+        self
+    }
+
+    /// Answers HTTPS credential requests for URLs starting with `url` (e.g.
+    /// `https://github.com`) with `helper` only, ignoring the helpers the
+    /// user configured for it. `helper` is a command line that git runs
+    /// through a shell; see [`crate::credential::helper_command`].
+    pub fn with_credential_helper(self, url: &str, helper: &str) -> Self {
+        let key = format!("credential.{url}.helper");
+        // An empty value clears the helpers configured so far.
+        self.with_config(key.clone(), "").with_config(key, helper)
+    }
+
     /// Routes credential questions from git (HTTPS) and ssh (passphrases,
     /// host keys) to `program`, which receives the prompt as its argument
     /// and prints the answer, or exits non-zero to decline.
@@ -78,6 +98,10 @@ impl Git {
 
     pub(crate) fn envs(&self) -> &[(OsString, OsString)] {
         &self.envs
+    }
+
+    pub(crate) fn configs(&self) -> &[(String, String)] {
+        &self.configs
     }
 
     /// Starts building a git command.

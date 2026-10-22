@@ -35,7 +35,7 @@
   "conflicts_remain": "아직 충돌이 남은 파일이 있습니다. 모두 해결한 뒤 계속하세요.",
   "nothing_in_progress": "계속하거나 중단할 병합, 리베이스, 커밋 되돌리기, 체리픽이 없습니다.",
   "unknown": "Git을 실행하는 중에 문제가 생겼습니다.",
-  "keychain_failed": "시스템 키체인에 접근하지 못했습니다.",
+  "keychain_failed": "시스템 키체인에서 계정 토큰을 읽지 못했습니다. 가람이 키체인을 사용해도 되는지 묻는 창이 뜨면 '항상 허용'을 누르고 다시 시도하세요.",
   "github_unreachable": "GitHub에 연결하지 못했습니다. 인터넷 연결을 확인하세요.",
   "github_unauthorized": "GitHub가 이 계정의 로그인을 더 이상 받지 않습니다. 다시 로그인하세요.",
   "github_login_expired": "코드를 승인하기 전에 만료되었습니다. 다시 시도하세요.",

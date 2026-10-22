@@ -35,7 +35,7 @@
   "conflicts_remain": "Some files still have conflicts. Resolve them all before continuing.",
   "nothing_in_progress": "There's no merge, rebase, revert or cherry-pick to continue or abort.",
   "unknown": "Something went wrong while running Git.",
-  "keychain_failed": "Couldn't access the system keychain.",
+  "keychain_failed": "Couldn't read the account's token from the system keychain. If you're asked whether Garam may use the keychain, choose Always Allow and try again.",
   "github_unreachable": "Couldn't reach GitHub. Check your internet connection.",
   "github_unauthorized": "GitHub no longer accepts this account's sign-in. Sign in again.",
   "github_login_expired": "The code expired before it was approved. Try again.",

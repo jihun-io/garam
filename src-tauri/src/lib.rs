@@ -34,6 +34,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         repo::repo_clone,
         repo::repo_remove,
         repo::repo_select,
+        repo::repo_set_account,
         repo::operation_cancel,
         repo::repo_watch,
         changes::status_get,

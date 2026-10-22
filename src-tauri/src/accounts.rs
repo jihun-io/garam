@@ -3,6 +3,7 @@
 //! Account details (login, name, emails) live in `accounts.json`; each
 //! account's token lives in the OS keychain and never leaves the backend.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -97,6 +98,10 @@ pub struct AccountStore {
     file: PathBuf,
     accounts: Mutex<Vec<Account>>,
     vault: Box<dyn TokenVault>,
+    /// Tokens already read this run. macOS may ask the user before each
+    /// keychain read by a binary it doesn't recognize (every development
+    /// rebuild), so read each token at most once.
+    tokens: Mutex<HashMap<String, String>>,
 }
 
 impl AccountStore {
@@ -106,6 +111,7 @@ impl AccountStore {
             file,
             accounts: Mutex::new(stored.accounts),
             vault,
+            tokens: Mutex::default(),
         }
     }
 
@@ -117,6 +123,8 @@ impl AccountStore {
     /// token is saved first so a listed account always has one.
     pub fn save(&self, account: Account, token: &str) -> AppResult<()> {
         self.vault.set(&account.key, token)?;
+        self.cached_tokens()
+            .insert(account.key.clone(), token.to_owned());
         let mut accounts = self.lock();
         let mut next = accounts.clone();
         match next.iter_mut().find(|a| a.key == account.key) {
@@ -145,13 +153,28 @@ impl AccountStore {
         )?;
         *accounts = next;
         drop(accounts);
+        self.cached_tokens().remove(key);
         self.vault.delete(key)
     }
 
+    pub fn get(&self, key: &str) -> Option<Account> {
+        self.lock().iter().find(|a| a.key == key).cloned()
+    }
+
     /// The account's token, for git and API calls made by the backend.
-    #[allow(dead_code)] // Used by the credential helper (next step).
     pub fn token(&self, key: &str) -> AppResult<Option<String>> {
-        self.vault.get(key)
+        if let Some(token) = self.cached_tokens().get(key) {
+            return Ok(Some(token.clone()));
+        }
+        let token = self.vault.get(key)?;
+        if let Some(token) = &token {
+            self.cached_tokens().insert(key.to_owned(), token.clone());
+        }
+        Ok(token)
+    }
+
+    fn cached_tokens(&self) -> std::sync::MutexGuard<'_, HashMap<String, String>> {
+        self.tokens.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, Vec<Account>> {
@@ -199,6 +222,62 @@ pub mod tests {
             primary,
             verified,
         }
+    }
+
+    /// Counts reads, to check the store doesn't ask the keychain again.
+    #[derive(Clone, Default)]
+    struct CountingVault {
+        inner: MemoryVault,
+        reads: Arc<Mutex<usize>>,
+    }
+
+    impl TokenVault for CountingVault {
+        fn set(&self, key: &str, token: &str) -> AppResult<()> {
+            self.inner.set(key, token)
+        }
+        fn get(&self, key: &str) -> AppResult<Option<String>> {
+            *self.reads.lock().unwrap() += 1;
+            self.inner.get(key)
+        }
+        fn delete(&self, key: &str) -> AppResult<()> {
+            self.inner.delete(key)
+        }
+    }
+
+    #[test]
+    fn reads_each_token_from_the_vault_once() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("accounts.json");
+        let vault = CountingVault::default();
+        vault.inner.set("github.com/1", "gho_saved").unwrap();
+        AccountStore::load(file.clone(), Box::new(vault.clone()))
+            .save(
+                Account::new("github.com", &user(1, "jihun-io"), &[]),
+                "gho_saved",
+            )
+            .unwrap();
+
+        // A new run reads the keychain once, then answers from memory.
+        let store = AccountStore::load(file, Box::new(vault.clone()));
+        for _ in 0..3 {
+            assert_eq!(
+                store.token("github.com/1").unwrap().as_deref(),
+                Some("gho_saved")
+            );
+        }
+        assert_eq!(*vault.reads.lock().unwrap(), 1);
+
+        // Signing in again doesn't need a read, and signing out forgets it.
+        store
+            .save(Account::new("github.com", &user(2, "cw"), &[]), "gho_work")
+            .unwrap();
+        assert_eq!(
+            store.token("github.com/2").unwrap().as_deref(),
+            Some("gho_work")
+        );
+        assert_eq!(*vault.reads.lock().unwrap(), 1);
+        store.remove("github.com/1").unwrap();
+        assert_eq!(store.token("github.com/1").unwrap(), None);
     }
 
     #[test]

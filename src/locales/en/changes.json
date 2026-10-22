@@ -59,7 +59,8 @@
     "author": "Author",
     "authorMissing": "Not set",
     "authorRepo": "This repository",
-    "authorEdit": "Choose the author for this repository"
+    "authorEdit": "Choose the author for this repository",
+    "authorMismatch": "This email isn't on the @{{login}} account, so GitHub won't link these commits to it."
   },
   "discard": {
     "title": "Discard changes?",
@@ -85,6 +86,16 @@
     "override": "Use a different author in this repository",
     "overrideHint": "Saved in this repository's Git config, so commits from the command line use it too.",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "titleWithAccount": "Account and author for this repository",
+    "account": "GitHub account",
+    "noAccount": "None (use my Git settings)",
+    "suggested": "{{account}} — suggested",
+    "noAccountHint": "Push and pull sign in the way your Git is set up (credential helper or a prompt).",
+    "accountHint": "Push and pull over HTTPS sign in as @{{login}}, whatever your Git is set up to use.",
+    "sshHint": "This repository's remote uses SSH, so your SSH keys are used instead of the account.",
+    "author": "Commit author",
+    "accountEmails": "Emails on this account",
+    "mismatch": "{{email}} isn't on the @{{login}} account, so GitHub won't link these commits to it."
   }
 }

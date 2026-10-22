@@ -27,6 +27,11 @@ export const commands = {
 	/**  Removes a repository from Garam's list. Files on disk are untouched. */
 	repoRemove: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("repo_remove", { path })),
 	repoSelect: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("repo_select", { path })),
+	/**
+	 *  Chooses the GitHub account git uses for the repository's HTTPS
+	 *  remotes; `None` goes back to the user's own git setup.
+	 */
+	repoSetAccount: (path: string, account: string | null) => typedError<null, AppError>(__TAURI_INVOKE("repo_set_account", { path, account })),
 	/**  Cancels a running operation, declining any credential prompt it shows. */
 	operationCancel: (operationId: string) => __TAURI_INVOKE<void>("operation_cancel", { operationId }),
 	/**
@@ -518,6 +523,11 @@ export type RepositoryEntry = {
 	lastOpenedAt: number | null,
 	/**  The folder no longer exists (moved or deleted outside Garam). */
 	missing: boolean,
+	/**
+	 *  Key of the signed-in GitHub account git uses for this repository's
+	 *  HTTPS remotes; `None` leaves it to the user's git setup.
+	 */
+	account: string | null,
 };
 
 export type RepositoryList = {

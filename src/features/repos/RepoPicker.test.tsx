@@ -19,6 +19,7 @@ const repo = (name: string, path: string, missing = false): RepositoryEntry => (
   missing,
   addedAt: 0,
   lastOpenedAt: 0,
+  account: null,
 });
 
 const repos = [

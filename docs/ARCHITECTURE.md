@@ -184,8 +184,15 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - **scope**: `repo`(비공개 저장소 push·pull), `workflow`(워크플로 파일 push), `read:org`(저장소별 계정 추천), `user:email`(작성자 이메일 추천).
 - **저장**: 계정 정보(로그인 이름, 이름, 아바타, 인증된 이메일, noreply 주소)는 앱 데이터 폴더의 `accounts.json`에, 토큰은 OS 키체인(`keyring`, 서비스 `io.garam.app.github`, 계정 `<host>/<user id>`)에 둔다. 키를 사용자 ID로 잡아 로그인 이름이 바뀌어도 같은 계정으로 본다.
 - 토큰은 백엔드 밖으로 나가지 않는다. 프론트로 보내는 타입에는 토큰이 없다.
+- 키체인에서 읽은 토큰은 앱이 실행되는 동안 메모리에 둔다. macOS는 키체인 항목을 만든 실행 파일과 서명이 다른 실행 파일이 읽으려 하면 사용자에게 묻는데, 개발 빌드(ad-hoc 서명)는 다시 빌드할 때마다 서명이 바뀌어 매번 묻게 된다. 그래서 한 번 실행하는 동안에는 한 번만 읽는다. 사용자가 거절하거나 창을 닫으면 `keychain_failed`로 '항상 허용'을 안내한다. 고정된 Developer ID로 서명하는 릴리스 빌드에서는 처음 한 번만 묻는다.
 - **로그아웃**: 키체인에서 토큰을 지운다. GitHub의 토큰 폐기 API는 client secret이 필요해 부를 수 없으므로, 권한 취소는 GitHub 설정 페이지로 안내한다.
 - 아바타는 `avatars.githubusercontent.com`에서 불러온다(CSP `img-src`에 추가).
+- **저장소별 계정**: 저장소 목록 항목에 계정 키를 저장한다(`repo_set_account`). 고르지 않으면 지금까지처럼 사용자의 git 설정을 그대로 쓴다.
+- **토큰을 git에 넘기기(credential helper)**: 계정이 있는 저장소의 네트워크 작업에는 `-c credential.https://<host>.helper=`(빈 값으로 사용자가 설정한 도우미 목록을 비움)와 `-c credential.https://<host>.helper=!'<garam 실행 파일>' 'garam-credential'`을 붙인다(`Git::with_credential_helper`). askpass와 같은 방식으로 **앱 실행 파일 자신**이 도우미가 되어, `main()`이 `garam-credential get`을 보면 창을 열지 않고 askpass 중계 소켓으로 앱에 물어 `username=<로그인 이름>`, `password=<토큰>`을 돌려준다. 앱은 그 작업에 맡겨 둔 계정(`Askpass::provide`)이 있고 호스트가 맞을 때만 답한다. `store`·`erase`는 아무것도 하지 않으므로 토큰이 사용자의 osxkeychain 등에 복사되지 않는다.
+- 도우미 값은 git이 셸로 실행하므로 `!`로 시작하고 경로와 인수를 작은따옴표로 감싼다(공백·따옴표가 있는 경로). `!`가 없으면 git이 `git credential-<값>`으로 해석한다.
+- 이 설정은 가람이 실행하는 git에만 붙는다. 터미널에서 실행하는 git은 사용자의 설정(`gh auth git-credential`, 원격 URL의 사용자 이름 등)을 그대로 따른다.
+- **추천**: 원격 URL의 사용자 이름(`https://jihun-io@github.com/...`) → 원격 소유자 → 작성자 이메일이 계정의 인증된 이메일·noreply 주소인 계정 순서.
+- **불일치 경고**: 저장소에 계정이 있고 작성자 이메일이 그 계정의 인증된 이메일·noreply 주소가 아니면 GitHub가 커밋을 그 계정과 연결하지 않는다. 커밋 영역과 대화상자에 알리되 커밋을 막지는 않는다.
 
 ## 3. IPC 설계
 

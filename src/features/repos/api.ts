@@ -48,6 +48,11 @@ export function useRepositoryActions() {
       mutationFn: (path: string) => unwrap(commands.repoSelect(path)),
       ...options,
     }),
+    setAccount: useMutation({
+      mutationFn: ({ path, account }: { path: string; account: string | null }) =>
+        unwrap(commands.repoSetAccount(path, account)),
+      ...options,
+    }),
   };
 }
 

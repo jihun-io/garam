@@ -75,6 +75,7 @@ describe("CloneRepositoryDialog", () => {
           name: "garam",
           addedAt: 0,
           lastOpenedAt: 0,
+          account: null,
           missing: false,
         },
       }),

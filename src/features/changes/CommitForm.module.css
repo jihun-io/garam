@@ -131,3 +131,13 @@
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
 }
+
+.authorAccount {
+  flex: none;
+  color: var(--color-ink);
+}
+
+.mismatch {
+  color: var(--color-modified-ink);
+  font-size: var(--text-sm);
+}

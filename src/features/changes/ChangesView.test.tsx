@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   commands,
   type FileChange,
+  type Account,
   type Identity,
   type RepoIdentity,
   type RepoStatus,
@@ -15,6 +16,44 @@ import { ChangesView } from "./ChangesView";
 
 const GLOBAL: Identity = { name: "Garam", email: "garam@example.com" };
 const NONE: Identity = { name: null, email: null };
+
+const PERSONAL: Account = {
+  key: "github.com/1",
+  host: "github.com",
+  login: "jihun-io",
+  name: "김지훈",
+  avatarUrl: "",
+  emails: ["kim@jihun.io"],
+  noreplyEmail: "1+jihun-io@users.noreply.github.com",
+};
+const WORK: Account = {
+  ...PERSONAL,
+  key: "github.com/2",
+  login: "cw-jihun-io",
+  emails: ["jh.kim@causeworks.co.kr"],
+  noreplyEmail: "2+cw-jihun-io@users.noreply.github.com",
+};
+
+/** The repository's account setup: signed-in accounts and the chosen one. */
+function mockAccounts(accounts: Account[], chosen: string | null) {
+  vi.mocked(commands.githubAccounts).mockResolvedValue({
+    accounts,
+    authorizationSettingsUrl: "",
+  });
+  vi.mocked(commands.repoList).mockResolvedValue({
+    repositories: [
+      { path: "/repo", name: "repo", addedAt: 0, lastOpenedAt: 0, missing: false, account: chosen },
+    ],
+    selected: "/repo",
+  });
+  vi.mocked(commands.remoteInfo).mockResolvedValue(
+    ok({
+      remotes: [{ name: "origin", url: "https://github.com/jihun-io/garam.git" }],
+      defaultRemote: "origin",
+      lastFetchedAt: null,
+    }),
+  );
+}
 
 function repoIdentity(inherited: Identity, local: Identity = NONE): RepoIdentity {
   return {
@@ -40,6 +79,10 @@ vi.mock("../../ipc/bindings", () => ({
     identitySetLocal: vi.fn(),
     identityClearLocal: vi.fn(),
     externalReveal: vi.fn(),
+    githubAccounts: vi.fn(),
+    repoList: vi.fn(),
+    repoSetAccount: vi.fn(),
+    remoteInfo: vi.fn(),
   },
 }));
 
@@ -101,6 +144,7 @@ function setup(files: FileChange[]) {
     }),
   );
   vi.mocked(commands.identityGet).mockResolvedValue(ok(repoIdentity(GLOBAL)));
+  mockAccounts([], null);
   vi.mocked(commands.commitHead).mockResolvedValue(
     ok({ oid: "abc", summary: "Previous summary", body: "Previous body" }),
   );
@@ -287,6 +331,44 @@ describe("ChangesView", () => {
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     expect(commands.identityClearLocal).toHaveBeenCalledWith("/repo");
+  });
+
+  it("chooses the suggested account and an email from it", async () => {
+    const user = userEvent.setup();
+    setup([change("a.txt", "added", null)]);
+    mockAccounts([WORK, PERSONAL], null);
+    vi.mocked(commands.repoSetAccount).mockResolvedValue(ok(null));
+    vi.mocked(commands.identitySetLocal).mockResolvedValue(ok(null));
+
+    await user.click(await screen.findByRole("button", { name: /Author/ }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Account and author for this repository",
+    });
+    // The remote's owner is jihun-io.
+    await user.click(within(dialog).getByRole("combobox", { name: "GitHub account" }));
+    await user.click(await screen.findByRole("option", { name: /@jihun-io .* suggested/ }));
+    expect(within(dialog).getByText(/sign in as @jihun-io/)).toBeVisible();
+    // The global author email isn't on that account.
+    expect(
+      within(dialog).getByText(/garam@example.com isn't on the @jihun-io account/),
+    ).toBeVisible();
+
+    await user.click(
+      within(dialog).getByRole("radio", { name: /Use a different author in this repository/ }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "kim@jihun.io" }));
+    expect(within(dialog).queryByText(/isn't on the @jihun-io account/)).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(commands.repoSetAccount).toHaveBeenCalledWith("/repo", "github.com/1");
+    expect(commands.identitySetLocal).toHaveBeenCalledWith("/repo", "Garam", "kim@jihun.io");
+  });
+
+  it("warns when the author email isn't on the repository's account", async () => {
+    setup([change("a.txt", "added", null)]);
+    mockAccounts([WORK, PERSONAL], "github.com/1");
+    expect(await screen.findByRole("button", { name: /@jihun-io/ })).toBeVisible();
+    expect(await screen.findByText(/This email isn't on the @jihun-io account/)).toBeVisible();
   });
 
   it("stages single lines from the margin, keeping lines already staged", async () => {

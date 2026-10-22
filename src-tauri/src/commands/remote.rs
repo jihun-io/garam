@@ -7,9 +7,11 @@ use serde::Serialize;
 use tauri::State;
 use tauri::ipc::Channel;
 
-use crate::askpass::{Askpass, CredentialRequest};
+use crate::accounts::AccountStore;
+use crate::askpass::{Askpass, CredentialRequest, HostCredential};
 use crate::error::{AppResult, blocking};
 use crate::operations::Operations;
+use crate::repositories::RepositoryStore;
 
 /// Streamed to the frontend while a network operation runs.
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -28,6 +30,32 @@ pub struct NetworkContext {
     /// Whether prompts reach the user. Background work declines them.
     pub interactive: bool,
     pub on_event: Channel<RemoteEvent>,
+    /// Where to find the GitHub account chosen for the repository.
+    pub account: Option<AccountSource>,
+}
+
+pub struct AccountSource {
+    pub repositories: Arc<RepositoryStore>,
+    pub accounts: Arc<AccountStore>,
+    pub repo: String,
+}
+
+impl AccountSource {
+    /// The login of the account chosen for the repository. `None` when
+    /// there is none, or it was signed out since.
+    fn credential(&self) -> AppResult<Option<HostCredential>> {
+        let Some(key) = self.repositories.account(&self.repo) else {
+            return Ok(None);
+        };
+        let Some(account) = self.accounts.get(&key) else {
+            return Ok(None);
+        };
+        Ok(self.accounts.token(&key)?.map(|token| HostCredential {
+            host: account.host,
+            username: account.login,
+            token,
+        }))
+    }
 }
 
 impl NetworkContext {
@@ -44,7 +72,23 @@ impl NetworkContext {
             operation_id,
             interactive,
             on_event,
+            account: None,
         }
+    }
+
+    /// Uses the GitHub account chosen for `repo`, if any.
+    pub fn for_repo(
+        mut self,
+        repositories: &State<'_, Arc<RepositoryStore>>,
+        accounts: &State<'_, Arc<AccountStore>>,
+        repo: &Path,
+    ) -> Self {
+        self.account = Some(AccountSource {
+            repositories: Arc::clone(repositories),
+            accounts: Arc::clone(accounts),
+            repo: repo.to_string_lossy().into_owned(),
+        });
+        self
     }
 
     /// Runs `f` on a blocking thread with a cancellable, prompt-aware git.
@@ -63,7 +107,16 @@ impl NetworkContext {
                     let _ = events.send(RemoteEvent::Credential(request));
                 })
             });
-            let git = self.askpass.git_for(Git::locate()?, &self.operation_id);
+            let credential = match &self.account {
+                Some(source) => source.credential()?,
+                None => None,
+            };
+            let _provision = credential
+                .clone()
+                .map(|c| self.askpass.provide(&self.operation_id, c));
+            let git = self
+                .askpass
+                .git_for(Git::locate()?, &self.operation_id, credential.as_ref());
             let on_event = self.on_event.clone();
             let mut on_progress = move |p: Progress| {
                 let _ = on_event.send(RemoteEvent::Progress(p));
@@ -84,9 +137,12 @@ pub async fn remote_info(repo: String) -> AppResult<RemoteInfo> {
 /// asks the user for credentials.
 #[tauri::command]
 #[specta::specta]
+#[allow(clippy::too_many_arguments)]
 pub async fn remote_fetch(
     operations: State<'_, Arc<Operations>>,
     askpass: State<'_, Arc<Askpass>>,
+    repositories: State<'_, Arc<RepositoryStore>>,
+    accounts: State<'_, Arc<AccountStore>>,
     operation_id: String,
     repo: String,
     remote: String,
@@ -95,6 +151,7 @@ pub async fn remote_fetch(
 ) -> AppResult<()> {
     let repo = PathBuf::from(repo);
     NetworkContext::new(&operations, &askpass, operation_id, interactive, on_event)
+        .for_repo(&repositories, &accounts, &repo)
         .run(move |git, cancel, progress| remote::fetch(git, &repo, &remote, cancel, progress))
         .await
 }
@@ -104,12 +161,15 @@ pub async fn remote_fetch(
 pub async fn remote_pull(
     operations: State<'_, Arc<Operations>>,
     askpass: State<'_, Arc<Askpass>>,
+    repositories: State<'_, Arc<RepositoryStore>>,
+    accounts: State<'_, Arc<AccountStore>>,
     operation_id: String,
     repo: String,
     on_event: Channel<RemoteEvent>,
 ) -> AppResult<PullOutcome> {
     let repo = PathBuf::from(repo);
     NetworkContext::new(&operations, &askpass, operation_id, true, on_event)
+        .for_repo(&repositories, &accounts, &repo)
         .run(move |git, cancel, progress| remote::pull(git, &repo, cancel, progress))
         .await
 }
@@ -119,12 +179,15 @@ pub async fn remote_pull(
 pub async fn remote_push(
     operations: State<'_, Arc<Operations>>,
     askpass: State<'_, Arc<Askpass>>,
+    repositories: State<'_, Arc<RepositoryStore>>,
+    accounts: State<'_, Arc<AccountStore>>,
     operation_id: String,
     repo: String,
     on_event: Channel<RemoteEvent>,
 ) -> AppResult<()> {
     let repo = PathBuf::from(repo);
     NetworkContext::new(&operations, &askpass, operation_id, true, on_event)
+        .for_repo(&repositories, &accounts, &repo)
         .run(move |git, cancel, progress| remote::push(git, &repo, cancel, progress))
         .await
 }
@@ -132,9 +195,12 @@ pub async fn remote_push(
 /// Pushes the current branch to `remote` and sets it as the upstream.
 #[tauri::command]
 #[specta::specta]
+#[allow(clippy::too_many_arguments)]
 pub async fn remote_publish(
     operations: State<'_, Arc<Operations>>,
     askpass: State<'_, Arc<Askpass>>,
+    repositories: State<'_, Arc<RepositoryStore>>,
+    accounts: State<'_, Arc<AccountStore>>,
     operation_id: String,
     repo: String,
     remote: String,
@@ -142,6 +208,7 @@ pub async fn remote_publish(
 ) -> AppResult<()> {
     let repo = PathBuf::from(repo);
     NetworkContext::new(&operations, &askpass, operation_id, true, on_event)
+        .for_repo(&repositories, &accounts, &repo)
         .run(move |git, cancel, progress| remote::publish(git, &repo, &remote, cancel, progress))
         .await
 }

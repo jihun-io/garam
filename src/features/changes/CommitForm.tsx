@@ -7,6 +7,8 @@ import { Checkbox } from "../../components/ui/Checkbox";
 import { Tooltip } from "../../components/ui/Tooltip";
 import { toAppError, type AppError, type BranchStatus, type Identity } from "../../ipc";
 import { currentPlatform } from "../../lib/platform";
+import { useRepoAccount } from "../accounts/api";
+import { emailBelongsTo } from "../accounts/repoAccount";
 import { useChangeActions, useHeadCommit, useIdentity } from "./api";
 import styles from "./CommitForm.module.css";
 import { parseCoAuthors } from "./fileState";
@@ -28,6 +30,7 @@ export function CommitForm({
   const ids = { summary: useId(), description: useId(), coAuthors: useId(), amend: useId() };
   const { commit } = useChangeActions(repo);
   const identity = useIdentity(repo);
+  const repoAccount = useRepoAccount(repo, identity.data?.effective.email ?? null);
   const [summary, setSummary] = useState("");
   const [description, setDescription] = useState("");
   const [coAuthorsText, setCoAuthorsText] = useState("");
@@ -206,6 +209,12 @@ export function CommitForm({
         <AuthorLine
           author={formatIdentity(identity.data.effective)}
           overridden={identity.data.local.name !== null || identity.data.local.email !== null}
+          login={repoAccount.account?.login ?? null}
+          mismatch={
+            repoAccount.account !== null &&
+            identity.data.effective.email !== null &&
+            !emailBelongsTo(repoAccount.account, identity.data.effective.email)
+          }
           onEdit={() => setEditRepoIdentity(true)}
         />
       )}
@@ -242,6 +251,7 @@ export function CommitForm({
         <RepoIdentityDialog
           repo={repo}
           identity={identity.data}
+          repoAccount={repoAccount}
           onClose={() => setEditRepoIdentity(false)}
         />
       )}
@@ -251,24 +261,40 @@ export function CommitForm({
 
 const isComplete = (identity: Identity) => Boolean(identity.name && identity.email);
 
-/** Who the commit will be recorded as; opens the per-repository choice. */
+/**
+ * Who the commit will be recorded as and which GitHub account pushes it;
+ * opens the per-repository choice.
+ */
 function AuthorLine({
   author,
   overridden,
+  login,
+  mismatch,
   onEdit,
 }: {
   author: string | null;
   overridden: boolean;
+  login: string | null;
+  /** The author email isn't one of the account's, so GitHub won't link it. */
+  mismatch: boolean;
   onEdit: () => void;
 }) {
   const { t } = useTranslation("changes");
   return (
-    <Tooltip content={t("commit.authorEdit")} side="top">
-      <button type="button" className={styles.author} onClick={onEdit}>
-        <span className={styles.authorLabel}>{t("commit.author")}</span>
-        <span className={styles.authorValue}>{author ?? t("commit.authorMissing")}</span>
-        {overridden && <span className={styles.authorScope}>{t("commit.authorRepo")}</span>}
-      </button>
-    </Tooltip>
+    <>
+      <Tooltip content={t("commit.authorEdit")} side="top">
+        <button type="button" className={styles.author} onClick={onEdit}>
+          <span className={styles.authorLabel}>{t("commit.author")}</span>
+          <span className={styles.authorValue}>{author ?? t("commit.authorMissing")}</span>
+          {overridden && <span className={styles.authorScope}>{t("commit.authorRepo")}</span>}
+          {login && <span className={styles.authorAccount}>@{login}</span>}
+        </button>
+      </Tooltip>
+      {mismatch && login && (
+        <p className={styles.mismatch} role="status">
+          {t("commit.authorMismatch", { login })}
+        </p>
+      )}
+    </>
   );
 }
