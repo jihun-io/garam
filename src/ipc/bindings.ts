@@ -105,6 +105,18 @@ export const commands = {
 	 *  operation that asked.
 	 */
 	credentialRespond: (requestId: string, answer: string | null) => __TAURI_INVOKE<void>("credential_respond", { requestId, answer }),
+	githubAccounts: () => __TAURI_INVOKE<AccountList>("github_accounts"),
+	/**
+	 *  Signs in to github.com with the device flow: sends the code to
+	 *  `on_code`, then waits until the user approves it in the browser. Cancel
+	 *  with `operation_cancel` using the same `operation_id`.
+	 */
+	githubSignIn: (operationId: string, onCode: Channel<SignInCode>) => typedError<Account, AppError>(__TAURI_INVOKE("github_sign_in", { operationId, onCode })),
+	/**
+	 *  Signs out: forgets the account and deletes its token from the keychain.
+	 *  The authorization stays on GitHub until the user revokes it there.
+	 */
+	githubSignOut: (key: string) => typedError<null, AppError>(__TAURI_INVOKE("github_sign_out", { key })),
 	settingsGet: () => __TAURI_INVOKE<AppSettings>("settings_get"),
 	settingsSet: (settings: AppSettings) => typedError<null, AppError>(__TAURI_INVOKE("settings_set", { settings })),
 	/**  The operating system's accent color as `#rrggbb`, if it can be read. */
@@ -133,6 +145,25 @@ export type Accent = "garam" | "blue" | "purple" | "pink" | "orange" |
  */
 "system";
 
+export type Account = {
+	/**  `<host>/<user id>`: the ID stays the same when the login is renamed. */
+	key: string,
+	host: string,
+	login: string,
+	name: string | null,
+	avatarUrl: string,
+	/**  Verified addresses, primary first. */
+	emails: string[],
+	/**  GitHub's private `…@users.noreply.github.com` address. */
+	noreplyEmail: string,
+};
+
+export type AccountList = {
+	accounts: Account[],
+	/**  Where the user can revoke Garam's access on github.com. */
+	authorizationSettingsUrl: string,
+};
+
 /**
  *  Error shape returned by every command.
  * 
@@ -146,7 +177,13 @@ export type AppError = {
 };
 
 /**  Errors that come from the app layer rather than from git. */
-export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "external_app_not_found" | "external_app_failed" | "trash_failed" | "watch_failed";
+export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "external_app_not_found" | "external_app_failed" | "trash_failed" | "watch_failed" | 
+/**  The OS keychain refused to store or read a token. */
+"keychain_failed" | "github_unreachable" | 
+/**  The account's token was revoked or expired; sign in again. */
+"github_unauthorized" | 
+/**  The sign-in code expired before it was approved. */
+"github_login_expired" | "github_login_denied" | "github_unexpected";
 
 export type AppSettings = {
 	/**  UI language code; `None` follows the system language. */
@@ -491,6 +528,14 @@ export type RepositoryList = {
 
 /**  Which version to keep for a conflicted file. */
 export type Side = "mine" | "theirs";
+
+/**  The one-time code the user enters on GitHub. */
+export type SignInCode = {
+	userCode: string,
+	verificationUri: string,
+	/**  Seconds until the code expires. */
+	expiresIn: number,
+};
 
 /**  How to treat uncommitted changes when switching branches. */
 export type SwitchMode = 

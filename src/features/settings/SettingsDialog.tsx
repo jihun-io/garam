@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { IconButton } from "../../components/ui/IconButton";
 import { keepOpenWhenDraggingWindow, WindowDragArea } from "../../components/WindowDragArea";
 import { useCommand } from "../../lib/commands";
+import { AccountsSettings } from "../accounts/AccountsSettings";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { AppsSettings, SyncSettings } from "./AppsAndSyncSettings";
 import { GitSettings } from "./GitSettings";
@@ -15,6 +16,7 @@ const SECTIONS = [
   { id: "general", Content: GeneralSettings },
   { id: "appearance", Content: AppearanceSettings },
   { id: "git", Content: GitSettings },
+  { id: "accounts", Content: AccountsSettings },
   { id: "apps", Content: AppsSettings },
   { id: "sync", Content: SyncSettings },
 ] as const;

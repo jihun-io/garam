@@ -1,3 +1,4 @@
+mod accounts;
 mod askpass;
 mod commands;
 mod error;
@@ -21,7 +22,9 @@ use crate::repositories::RepositoryStore;
 /// Single source of truth for the IPC surface. Also used by the
 /// `export_bindings` test to regenerate `src/ipc/bindings.ts`.
 pub fn specta_builder() -> Builder<tauri::Wry> {
-    use commands::{branches, changes, conflicts, external, git, history, remote, repo, settings};
+    use commands::{
+        branches, changes, conflicts, external, git, github, history, remote, repo, settings,
+    };
     Builder::<tauri::Wry>::new().commands(collect_commands![
         git::git_info,
         repo::repo_list,
@@ -71,6 +74,9 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         remote::remote_push,
         remote::remote_publish,
         remote::credential_respond,
+        github::github_accounts,
+        github::github_sign_in,
+        github::github_sign_out,
         settings::settings_get,
         settings::settings_set,
         settings::system_accent_color,
@@ -125,6 +131,10 @@ pub fn run() {
             let data_dir = app.path().app_data_dir()?;
             app.manage(Arc::new(RepositoryStore::load(
                 data_dir.join("repositories.json"),
+            )));
+            app.manage(Arc::new(accounts::AccountStore::load(
+                data_dir.join("accounts.json"),
+                Box::new(accounts::Keychain),
             )));
             app.manage(Arc::new(settings::SettingsStore::load(
                 data_dir.join("settings.json"),

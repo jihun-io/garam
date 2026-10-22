@@ -57,5 +57,23 @@
     "minutes_one": "Every {{count}} minute",
     "minutes_other": "Every {{count}} minutes",
     "hint": "Background fetches never ask for credentials. If signing in is needed, fetch from the toolbar."
+  },
+  "accounts": {
+    "title": "Accounts",
+    "hint": "Sign in to GitHub to push and pull without pasting a token. You can sign in to more than one account, such as a work and a personal one.",
+    "listLabel": "Signed-in accounts",
+    "empty": "No accounts yet.",
+    "add": "Add GitHub account",
+    "signOut": "Sign out",
+    "signOutLabel": "Sign out of @{{login}}",
+    "pendingTitle": "Signing in to GitHub",
+    "codeCopied": "Your code is copied. Paste it on the GitHub page that opened in your browser, then approve Garam.",
+    "codeManual": "Enter this code on the GitHub page that opened in your browser, then approve Garam.",
+    "codeLabel": "One-time code",
+    "waiting": "Waiting for you to approve in the browser…",
+    "copyCode": "Copy code",
+    "openBrowser": "Open browser again",
+    "cancel": "Cancel",
+    "revokeHint": "Signing out removes the token from this computer. To also revoke Garam's access, go to <settings>GitHub settings</settings>."
   }
 }

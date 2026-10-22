@@ -15,14 +15,16 @@
 │  │ i18next                │  channels │  - 파일 감시(notify)           │  │
 │  └───────────────────────┘            └──────────────┬──────────────┘  │
 │                                                      │                 │
-│                                       ┌──────────────▼──────────────┐  │
-│                                       │ crates/garam-git             │  │
-│                                       │  - git CLI 실행·출력 파싱       │  │
-│                                       │  - 도메인 타입, 오류 분류        │  │
-│                                       └──────────────┬──────────────┘  │
-└──────────────────────────────────────────────────────┼─────────────────┘
-                                                       │ spawn
-                                                 시스템 git (2.35+)
+│                 ┌────────────────────────────────┬───┘                 │
+│                 ▼                                ▼                     │
+│  ┌─────────────────────────────┐  ┌─────────────────────────────┐      │
+│  │ crates/garam-github         │  │ crates/garam-git            │      │
+│  │  - Device Flow 로그인       │  │  - git CLI 실행·출력 파싱   │      │
+│  │  - GitHub REST API          │  │  - 도메인 타입, 오류 분류   │      │
+│  └──────────────┬──────────────┘  └──────────────┬──────────────┘      │
+└─────────────────┼────────────────────────────────┼─────────────────────┘
+                  │ HTTPS                          │ spawn
+ github.com, api.github.com                 시스템 git (2.35+)
 ```
 
 ### 저장소 레이아웃
@@ -41,7 +43,8 @@ Garam/
 │   └── locales/{en,ko}/    # 번역 JSON (네임스페이스별 파일)
 ├── src-tauri/              # Tauri 앱 crate (명령 계층)
 └── crates/
-    └── garam-git/          # Git 엔진 라이브러리 (Tauri 의존성 없음)
+    ├── garam-git/          # Git 엔진 라이브러리 (Tauri 의존성 없음)
+    └── garam-github/       # GitHub 로그인·API 클라이언트 (Tauri 의존성 없음, 토큰은 저장하지 않음)
 ```
 
 `garam-git`을 Tauri와 분리하는 이유는 두 가지다. Git 로직을 Tauri 없이 `cargo test`로 빠르게 테스트할 수 있고, 나중에 CLI나 다른 프론트엔드에서도 재사용할 수 있다.
@@ -147,7 +150,7 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - 사용자가 프롬프트를 취소하면 그 작업을 취소한다. 작업이 끝나거나 취소되면 대기 중인 프롬프트도 모두 거절한다. 답을 기다리는 시간은 최대 10분이다.
 - `SSH_ASKPASS_REQUIRE=force`로 터미널이 있어도 askpass를 쓰게 하고, 오래된 ssh를 위해 `DISPLAY`가 없으면 채운다.
 - 프롬프트 문장(`LC_ALL=C`라 영어)은 `credential.rs`가 종류(사용자 이름, 암호, SSH 키 암호, SSH 암호, 호스트 키 확인, 기타)와 대상으로 나눈다. 문장은 프론트가 번역한다.
-- 자격 증명은 앱이 저장하지 않는다. 인증에 성공하면 git이 설정된 credential helper(OS 키체인 등)에 저장한다.
+- 사용자가 입력한 자격 증명은 앱이 저장하지 않는다. 인증에 성공하면 git이 설정된 credential helper(OS 키체인 등)에 저장한다. 예외는 앱이 발급받은 GitHub 토큰이다(2.10).
 
 **프론트**
 
@@ -174,6 +177,15 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - **중단**: `git <작업> --abort`. 해결한 내용이 사라지므로 확인 대화상자를 거친다.
 - 작업이 진행 중이면 커밋 입력 대신 계속·중단 패널을 보여준다. 리베이스 도중 일반 커밋을 만들면 안 되기 때문이다.
 - 파일 감시는 `REVERT_HEAD`, `CHERRY_PICK_HEAD`, `rebase-merge`, `rebase-apply` 변경에도 반응한다.
+
+### 2.10 GitHub 계정
+
+- **로그인**: OAuth Device Flow(`garam-github`). client secret 없이 client ID만 쓴다. `github_sign_in`이 일회용 코드를 `Channel`로 보내고 승인될 때까지 기다린다. 취소는 다른 장시간 작업처럼 `operation_cancel`이다. 프론트는 코드를 클립보드에 복사하고 인증 페이지를 시스템 브라우저로 연다.
+- **scope**: `repo`(비공개 저장소 push·pull), `workflow`(워크플로 파일 push), `read:org`(저장소별 계정 추천), `user:email`(작성자 이메일 추천).
+- **저장**: 계정 정보(로그인 이름, 이름, 아바타, 인증된 이메일, noreply 주소)는 앱 데이터 폴더의 `accounts.json`에, 토큰은 OS 키체인(`keyring`, 서비스 `io.garam.app.github`, 계정 `<host>/<user id>`)에 둔다. 키를 사용자 ID로 잡아 로그인 이름이 바뀌어도 같은 계정으로 본다.
+- 토큰은 백엔드 밖으로 나가지 않는다. 프론트로 보내는 타입에는 토큰이 없다.
+- **로그아웃**: 키체인에서 토큰을 지운다. GitHub의 토큰 폐기 API는 client secret이 필요해 부를 수 없으므로, 권한 취소는 GitHub 설정 페이지로 안내한다.
+- 아바타는 `avatars.githubusercontent.com`에서 불러온다(CSP `img-src`에 추가).
 
 ## 3. IPC 설계
 
@@ -239,7 +251,8 @@ struct AppError {
 ## 7. 보안
 
 - Tauri capability는 필요한 권한만 연다. 프론트엔드에서 임의 셸 실행 권한(shell plugin의 execute)은 열지 않는다. git 실행은 Rust 명령으로만 한다.
-- 자격 증명은 앱이 저장하지 않는다. git credential helper(OS 키체인)에 맡긴다.
+- 사용자가 입력한 자격 증명은 앱이 저장하지 않는다. git credential helper(OS 키체인)에 맡긴다.
+- 앱이 발급받은 GitHub 토큰만 OS 키체인에 저장한다. 파일·로그·프론트로 보내지 않는다.
 - 외부 링크는 시스템 브라우저로 연다.
 
 ## 8. 아직 정하지 않은 것

@@ -3,6 +3,7 @@ pub mod changes;
 pub mod conflicts;
 pub mod external;
 pub mod git;
+pub mod github;
 pub mod history;
 pub mod remote;
 pub mod repo;

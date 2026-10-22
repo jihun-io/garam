@@ -105,10 +105,10 @@ SPEC.md 7장 "GitHub Desktop과의 차별점"의 v0.2 이후 항목들, GitHub �
 목표 상황: 회사 Mac(전역 설정은 회사 계정·회사 이메일)에서 개인 프로젝트를 할 때, 저장소에서 개인 계정을 고르면 push 자격 증명과 커밋 작성자가 함께 바뀐다.
 
 - [x] 저장소별 작성자: 커밋 영역에 작성자를 표시하고, "전역 설정 사용 / 이 저장소에서는 다른 작성자 사용"을 고른다. 저장소의 `.git/config`(`git config --local`)에 저장하므로 터미널에서 커밋해도 같은 작성자가 쓰인다
-- [ ] GitHub OAuth App 등록 (프로젝트 소유자가 직접 해야 함, Device Flow 사용 설정)
-- [ ] OAuth Device Flow 로그인: 버튼 → 일회용 코드를 클립보드에 복사하고 `github.com/login/device`를 시스템 브라우저로 연다 → 앱은 승인될 때까지 폴링
-- [ ] 토큰을 OS 키체인에 계정별로 저장 (macOS 키체인, Windows 자격 증명 관리자, Linux Secret Service)
-- [ ] 계정 목록·추가·로그아웃 (설정 화면, M8 이후), 계정 정보(로그인 이름, 아바타)는 GitHub API로 가져온다
+- [x] GitHub OAuth App 등록 (Device Flow 사용, 만료 토큰 끔). client ID는 `garam-github`의 `CLIENT_ID`
+- [x] OAuth Device Flow 로그인: 버튼 → 일회용 코드를 클립보드에 복사하고 `github.com/login/device`를 시스템 브라우저로 연다 → 앱은 승인될 때까지 폴링
+- [x] 토큰을 OS 키체인에 계정별로 저장 (macOS 키체인, Windows 자격 증명 관리자, Linux Secret Service)
+- [x] 계정 목록·추가·로그아웃 (설정 → 계정), 계정 정보(로그인 이름, 아바타, 인증된 이메일)는 GitHub API로 가져온다
 - [ ] 저장소별 계정 선택: 원격 URL의 소유자와 계정이 속한 조직으로 추천, 선택은 저장소 목록에 저장
 - [ ] 선택한 계정의 토큰을 git에 넘기기 (아래 설계)
 - [ ] 계정과 작성자 연결: 저장소에 계정을 고르면 그 계정의 인증된 이메일(`/user/emails`)과 noreply 주소 중에서 작성자 이메일을 고르게 한다
@@ -122,5 +122,5 @@ SPEC.md 7장 "GitHub Desktop과의 차별점"의 v0.2 이후 항목들, GitHub �
 - **보안 원칙 변경**: ARCHITECTURE.md 7장의 "자격 증명은 앱이 저장하지 않는다"를 "앱이 발급받은 GitHub 토큰만 OS 키체인에 저장한다"로 바꿔야 한다. 토큰은 파일·로그·프론트로 보내지 않는다.
 - **만료 토큰을 쓰지 않는다**: OAuth App의 "Expire user access tokens"는 끈다. 만료 토큰은 refresh token으로 갱신해야 하는데, 갱신 요청에 client secret이 필요해 Device Flow를 고른 이유가 사라진다. 대신 키체인 저장, 최소 scope, 로그아웃 시 폐기로 위험을 줄인다.
 - **다른 credential helper와 함께 쓰기**: 사용자가 이미 `gh auth git-credential`이나 osxkeychain을 쓰고 원격 URL에 사용자 이름(`https://jihun-io@github.com/...`)을 넣어 계정을 구분할 수도 있다. 계정을 고르지 않은 저장소에서는 이 설정을 건드리지 않는다.
-- **새 의존성**: HTTPS 클라이언트(`reqwest`, rustls)와 키체인 접근(`keyring`). 토큰이 오래 유지되므로 로그아웃할 때 GitHub에서도 토큰을 폐기한다.
+- **새 의존성**: HTTPS 클라이언트(`reqwest`, rustls)와 키체인 접근(`keyring`). 토큰을 GitHub에서 폐기하는 API(`DELETE /applications/{client_id}/token`)는 client secret이 필요해 앱이 직접 부를 수 없다. 그래서 로그아웃은 키체인에서 토큰을 지우고, 권한까지 취소하려는 사용자를 GitHub 설정 페이지로 안내한다.
 - **테스트**: Device Flow와 API는 목 서버로, credential helper 프로토콜은 `git credential fill`로 통합 테스트한다.
