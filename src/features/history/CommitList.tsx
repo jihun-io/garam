@@ -8,6 +8,7 @@ import menu from "../../components/ui/Menu.module.css";
 import { Tooltip } from "../../components/ui/Tooltip";
 import type { CommitSummary } from "../../ipc";
 import { useRelativeTime } from "../../lib/time";
+import { CommitTitle } from "./CommitTitle";
 import type { Graph } from "./graph";
 import { GraphCell, type NodeShape } from "./GraphCell";
 import styles from "./History.module.css";
@@ -30,8 +31,16 @@ export type CommitActions = {
   revert: Action;
   undo: Action;
   reset: Action;
+  copyPatch: Action;
+  savePatch: Action;
+  openOnRemote: Action;
   /** Which actions make sense for this commit right now. */
-  available: (commit: CommitSummary) => { cherryPick: boolean; revert: boolean; undo: boolean };
+  available: (commit: CommitSummary) => {
+    cherryPick: boolean;
+    revert: boolean;
+    undo: boolean;
+    openOnRemote: boolean;
+  };
 };
 
 export function CommitList({
@@ -155,7 +164,9 @@ function RowText({ row, marks }: { row: HistoryRow; marks: HistoryMarks }) {
       <span className={styles.titleLine}>
         {row.kind === "stash" && <Icon name="stash" size={14} />}
         <Tooltip content={title} whenTruncated>
-          <span className={styles.summary}>{title}</span>
+          <span className={styles.summary}>
+            {row.kind === "stash" ? title : <CommitTitle summary={title} />}
+          </span>
         </Tooltip>{" "}
         <RefBadges badges={marks.refs.get(commit.oid) ?? []} />
       </span>
@@ -181,6 +192,9 @@ function CommitMenu({ commit, actions }: { commit: CommitSummary; actions: Commi
   return (
     <ContextMenu.Content className={menu.content}>
       {item(t("menu.copyHash"), actions.copyHash)}
+      {item(t("menu.copyPatch"), actions.copyPatch)}
+      {item(t("menu.savePatch"), actions.savePatch)}
+      {can.openOnRemote && item(t("menu.openOnRemote"), actions.openOnRemote)}
       <ContextMenu.Separator className={menu.separator} />
       {item(t("menu.createBranch"), actions.createBranch)}
       {item(t("menu.createTag"), actions.createTag)}

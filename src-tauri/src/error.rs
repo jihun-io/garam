@@ -13,6 +13,8 @@ pub enum AppErrorKind {
     ExternalAppFailed,
     TrashFailed,
     WatchFailed,
+    /// A file the user chose to save couldn't be written.
+    SaveFailed,
     /// The OS keychain refused to store or read a token.
     KeychainFailed,
     GithubUnreachable,

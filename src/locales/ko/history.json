@@ -18,7 +18,10 @@
     "checkout": "이 커밋으로 전환…",
     "cherryPick": "현재 브랜치에 체리픽",
     "undo": "마지막 커밋 취소",
-    "reset": "이 커밋으로 리셋…"
+    "reset": "이 커밋으로 리셋…",
+    "copyPatch": "패치로 복사",
+    "savePatch": "패치로 저장…",
+    "openOnRemote": "GitHub에서 열기"
   },
   "detail": {
     "select": "커밋을 선택하면 변경 내용을 볼 수 있습니다.",
@@ -28,7 +31,12 @@
     "files_one": "변경된 파일 {{count}}개",
     "files_other": "변경된 파일 {{count}}개",
     "noFiles": "이 커밋은 파일을 바꾸지 않았습니다.",
-    "incoming": "아직 풀하지 않은 커밋"
+    "incoming": "아직 풀하지 않은 커밋",
+    "coAuthors": "공동 작성자: {{names}}",
+    "breaking": "호환성이 깨지는 변경",
+    "openOnRemote": "GitHub에서 열기",
+    "openIssue": "GitHub에서 {{ref}} 열기",
+    "ignoreWhitespace": "공백 변경 무시"
   },
   "reverted": "“{{summary}}” 커밋을 되돌리는 새 커밋을 만들었습니다.",
   "refs": {
@@ -79,7 +87,9 @@
     "reset": "“{{summary}}” 커밋으로 리셋했습니다.",
     "undone": "마지막 커밋을 취소했습니다. 변경 사항과 메시지는 그대로 남아 있습니다.",
     "checkedOut": "“{{summary}}” 커밋으로 전환했습니다. 지금은 분리된 HEAD 상태입니다.",
-    "tagged": "{{name}} 태그를 만들었습니다."
+    "tagged": "{{name}} 태그를 만들었습니다.",
+    "patchCopied": "“{{summary}}” 커밋을 패치로 복사했습니다.",
+    "patchSaved": "패치를 저장했습니다."
   },
   "reset": {
     "title": "이 커밋으로 리셋",
@@ -128,5 +138,20 @@
     "auto": "브랜치를 전환할 때 {{branch}}에 남겨 둔 변경 사항",
     "untitled": "{{branch}}에서 보관한 변경 사항",
     "detail": "{{name}}에 보관한 변경 사항. 추적하지 않는 파일은 여기에 보이지 않습니다."
+  },
+  "signature": {
+    "good": "서명 확인됨",
+    "goodHint": "{{signer}}의 서명이 맞습니다.",
+    "good_untrusted": "서명됨 (신뢰하지 않은 키)",
+    "good_untrustedHint": "{{signer}}의 서명이 맞지만, 이 키를 신뢰한다고 설정하지 않았습니다.",
+    "bad": "서명이 맞지 않음",
+    "badHint": "커밋 내용이 서명과 다릅니다. 서명한 뒤 바뀌었을 수 있습니다.",
+    "expired": "서명 만료",
+    "expiredHint": "서명이나 서명한 키가 만료되었습니다.",
+    "revoked": "취소된 키로 서명",
+    "revokedHint": "서명한 키가 취소되었습니다.",
+    "cannot_check": "서명됨 (확인할 수 없음)",
+    "cannot_checkHint": "서명을 확인할 공개 키가 이 컴퓨터에 없습니다.",
+    "unknownSigner": "알 수 없는 사람"
   }
 }

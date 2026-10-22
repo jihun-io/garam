@@ -56,6 +56,9 @@ UI 문자열을 번역할 때 이 표를 따른다. 새 용어가 생기면 먼�
 | hash / SHA                       | 해시                   |                                       |
 | author                           | 작성자                 |                                       |
 | co-author                        | 공동 작성자            |                                       |
+| patch                            | 패치                   |                                       |
+| signature (commit)               | 서명                   | "서명 확인됨", "서명이 맞지 않음"     |
+| breaking change                  | 호환성이 깨지는 변경   |                                       |
 | credential                       | 자격 증명              |                                       |
 | credential helper                | 자격 증명 도우미       |                                       |
 | personal access token            | 개인 액세스 토큰       |                                       |

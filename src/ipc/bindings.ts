@@ -94,7 +94,18 @@ export const commands = {
 	/**  Refs, unpushed and incoming commits, shown alongside the history. */
 	historyMarkers: (repo: string) => typedError<HistoryMarkers, AppError>(__TAURI_INVOKE("history_markers", { repo })),
 	commitDetail: (repo: string, oid: string) => typedError<CommitDetail, AppError>(__TAURI_INVOKE("commit_detail", { repo, oid })),
-	commitFileDiff: (repo: string, oid: string, file: CommitFile) => typedError<FileDiff, AppError>(__TAURI_INVOKE("commit_file_diff", { repo, oid, file })),
+	commitFileDiff: (repo: string, oid: string, file: CommitFile, ignoreWhitespace: boolean) => typedError<FileDiff, AppError>(__TAURI_INVOKE("commit_file_diff", { repo, oid, file, ignoreWhitespace })),
+	/**  An image file before and after `oid`, for side-by-side preview. */
+	commitImages: (repo: string, oid: string, file: CommitFile) => typedError<ImageVersions, AppError>(__TAURI_INVOKE("commit_images", { repo, oid, file })),
+	/**
+	 *  Whether `oid` is signed, and by whom. May run gpg, so it's asked for
+	 *  separately from the commit's details.
+	 */
+	commitSignature: (repo: string, oid: string) => typedError<Signature, AppError>(__TAURI_INVOKE("commit_signature", { repo, oid })),
+	/**  `oid` as a patch `git am` can apply. */
+	commitPatch: (repo: string, oid: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_patch", { repo, oid })),
+	/**  Writes `oid`'s patch to `path`, a file the user picked in a save dialog. */
+	commitPatchSave: (repo: string, oid: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_patch_save", { repo, oid, path })),
 	/**  Adds a commit that undoes `oid`. */
 	commitRevert: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_revert", { repo, oid })),
 	/**  Applies `oid`'s changes as a new commit on HEAD. */
@@ -195,6 +206,8 @@ export type AppError = {
 
 /**  Errors that come from the app layer rather than from git. */
 export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "external_app_not_found" | "external_app_failed" | "trash_failed" | "watch_failed" | 
+/**  A file the user chose to save couldn't be written. */
+"save_failed" | 
 /**  The OS keychain refused to store or read a token. */
 "keychain_failed" | "github_unreachable" | 
 /**  The account's token was revoked or expired; sign in again. */
@@ -636,6 +649,24 @@ export type SignInCode = {
 	/**  Seconds until the code expires. */
 	expiresIn: number,
 };
+
+export type Signature = {
+	status: SignatureStatus,
+	/**  Who signed it, when git could tell. */
+	signer: string | null,
+	key: string | null,
+};
+
+/**  Whether a commit's signature checks out, from `git log --format=%G?`. */
+export type SignatureStatus = 
+/**  Not signed. */
+"none" | "good" | 
+/**  A good signature from a key that isn't trusted. */
+"good_untrusted" | "bad" | 
+/**  A good signature that has expired, or made with an expired key. */
+"expired" | "revoked" | 
+/**  Signed, but the key isn't available to check it. */
+"cannot_check";
 
 /**  One entry of `git stash list`. */
 export type StashEntry = {

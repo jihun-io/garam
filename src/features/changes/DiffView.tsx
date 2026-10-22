@@ -426,15 +426,28 @@ function Line({ line, selection }: { line: DiffLine; selection?: Selection | "sp
 }
 
 function ImageDiff({ repo, file }: { repo: string; file: FileChange }) {
-  const { t } = useTranslation("changes");
   const images = useImages(repo, file, true);
   if (!images.data) return <Loading />;
+  return <ImageComparison path={file.path} {...images.data} />;
+}
+
+/** Two versions of an image side by side; a missing side says so. */
+export function ImageComparison({
+  path,
+  before,
+  after,
+}: {
+  path: string;
+  before: string | null;
+  after: string | null;
+}) {
+  const { t } = useTranslation("changes");
   const side = (label: string, src: string | null) => (
     <figure className={styles.imageSide}>
       <figcaption className={styles.imageLabel}>{label}</figcaption>
       <div className={styles.imageFrame}>
         {src ? (
-          <img src={src} alt={`${label}: ${file.path}`} className={styles.image} />
+          <img src={src} alt={`${label}: ${path}`} className={styles.image} />
         ) : (
           <span className={styles.imageNone}>{t("diff.noImage")}</span>
         )}
@@ -443,8 +456,8 @@ function ImageDiff({ repo, file }: { repo: string; file: FileChange }) {
   );
   return (
     <div className={styles.images}>
-      {side(t("diff.before"), images.data.before)}
-      {side(t("diff.after"), images.data.after)}
+      {side(t("diff.before"), before)}
+      {side(t("diff.after"), after)}
     </div>
   );
 }

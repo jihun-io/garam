@@ -17,6 +17,7 @@
   "identity_missing": "Git doesn't know who you are yet. Set your name and email.",
   "trash_failed": "The files couldn't be moved to the Trash, so nothing was discarded.",
   "watch_failed": "Garam can't watch this folder for changes. Changes appear when you return to the window.",
+  "save_failed": "Couldn't save the file. Check the location and permissions.",
   "invalid_branch_name": "That isn't a valid branch name. Avoid spaces and characters like ~ ^ : ? * [ \\.",
   "branch_exists": "A branch with that name already exists.",
   "branch_not_merged": "This branch has commits that aren't merged anywhere else.",

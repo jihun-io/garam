@@ -8,6 +8,8 @@ import {
 
 import { commands, unwrap, type CommitFile, type HistoryFilter, type ResetMode } from "../../ipc";
 import { changesKeys, indexScope } from "../changes/api";
+import { useRemoteInfo } from "../sync/api";
+import { githubWebUrl } from "./message";
 
 export const PAGE_SIZE = 100;
 
@@ -22,8 +24,11 @@ export const historyKeys = {
   list: (repo: string, head: string | null, filter: HistoryFilter, refs: string) =>
     ["history", repo, "list", head, filter, refs] as const,
   detail: (repo: string, oid: string) => ["history", repo, "commit", oid] as const,
-  diff: (repo: string, oid: string, path: string) =>
-    ["history", repo, "commit", oid, "diff", path] as const,
+  diff: (repo: string, oid: string, path: string, ignoreWhitespace: boolean) =>
+    ["history", repo, "commit", oid, "diff", path, ignoreWhitespace] as const,
+  images: (repo: string, oid: string, path: string) =>
+    ["history", repo, "commit", oid, "images", path] as const,
+  signature: (repo: string, oid: string) => ["history", repo, "commit", oid, "signature"] as const,
 };
 
 /**
@@ -69,13 +74,44 @@ export function useCommitDetail(repo: string, oid: string | null) {
   });
 }
 
-export function useCommitFileDiff(repo: string, oid: string, file: CommitFile | null) {
+export function useCommitFileDiff(
+  repo: string,
+  oid: string,
+  file: CommitFile | null,
+  ignoreWhitespace: boolean,
+) {
   return useQuery({
-    queryKey: historyKeys.diff(repo, oid, file?.path ?? ""),
-    queryFn: () => unwrap(commands.commitFileDiff(repo, oid, file!)),
+    queryKey: historyKeys.diff(repo, oid, file?.path ?? "", ignoreWhitespace),
+    queryFn: () => unwrap(commands.commitFileDiff(repo, oid, file!, ignoreWhitespace)),
     enabled: file !== null,
     staleTime: Infinity,
   });
+}
+
+export function useCommitImages(repo: string, oid: string, file: CommitFile, enabled: boolean) {
+  return useQuery({
+    queryKey: historyKeys.images(repo, oid, file.path),
+    queryFn: () => unwrap(commands.commitImages(repo, oid, file)),
+    enabled,
+    staleTime: Infinity,
+  });
+}
+
+/** Checked on its own, since it may run gpg. */
+export function useCommitSignature(repo: string, oid: string, enabled: boolean) {
+  return useQuery({
+    queryKey: historyKeys.signature(repo, oid),
+    queryFn: () => unwrap(commands.commitSignature(repo, oid)),
+    enabled,
+    staleTime: Infinity,
+  });
+}
+
+/** The default remote's page on github.com, for links; `null` elsewhere. */
+export function useRemoteWebUrl(repo: string): string | null {
+  const info = useRemoteInfo(repo).data;
+  const remote = info?.remotes.find((r) => r.name === info.defaultRemote);
+  return remote ? githubWebUrl(remote.url) : null;
 }
 
 /** Revert writes a commit, so it queues with other index writes. */

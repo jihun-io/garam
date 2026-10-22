@@ -1,5 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { save } from "@tauri-apps/plugin-dialog";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -20,6 +22,8 @@ import { DEFAULT_FILTER, useHistoryFilters } from "./filterStore";
 import { useHistoryDialog } from "./historyDialogStore";
 import { HistoryView } from "./HistoryView";
 
+vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => {}) }));
+vi.mock("@tauri-apps/plugin-dialog", () => ({ save: vi.fn() }));
 vi.mock("../../ipc/bindings", () => ({
   commands: {
     statusGet: vi.fn(),
@@ -34,6 +38,11 @@ vi.mock("../../ipc/bindings", () => ({
     commitUndo: vi.fn(),
     commitCheckout: vi.fn(),
     tagCreate: vi.fn(),
+    commitImages: vi.fn(),
+    commitSignature: vi.fn(),
+    commitPatch: vi.fn(),
+    commitPatchSave: vi.fn(),
+    remoteInfo: vi.fn(),
   },
 }));
 
@@ -84,6 +93,16 @@ function setup(historyMarkers: HistoryMarkers = markers, files: FileChange[] = [
   );
   vi.mocked(commands.historyList).mockResolvedValue(ok(commits));
   vi.mocked(commands.historyMarkers).mockResolvedValue(ok(historyMarkers));
+  vi.mocked(commands.commitSignature).mockResolvedValue(
+    ok({ status: "none", signer: null, key: null }),
+  );
+  vi.mocked(commands.remoteInfo).mockResolvedValue(
+    ok({
+      remotes: [{ name: "origin", url: "git@github.com:garam/app.git" }],
+      defaultRemote: "origin",
+      lastFetchedAt: null,
+    }),
+  );
   vi.mocked(commands.branchList).mockResolvedValue(
     ok([
       {
@@ -582,6 +601,100 @@ describe("HistoryView", () => {
     await user.type(screen.getByRole("searchbox"), "number");
     await waitFor(() => expect(within(list).getAllByRole("option")).toHaveLength(1));
     expect(list.querySelector("svg")).toBeNull();
+  });
+
+  it("shows commit prefixes as badges and reads the message closely", async () => {
+    const user = userEvent.setup();
+    setup();
+    const message = commit(4, { summary: "feat(ui)!: New sidebar" });
+    vi.mocked(commands.historyList).mockResolvedValue(ok([message, ...commits]));
+    vi.mocked(commands.commitDetail).mockResolvedValue(
+      ok({
+        ...detail(message),
+        body: "Closes #42.\n\nCo-authored-by: Bo Kim <bo@example.com>",
+      }),
+    );
+    vi.mocked(commands.commitSignature).mockResolvedValue(
+      ok({ status: "good", signer: "김가람 <garam@example.com>", key: "ABC" }),
+    );
+    // A fresh query for the new list.
+    useHistoryFilters.getState().update("/repo", { firstParent: true });
+
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    await user.click(await within(list).findByText("New sidebar"));
+    expect(within(list).getByText("feat(ui)!")).toBeVisible();
+
+    const heading = await screen.findByRole("heading", { name: "feat(ui)! New sidebar" });
+    expect(heading).toBeVisible();
+    expect(screen.getByText("Breaking change")).toBeVisible();
+    expect(screen.getByText("Co-authored by Bo Kim")).toBeVisible();
+    expect(screen.queryByText(/Co-authored-by:/)).toBeNull();
+    expect(await screen.findByText("Verified signature")).toBeVisible();
+
+    await user.click(screen.getByRole("link", { name: "#42" }));
+    expect(openUrl).toHaveBeenCalledWith("https://github.com/garam/app/issues/42");
+    await user.click(screen.getByRole("button", { name: "Open on GitHub" }));
+    expect(openUrl).toHaveBeenCalledWith(`https://github.com/garam/app/commit/${message.oid}`);
+  });
+
+  it("doesn't link to an unpushed commit on the remote", async () => {
+    setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+    // The detail knows the commit isn't pushed, and the remote is known.
+    await waitFor(() => expect(commands.remoteInfo).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getAllByText("Not pushed yet").length).toBeGreaterThan(1));
+    expect(screen.queryByRole("button", { name: "Open on GitHub" })).toBeNull();
+  });
+
+  it("can ignore whitespace and compares images", async () => {
+    const user = userEvent.setup();
+    setup();
+    await screen.findByText("contents of src/login.tsx");
+    await user.click(screen.getByRole("checkbox", { name: "Ignore whitespace" }));
+    await waitFor(() =>
+      expect(commands.commitFileDiff).toHaveBeenLastCalledWith(
+        "/repo",
+        commits[0].oid,
+        expect.objectContaining({ path: "src/login.tsx" }),
+        true,
+      ),
+    );
+
+    vi.mocked(commands.commitDetail).mockResolvedValue(
+      ok({
+        ...detail(commits[1]),
+        files: [{ path: "logo.png", origPath: null, kind: "modified" }],
+      }),
+    );
+    vi.mocked(commands.commitImages).mockResolvedValue(
+      ok({ before: "data:image/png;base64,AA==", after: null }),
+    );
+    await user.click(await screen.findByText("Commit number 2"));
+    expect(await screen.findByRole("img", { name: "Before: logo.png" })).toBeVisible();
+    expect(screen.queryByRole("checkbox", { name: "Ignore whitespace" })).toBeNull();
+  });
+
+  it("copies and saves a commit as a patch", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.commitPatch).mockResolvedValue(ok("From abc\nSubject: [PATCH] x\n"));
+    vi.mocked(commands.commitPatchSave).mockResolvedValue(ok(null));
+    vi.mocked(save).mockResolvedValue("/tmp/2222222.patch");
+    setup();
+
+    let menu = await openMenu(user, "Commit number 2");
+    await user.click(within(menu).getByRole("menuitem", { name: "Copy as Patch" }));
+    expect(await screen.findByText("Copied “Commit number 2” as a patch.")).toBeVisible();
+    expect(await navigator.clipboard.readText()).toBe("From abc\nSubject: [PATCH] x\n");
+
+    menu = await openMenu(user, "Commit number 2");
+    await user.click(within(menu).getByRole("menuitem", { name: "Save as Patch…" }));
+    expect(await screen.findByText("Saved the patch.")).toBeVisible();
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: "2222222.patch" }));
+    expect(commands.commitPatchSave).toHaveBeenCalledWith(
+      "/repo",
+      commits[1].oid,
+      "/tmp/2222222.patch",
+    );
   });
 
   it("explains an empty history", async () => {

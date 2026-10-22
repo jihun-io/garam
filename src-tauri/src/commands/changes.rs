@@ -52,7 +52,7 @@ pub async fn diff_images(repo: String, file: FileChange) -> AppResult<ImageVersi
     .await
 }
 
-fn data_url(path: &str, bytes: &[u8]) -> Option<String> {
+pub(crate) fn data_url(path: &str, bytes: &[u8]) -> Option<String> {
     if bytes.len() > MAX_IMAGE_BYTES {
         return None;
     }

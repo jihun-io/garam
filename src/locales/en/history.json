@@ -18,7 +18,10 @@
     "checkout": "Check Out This Commit…",
     "cherryPick": "Cherry-pick onto Current Branch",
     "undo": "Undo Last Commit",
-    "reset": "Reset to This Commit…"
+    "reset": "Reset to This Commit…",
+    "copyPatch": "Copy as Patch",
+    "savePatch": "Save as Patch…",
+    "openOnRemote": "Open on GitHub"
   },
   "detail": {
     "select": "Select a commit to see its changes.",
@@ -28,7 +31,12 @@
     "files_one": "{{count}} changed file",
     "files_other": "{{count}} changed files",
     "noFiles": "This commit doesn't change any files.",
-    "incoming": "Not pulled yet"
+    "incoming": "Not pulled yet",
+    "coAuthors": "Co-authored by {{names}}",
+    "breaking": "Breaking change",
+    "openOnRemote": "Open on GitHub",
+    "openIssue": "Open {{ref}} on GitHub",
+    "ignoreWhitespace": "Ignore whitespace"
   },
   "reverted": "Reverted “{{summary}}” with a new commit.",
   "refs": {
@@ -79,7 +87,9 @@
     "reset": "Reset to “{{summary}}”.",
     "undone": "Undid the last commit. Its changes and message are still here.",
     "checkedOut": "Checked out “{{summary}}”. HEAD is now detached.",
-    "tagged": "Created tag {{name}}."
+    "tagged": "Created tag {{name}}.",
+    "patchCopied": "Copied “{{summary}}” as a patch.",
+    "patchSaved": "Saved the patch."
   },
   "reset": {
     "title": "Reset to This Commit",
@@ -128,5 +138,20 @@
     "auto": "Changes left on {{branch}} when switching branches",
     "untitled": "Changes stashed on {{branch}}",
     "detail": "Changes stashed as {{name}}. Untracked files aren't shown here."
+  },
+  "signature": {
+    "good": "Verified signature",
+    "goodHint": "Signed by {{signer}}.",
+    "good_untrusted": "Signed (untrusted key)",
+    "good_untrustedHint": "Signed by {{signer}}, but this key isn't marked as trusted.",
+    "bad": "Bad signature",
+    "badHint": "The commit doesn't match its signature; it may have changed after signing.",
+    "expired": "Signature expired",
+    "expiredHint": "The signature or the key that made it has expired.",
+    "revoked": "Signed with a revoked key",
+    "revokedHint": "The key that made this signature was revoked.",
+    "cannot_check": "Signed (can't verify)",
+    "cannot_checkHint": "This computer doesn't have the public key to check the signature.",
+    "unknownSigner": "an unknown signer"
   }
 }

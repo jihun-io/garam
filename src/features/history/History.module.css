@@ -423,3 +423,77 @@
   padding: var(--space-2);
   border-top: 1px solid var(--color-line);
 }
+
+/* Commit message details */
+
+/* The Conventional Commits prefix: a quiet label, not a status. */
+.typeBadge {
+  display: inline-block;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-hover);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 16px;
+  vertical-align: 1px;
+}
+
+.commitSummary .typeBadge {
+  font-size: var(--text-md);
+  line-height: 20px;
+  vertical-align: 3px;
+}
+
+.scroll:focus-visible .row[aria-selected="true"] .typeBadge {
+  background: none;
+  box-shadow: inset 0 0 0 1px currentColor;
+  color: inherit;
+}
+
+.breaking {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 550;
+}
+
+.issueLink {
+  color: var(--color-link);
+  cursor: pointer;
+}
+
+.signature {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.signature[data-bad] {
+  color: var(--color-danger);
+}
+
+.metaLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-link);
+  font-size: var(--text-sm);
+}
+
+.metaLink:hover {
+  text-decoration: underline;
+}
+
+.diffOption {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}

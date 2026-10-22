@@ -1,8 +1,11 @@
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Icon } from "../../components/Icon";
+import type { IconName } from "../../components/icons";
+import { Checkbox } from "../../components/ui/Checkbox";
 import { Loading } from "../../components/ui/Loading";
 import { Tooltip } from "../../components/ui/Tooltip";
 import {
@@ -10,15 +13,26 @@ import {
   type ChangeKind,
   type CommitDetail,
   type CommitFile,
+  type SignatureStatus,
   type StashEntry,
 } from "../../ipc";
 import { shortHash } from "../../lib/hash";
 import { useRelativeTime } from "../../lib/time";
 import diffStyles from "../changes/DiffView.module.css";
-import { TextDiff } from "../changes/DiffView";
-import { splitPath, type DisplayKind } from "../changes/fileState";
-import { useCommitDetail, useCommitFileDiff } from "./api";
+import { ImageComparison, TextDiff } from "../changes/DiffView";
+import { isImage, splitPath, type DisplayKind } from "../changes/fileState";
+import { useNotify } from "../notify/notifyStore";
+import {
+  useCommitDetail,
+  useCommitFileDiff,
+  useCommitImages,
+  useCommitSignature,
+  useRemoteWebUrl,
+} from "./api";
+import { CommitTitle } from "./CommitTitle";
+import { useDiffOptions } from "./diffOptionsStore";
 import styles from "./History.module.css";
+import { isBreaking, linkIssues, splitCoAuthors } from "./message";
 import { RefBadges } from "./RefBadges";
 import type { RefBadge, SyncState } from "./refs";
 import { stashTitle } from "./rows";
@@ -100,19 +114,39 @@ function Loaded({
   const selected = commit.files.find((f) => f.path === selectedPath) ?? commit.files[0] ?? null;
   const date = new Date(commit.authoredAt * 1000);
   const hash = shortHash(commit.oid);
+  const webUrl = useRemoteWebUrl(repo);
+  const showError = useNotify((s) => s.showError);
+  const { body, coAuthors } = splitCoAuthors(commit.body);
 
   return (
     <div className={styles.detail}>
       <header className={styles.commitHeader}>
         <h2 className={styles.commitSummary}>
-          {stash ? stashTitle(t, stash.message) : commit.summary}
+          {stash ? stashTitle(t, stash.message) : <CommitTitle summary={commit.summary} />}
         </h2>
+        {!stash && isBreaking(commit.summary, commit.body) && (
+          <p className={styles.breaking}>
+            <Icon name="error" size={14} />
+            {t("detail.breaking")}
+          </p>
+        )}
         {stash && <p className={styles.commitBody}>{t("stash.detail", { name: stash.name })}</p>}
-        {!stash && commit.body && <p className={styles.commitBody}>{commit.body}</p>}
+        {!stash && body && (
+          <p className={styles.commitBody}>
+            <MessageText text={body} webUrl={webUrl} />
+          </p>
+        )}
         <p className={styles.commitMeta}>
           <Tooltip content={commit.authorEmail}>
             <span>{commit.authorName}</span>
           </Tooltip>
+          {coAuthors.length > 0 && (
+            <Tooltip content={coAuthors.map((p) => `${p.name} <${p.email}>`).join("\n")}>
+              <span>
+                {t("detail.coAuthors", { names: coAuthors.map((p) => p.name).join(", ") })}
+              </span>
+            </Tooltip>
+          )}
           <Tooltip content={date.toLocaleString(i18n.language)}>
             <time dateTime={date.toISOString()}>{relativeTime(commit.authoredAt)}</time>
           </Tooltip>
@@ -127,6 +161,7 @@ function Loaded({
             </span>
           )}
           <RefBadges badges={badges} max={badges.length} />
+          {!stash && <SignatureBadge repo={repo} oid={commit.oid} />}
           <Tooltip content={t("detail.copyHash", { hash })}>
             <button
               type="button"
@@ -138,6 +173,16 @@ function Loaded({
               <Icon name="copy" size={12} />
             </button>
           </Tooltip>
+          {!stash && webUrl && sync !== "unpushed" && (
+            <button
+              type="button"
+              className={styles.metaLink}
+              onClick={() => void openUrl(`${webUrl}/commit/${commit.oid}`).catch(showError)}
+            >
+              <Icon name="openIn" size={12} />
+              {t("detail.openOnRemote")}
+            </button>
+          )}
         </p>
       </header>
 
@@ -187,12 +232,17 @@ function Loaded({
 }
 
 function CommitFileDiff({ repo, oid, file }: { repo: string; oid: string; file: CommitFile }) {
-  const { t } = useTranslation("changes");
-  const diff = useCommitFileDiff(repo, oid, file);
+  const { t } = useTranslation(["changes", "history"]);
+  const { ignoreWhitespace, setIgnoreWhitespace } = useDiffOptions();
+  const image = isImage(file.path);
+  const diff = useCommitFileDiff(repo, oid, image ? null : file, ignoreWhitespace);
+  const images = useCommitImages(repo, oid, file, image);
   const kind = displayKind(file.kind);
 
   let body;
-  if (diff.isError) {
+  if (image) {
+    body = images.data ? <ImageComparison path={file.path} {...images.data} /> : <Loading />;
+  } else if (diff.isError) {
     body = (
       <div className={diffStyles.noticeBox}>
         <ErrorMessage error={toAppError(diff.error)} />
@@ -211,7 +261,7 @@ function CommitFileDiff({ repo, oid, file }: { repo: string; oid: string; file: 
       </p>
     );
   } else {
-    body = <TextDiff key={file.path} hunks={diff.data.hunks} />;
+    body = <TextDiff key={`${file.path}:${ignoreWhitespace}`} hunks={diff.data.hunks} />;
   }
 
   return (
@@ -229,8 +279,75 @@ function CommitFileDiff({ repo, oid, file }: { repo: string; oid: string; file: 
           <Icon name={kind} size={14} />
           {t(`kind.${kind}`)}
         </span>
+        {!image && (
+          <label className={styles.diffOption}>
+            <Checkbox
+              state={ignoreWhitespace ? "checked" : "unchecked"}
+              onChange={(e) => setIgnoreWhitespace(e.target.checked)}
+            />
+            {t("history:detail.ignoreWhitespace")}
+          </label>
+        )}
       </header>
       {body}
     </section>
+  );
+}
+
+/** Message text with `#123` turned into links when the remote is known. */
+function MessageText({ text, webUrl }: { text: string; webUrl: string | null }) {
+  const { t } = useTranslation("history");
+  const showError = useNotify((s) => s.showError);
+  if (!webUrl) return <>{text}</>;
+  return (
+    <>
+      {linkIssues(text).map((part, i) =>
+        "issue" in part ? (
+          <Tooltip key={i} content={t("detail.openIssue", { ref: part.text })}>
+            <a
+              href={`${webUrl}/issues/${part.issue}`}
+              className={styles.issueLink}
+              onClick={(e) => {
+                e.preventDefault();
+                void openUrl(e.currentTarget.href).catch(showError);
+              }}
+            >
+              {part.text}
+            </a>
+          </Tooltip>
+        ) : (
+          part.text
+        ),
+      )}
+    </>
+  );
+}
+
+const SIGNATURE_ICON: Record<Exclude<SignatureStatus, "none">, IconName> = {
+  good: "success",
+  good_untrusted: "success",
+  bad: "error",
+  expired: "error",
+  revoked: "error",
+  cannot_check: "info",
+};
+
+/** Whether the commit is signed, checked once it is shown. */
+function SignatureBadge({ repo, oid }: { repo: string; oid: string }) {
+  const { t } = useTranslation("history");
+  const signature = useCommitSignature(repo, oid, true).data;
+  if (!signature || signature.status === "none") return null;
+  const status = signature.status;
+  const signer = signature.signer ?? t("signature.unknownSigner");
+  return (
+    <Tooltip content={t(`signature.${status}Hint`, { signer })}>
+      <span
+        className={styles.signature}
+        data-bad={status === "bad" || status === "revoked" || undefined}
+      >
+        <Icon name={SIGNATURE_ICON[status]} size={12} />
+        {t(`signature.${status}`)}
+      </span>
+    </Tooltip>
   );
 }

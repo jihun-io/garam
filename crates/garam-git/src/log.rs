@@ -524,6 +524,7 @@ pub fn file_diff(
     repo: &Path,
     oid: &str,
     file: &CommitFile,
+    ignore_whitespace: bool,
 ) -> Result<FileDiff, GitError> {
     check_oid(oid)?;
     let parents = git
@@ -540,23 +541,19 @@ pub fn file_diff(
     if let Some(orig) = &file.orig_path {
         paths.push(orig);
     }
-    let output = git
-        .command()
-        .cwd(repo)
-        .read_only()
-        .args([
-            "diff",
-            "--no-color",
-            "--no-ext-diff",
-            "--no-textconv",
-            "--find-renames",
-            "--src-prefix=a/",
-            "--dst-prefix=b/",
-            &base,
-            oid,
-        ])
-        .paths(paths)
-        .run()?;
+    let mut command = git.command().cwd(repo).read_only().args([
+        "diff",
+        "--no-color",
+        "--no-ext-diff",
+        "--no-textconv",
+        "--find-renames",
+        "--src-prefix=a/",
+        "--dst-prefix=b/",
+    ]);
+    if ignore_whitespace {
+        command = command.arg("--ignore-all-space");
+    }
+    let output = command.args([base.as_str(), oid]).paths(paths).run()?;
     if output.stdout.len() > MAX_DIFF_BYTES {
         return Ok(FileDiff::TooLarge);
     }
@@ -688,6 +685,103 @@ pub fn checkout(git: &Git, repo: &Path, oid: &str) -> Result<(), GitError> {
     Ok(())
 }
 
+/// The first parent of `oid`, or `None` for a root commit.
+pub fn first_parent(git: &Git, repo: &Path, oid: &str) -> Result<Option<String>, GitError> {
+    check_oid(oid)?;
+    crate::commit::resolve_commit(git, repo, &format!("{oid}^"))
+}
+
+/// Whether a commit's signature checks out, from `git log --format=%G?`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "snake_case")]
+pub enum SignatureStatus {
+    /// Not signed.
+    None,
+    Good,
+    /// A good signature from a key that isn't trusted.
+    GoodUntrusted,
+    Bad,
+    /// A good signature that has expired, or made with an expired key.
+    Expired,
+    Revoked,
+    /// Signed, but the key isn't available to check it.
+    CannotCheck,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct Signature {
+    pub status: SignatureStatus,
+    /// Who signed it, when git could tell.
+    pub signer: Option<String>,
+    pub key: Option<String>,
+}
+
+/// Checks `oid`'s signature with the user's GPG or SSH setup. Separate
+/// from [`detail`] because it may run gpg.
+pub fn signature(git: &Git, repo: &Path, oid: &str) -> Result<Signature, GitError> {
+    check_oid(oid)?;
+    let output = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["log", "-1", "--format=%G?%x1f%GS%x1f%GK"])
+        .arg(format!("{oid}^{{commit}}"))
+        .arg("--")
+        .run()?;
+    Ok(parse_signature(output.stdout_str().trim_end()))
+}
+
+fn parse_signature(output: &str) -> Signature {
+    let mut f = output.splitn(3, '\x1f');
+    let status = match f.next().unwrap_or("") {
+        "G" => SignatureStatus::Good,
+        "U" => SignatureStatus::GoodUntrusted,
+        "B" => SignatureStatus::Bad,
+        "X" | "Y" => SignatureStatus::Expired,
+        "R" => SignatureStatus::Revoked,
+        "E" => SignatureStatus::CannotCheck,
+        _ => SignatureStatus::None,
+    };
+    let field = |v: Option<&str>| {
+        v.map(str::trim)
+            .filter(|v| !v.is_empty())
+            .map(str::to_owned)
+    };
+    Signature {
+        status,
+        signer: field(f.next()),
+        key: field(f.next()),
+    }
+}
+
+/// `oid` as an email-style patch that `git am` can apply. Merge commits
+/// are shown against their first parent.
+pub fn patch(git: &Git, repo: &Path, oid: &str) -> Result<String, GitError> {
+    let summary = detail(git, repo, oid)?.commit;
+    let mut command = git.command().cwd(repo).read_only();
+    command = if summary.parents.len() > 1 {
+        // format-patch skips merges.
+        command.args([
+            "log",
+            "-1",
+            "--format=email",
+            "--patch",
+            "--stat",
+            "--diff-merges=first-parent",
+        ])
+    } else {
+        command.args(["format-patch", "-1", "--stdout", "--no-signature"])
+    };
+    let output = command
+        .args(["--no-color", "--no-ext-diff", &summary.oid])
+        .arg("--")
+        .run()?;
+    Ok(output.stdout_str().into_owned())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -737,6 +831,25 @@ mod tests {
         assert_eq!(entry.message, "On main: 메모");
         assert_eq!(entry.created_at, 1_700_000_000);
         assert!(parse_stash("").is_none());
+    }
+
+    #[test]
+    fn parses_signature_status() {
+        let good = parse_signature("G\x1fKim <kim@example.com>\x1fABCD");
+        assert_eq!(good.status, SignatureStatus::Good);
+        assert_eq!(good.signer.as_deref(), Some("Kim <kim@example.com>"));
+        assert_eq!(good.key.as_deref(), Some("ABCD"));
+        let none = parse_signature("N\x1f\x1f");
+        assert_eq!(none.status, SignatureStatus::None);
+        assert_eq!(none.signer, None);
+        assert_eq!(
+            parse_signature("Y\x1f\x1f").status,
+            SignatureStatus::Expired
+        );
+        assert_eq!(
+            parse_signature("E\x1f\x1fK").status,
+            SignatureStatus::CannotCheck
+        );
     }
 
     #[test]

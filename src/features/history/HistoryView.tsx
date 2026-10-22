@@ -1,3 +1,5 @@
+import { save } from "@tauri-apps/plugin-dialog";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -5,7 +7,7 @@ import { EmptyMessage } from "../../components/EmptyMessage";
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
 import { Loading } from "../../components/ui/Loading";
-import { toAppError } from "../../ipc";
+import { commands, toAppError, unwrap } from "../../ipc";
 import { runCommand } from "../../lib/commands";
 import { shortHash } from "../../lib/hash";
 import { useBranchDialog } from "../branches/branchDialogStore";
@@ -14,7 +16,7 @@ import { useCommitDrafts } from "../changes/commitDraftStore";
 import changesStyles from "../changes/ChangesView.module.css";
 import { useNotify } from "../notify/notifyStore";
 import { SidebarSplitter } from "../settings/SidebarSplitter";
-import { useCommitActions, useHistory, useHistoryMarkers, useRevert } from "./api";
+import { useCommitActions, useHistory, useHistoryMarkers, useRemoteWebUrl, useRevert } from "./api";
 import { CommitDetailView } from "./CommitDetailView";
 import { CommitList, type CommitActions } from "./CommitList";
 import { isUnfiltered, useHistoryFilter, useHistoryFilters, useSettledFilter } from "./filterStore";
@@ -90,6 +92,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
   };
 
   const hasRemote = markers.data?.refs.some((r) => r.kind === "remote") ?? false;
+  const webUrl = useRemoteWebUrl(repo);
   const actions: CommitActions = {
     copyHash: (commit) => copyHash(commit.oid),
     createBranch: (commit) => openBranchDialog({ kind: "create", from: commit }),
@@ -116,6 +119,23 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
         },
         onError: showError,
       }),
+    copyPatch: (commit) =>
+      void unwrap(commands.commitPatch(repo, commit.oid))
+        .then((patch) => navigator.clipboard.writeText(patch))
+        .then(() => showInfo(t("done.patchCopied", { summary: commit.summary })))
+        .catch(showError),
+    savePatch: (commit) =>
+      void save({
+        defaultPath: `${shortHash(commit.oid)}.patch`,
+        filters: [{ name: "Patch", extensions: ["patch", "diff"] }],
+      })
+        .then(async (path) => {
+          if (!path) return;
+          await unwrap(commands.commitPatchSave(repo, commit.oid, path));
+          showInfo(t("done.patchSaved"));
+        })
+        .catch(showError),
+    openOnRemote: (commit) => void openUrl(`${webUrl}/commit/${commit.oid}`).catch(showError),
     available: (commit) => {
       const sync = marks.sync.get(commit.oid);
       // Listed from HEAD, so already on it (except commits not pulled yet).
@@ -126,6 +146,8 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
         // Only before anyone else could have it.
         undo:
           commit.oid === head && commit.parents.length <= 1 && (sync === "unpushed" || !hasRemote),
+        // Not there until pushed.
+        openOnRemote: webUrl !== null && sync !== "unpushed",
       };
     },
   };

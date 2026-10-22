@@ -108,7 +108,14 @@ fn root_commit_lists_all_files_as_added() {
     assert_eq!(detail.files.len(), 1);
     assert_eq!(detail.files[0].kind, ChangeKind::Added);
 
-    let diff = log::file_diff(repo.git_handle(), repo.path(), &oid, &detail.files[0]).unwrap();
+    let diff = log::file_diff(
+        repo.git_handle(),
+        repo.path(),
+        &oid,
+        &detail.files[0],
+        false,
+    )
+    .unwrap();
     let FileDiff::Text { hunks, .. } = diff else {
         panic!("expected text diff")
     };
@@ -129,7 +136,7 @@ fn diffs_a_file_against_the_first_parent() {
         kind: ChangeKind::Modified,
     };
     let FileDiff::Text { hunks, .. } =
-        log::file_diff(repo.git_handle(), repo.path(), &oid, &file).unwrap()
+        log::file_diff(repo.git_handle(), repo.path(), &oid, &file, false).unwrap()
     else {
         panic!("expected text diff")
     };
@@ -537,4 +544,103 @@ fn markers_list_stashes_with_their_base() {
     assert_eq!(stash.name, "stash@{0}");
     assert_eq!(stash.message, "On main: half done");
     assert_eq!(stash.author_name, "Garam Test");
+}
+
+#[test]
+fn ignores_whitespace_when_asked() {
+    let repo = TestRepo::new();
+    repo.write("a.txt", "one\ntwo\n");
+    repo.commit_all("base");
+    repo.write("a.txt", "  one\ntwo changed\n");
+    let oid = repo.commit_all("indent and change");
+    let detail = log::detail(repo.git_handle(), repo.path(), &oid).unwrap();
+    let changed = |ignore| {
+        let FileDiff::Text { hunks, .. } = log::file_diff(
+            repo.git_handle(),
+            repo.path(),
+            &oid,
+            &detail.files[0],
+            ignore,
+        )
+        .unwrap() else {
+            panic!("text diff");
+        };
+        hunks
+            .iter()
+            .flat_map(|h| &h.lines)
+            .filter(|l| l.kind == LineKind::Added)
+            .map(|l| l.text.clone())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(changed(false), ["  one", "two changed"]);
+    assert_eq!(changed(true), ["two changed"]);
+}
+
+#[test]
+fn unsigned_commits_have_no_signature() {
+    let repo = repo_with_history(1);
+    let sig = log::signature(repo.git_handle(), repo.path(), &head_of(&repo)).unwrap();
+    assert_eq!(sig.status, log::SignatureStatus::None);
+    assert_eq!(sig.signer, None);
+}
+
+#[test]
+fn makes_patches_that_apply_elsewhere() {
+    let repo = repo_with_history(2);
+    let oid = head_of(&repo);
+    let patch = log::patch(repo.git_handle(), repo.path(), &oid).unwrap();
+    assert!(patch.contains("Subject: [PATCH] commit 1"), "{patch}");
+
+    // Applies on the parent in another clone.
+    let other = TestRepo::clone_of(&repo);
+    other.git(["reset", "--quiet", "--hard", "HEAD~1"]);
+    other
+        .git_handle()
+        .command()
+        .cwd(other.path())
+        .args(["am", "--quiet"])
+        .stdin(patch.into_bytes())
+        .run()
+        .unwrap();
+    assert_eq!(head_subject(&other), "commit 1");
+}
+
+#[test]
+fn patches_merges_against_the_first_parent() {
+    let repo = repo_with_history(1);
+    repo.git(["switch", "--quiet", "-c", "side"]);
+    repo.write("side.txt", "side\n");
+    repo.commit_all("side work");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["merge", "--quiet", "--no-ff", "-m", "Merge side", "side"]);
+    let patch = log::patch(repo.git_handle(), repo.path(), &head_of(&repo)).unwrap();
+    assert!(patch.contains("Merge side"));
+    assert!(patch.contains("+++ b/side.txt"), "{patch}");
+}
+
+#[test]
+fn reads_files_at_a_commit() {
+    let repo = repo_with_history(2);
+    let oid = head_of(&repo);
+    let parent = log::first_parent(repo.git_handle(), repo.path(), &oid)
+        .unwrap()
+        .unwrap();
+    let blob = |rev: &str| {
+        garam_git::blob::blob_at(repo.git_handle(), repo.path(), rev, "counter.txt").unwrap()
+    };
+    assert_eq!(blob(&oid).as_deref(), Some(&b"1\n"[..]));
+    assert_eq!(blob(&parent).as_deref(), Some(&b"0\n"[..]));
+    assert_eq!(
+        garam_git::blob::blob_at(repo.git_handle(), repo.path(), &oid, "missing").unwrap(),
+        None
+    );
+    let root = log::first_parent(repo.git_handle(), repo.path(), &parent).unwrap();
+    assert_eq!(root, None);
+}
+
+fn head_subject(repo: &TestRepo) -> String {
+    repo.git(["log", "-1", "--format=%s"])
+        .stdout_str()
+        .trim()
+        .to_owned()
 }
