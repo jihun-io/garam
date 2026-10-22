@@ -6,13 +6,13 @@ import { commands, type OpenRepositoryIn } from "../../ipc";
 import { currentPlatform } from "../../lib/platform";
 import { getLaunchLanguage, useSettings, useUpdateSettings } from "./api";
 import { Setting } from "./controls";
-import { LanguageSelect } from "./LanguageSelect";
+import { LanguageSelectControl } from "./LanguageSelect";
 import styles from "./SettingsDialog.module.css";
 
 const OPEN_REPOSITORY_IN: OpenRepositoryIn[] = ["ask", "current_window", "new_window"];
 
 export function GeneralSettings() {
-  const { t } = useTranslation("settings");
+  const { t } = useTranslation(["settings", "common"]);
   const { language, openRepositoryIn } = useSettings();
   const update = useUpdateSettings();
   const launchLanguage = getLaunchLanguage();
@@ -21,7 +21,9 @@ export function GeneralSettings() {
 
   return (
     <>
-      <LanguageSelect />
+      <Setting label={t("common:language.label")}>
+        {(id) => <LanguageSelectControl id={id} />}
+      </Setting>
       {needsRestart && (
         <div className={styles.setting}>
           <p className={styles.hint}>{t("general.restartHint")}</p>
