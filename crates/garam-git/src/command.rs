@@ -14,6 +14,8 @@ use crate::{CancelToken, Git, GitError};
 /// Enforces the rules from `docs/ARCHITECTURE.md` section 2.2:
 /// - `LC_ALL=C` / `LANGUAGE=C` so output can be parsed and classified.
 /// - `GIT_TERMINAL_PROMPT=0` so git never blocks on a terminal prompt.
+/// - `GIT_LITERAL_PATHSPECS=1` so a file named `*` or `:(top)x` means only
+///   that file, not every path the pattern matches.
 /// - `core.quotePath=false` so non-ASCII paths (e.g. Korean) arrive verbatim.
 /// - Arguments are passed as an argv array, never through a shell.
 pub struct GitCommand<'a> {
@@ -214,6 +216,7 @@ impl<'a> GitCommand<'a> {
             .env("LC_ALL", "C")
             .env("LANGUAGE", "C")
             .env("GIT_TERMINAL_PROMPT", "0")
+            .env("GIT_LITERAL_PATHSPECS", "1")
             .envs(self.git.envs().iter().map(|(k, v)| (k, v)))
             .envs(self.envs.iter().map(|(k, v)| (k, v)))
             .stdout(Stdio::piped())

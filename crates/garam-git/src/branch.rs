@@ -168,6 +168,10 @@ pub fn switch(
         let label = current.unwrap_or("HEAD");
         git.command()
             .cwd(repo)
+            // `--include-untracked` cleans up with an internal `:/` pathspec,
+            // which literal pathspecs break (untracked files stay behind).
+            // No paths are passed here, so pattern matching is harmless.
+            .env("GIT_LITERAL_PATHSPECS", "0")
             .args(["stash", "push", "--include-untracked", "--message"])
             .arg(format!("{AUTO_STASH_PREFIX}{label}"))
             .run()?;

@@ -168,6 +168,27 @@ fn discard_undoes_a_staged_rename() {
     assert!(!repo.path().join("new.txt").exists());
 }
 
+// Windows doesn't allow `*` in file names.
+#[cfg(not(windows))]
+#[test]
+fn a_file_named_star_touches_only_itself() {
+    let repo = TestRepo::new();
+    repo.write("*", "original\n");
+    repo.write("other.txt", "original\n");
+    repo.commit_all("initial");
+    repo.write("*", "changed\n");
+    repo.write("other.txt", "precious\n");
+
+    let star = find(&files(&repo), "*").clone();
+    index::stage(repo.git_handle(), repo.path(), std::slice::from_ref(&star)).unwrap();
+    assert_eq!(find(&files(&repo), "other.txt").staged, None);
+
+    index::discard(repo.git_handle(), repo.path(), &[star], delete_file).unwrap();
+    let read = |p: &str| fs::read_to_string(repo.path().join(p)).unwrap();
+    assert_eq!(read("*"), "original\n");
+    assert_eq!(read("other.txt"), "precious\n");
+}
+
 #[test]
 fn discard_stops_if_the_file_cannot_be_kept() {
     let repo = TestRepo::new();
