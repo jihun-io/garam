@@ -395,6 +395,7 @@
 }
 
 .filterPanel {
+  z-index: 50;
   display: grid;
   width: min(340px, calc(100vw - 32px));
   border-radius: var(--radius-lg);

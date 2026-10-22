@@ -1,6 +1,9 @@
 /* Shared look for Radix dropdown/context menu content and items: a raised
    surface (docs/DESIGN.md 1.2). */
 .content {
+  /* Above the toolbar (z-index 1): a menu opened from a short toolbar
+     button starts inside the toolbar. Same layer as Select. */
+  z-index: 50;
   min-width: 200px;
   padding: 5px;
   border-radius: var(--radius-lg);
