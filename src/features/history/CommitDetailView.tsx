@@ -13,6 +13,8 @@ import { TextDiff } from "../changes/DiffView";
 import { splitPath, type DisplayKind } from "../changes/fileState";
 import { useCommitDetail, useCommitFileDiff } from "./api";
 import styles from "./History.module.css";
+import { RefBadges } from "./RefBadges";
+import type { RefBadge, SyncState } from "./refs";
 
 function displayKind(kind: ChangeKind): DisplayKind {
   switch (kind) {
@@ -35,10 +37,14 @@ function displayKind(kind: ChangeKind): DisplayKind {
 export function CommitDetailView({
   repo,
   oid,
+  badges,
+  sync,
   onCopyHash,
 }: {
   repo: string;
   oid: string;
+  badges: RefBadge[];
+  sync: SyncState | undefined;
   onCopyHash: (oid: string) => void;
 }) {
   const detail = useCommitDetail(repo, oid);
@@ -50,16 +56,29 @@ export function CommitDetailView({
     );
   }
   if (!detail.data) return <Loading />;
-  return <Loaded key={oid} repo={repo} commit={detail.data} onCopyHash={onCopyHash} />;
+  return (
+    <Loaded
+      key={oid}
+      repo={repo}
+      commit={detail.data}
+      badges={badges}
+      sync={sync}
+      onCopyHash={onCopyHash}
+    />
+  );
 }
 
 function Loaded({
   repo,
   commit,
+  badges,
+  sync,
   onCopyHash,
 }: {
   repo: string;
   commit: CommitDetail;
+  badges: RefBadge[];
+  sync: SyncState | undefined;
   onCopyHash: (oid: string) => void;
 }) {
   const { t, i18n } = useTranslation(["history", "changes"]);
@@ -85,6 +104,13 @@ function Loaded({
             <span>{t("detail.committedBy", { name: commit.committerName })}</span>
           )}
           {commit.parents.length > 1 && <span>{t("detail.merge")}</span>}
+          {sync && (
+            <span className={styles.syncNote}>
+              <Icon name={sync === "unpushed" ? "push" : "pull"} size={12} />
+              {t(sync === "unpushed" ? "sync.unpushed" : "detail.incoming")}
+            </span>
+          )}
+          <RefBadges badges={badges} max={badges.length} />
           <Tooltip content={t("detail.copyHash", { hash })}>
             <button
               type="button"

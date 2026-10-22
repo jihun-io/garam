@@ -91,6 +91,8 @@ export const commands = {
 	conflictAbort: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_abort", { repo })),
 	/**  A page of HEAD's history, newest first. */
 	historyList: (repo: string, skip: number, limit: number) => typedError<CommitSummary[], AppError>(__TAURI_INVOKE("history_list", { repo, skip, limit })),
+	/**  Refs, unpushed and incoming commits, shown alongside the history. */
+	historyMarkers: (repo: string) => typedError<HistoryMarkers, AppError>(__TAURI_INVOKE("history_markers", { repo })),
 	commitDetail: (repo: string, oid: string) => typedError<CommitDetail, AppError>(__TAURI_INVOKE("commit_detail", { repo, oid })),
 	commitFileDiff: (repo: string, oid: string, file: CommitFile) => typedError<FileDiff, AppError>(__TAURI_INVOKE("commit_file_diff", { repo, oid, file })),
 	/**  Adds a commit that undoes `oid`. */
@@ -406,6 +408,18 @@ export type HeadCommit = {
 	body: string,
 };
 
+/**  Where HEAD's history stands against its remote. */
+export type HistoryMarkers = {
+	refs: RefLabel[],
+	/**
+	 *  Commits on HEAD not yet on the upstream (or, without one, on any
+	 *  remote branch). Empty when the repository has no remote branches.
+	 */
+	unpushed: string[],
+	/**  Commits on the upstream that HEAD doesn't have yet, newest first. */
+	incoming: CommitSummary[],
+};
+
 export type Hunk = {
 	oldStart: number,
 	oldLines: number,
@@ -471,6 +485,21 @@ export type PromptKind =
 "host_key" | "other";
 
 export type PullOutcome = "up_to_date" | "updated";
+
+export type RefKind = 
+/**  A detached HEAD. */
+"head" | "branch" | "remote" | "tag";
+
+/**  A name pointing at a commit, shown next to it in the history. */
+export type RefLabel = {
+	/**  The commit it points at (annotated tags are peeled). */
+	oid: string,
+	kind: RefKind,
+	/**  Short name: `main`, `origin/main`, `v1.0`, or `HEAD`. */
+	name: string,
+	/**  The checked-out branch, or a detached HEAD. */
+	current: boolean,
+};
 
 export type Remote = {
 	name: string,

@@ -1,5 +1,5 @@
 use garam_git::diff::{FileDiff, LineKind};
-use garam_git::log::{self, CommitFile};
+use garam_git::log::{self, CommitFile, RefKind};
 use garam_git::status::ChangeKind;
 use garam_git::testing::TestRepo;
 use garam_git::{ErrorKind, status};
@@ -203,4 +203,106 @@ fn revert_conflicts_are_reported() {
         .iter()
         .any(|f| f.is_conflicted());
     assert!(conflicted);
+}
+
+fn head_of(repo: &TestRepo) -> String {
+    repo.git(["rev-parse", "HEAD"])
+        .stdout_str()
+        .trim()
+        .to_owned()
+}
+
+#[test]
+fn marks_refs_unpushed_and_incoming_commits() {
+    let remote = TestRepo::bare();
+    let local = TestRepo::clone_of(&remote);
+    local.write("a.txt", "a\n");
+    let base = local.commit_all("base");
+    local.git(["push", "--quiet", "origin", "main"]);
+    local.git(["tag", "-a", "-m", "release", "v1", "HEAD"]);
+
+    // Someone else pushes; we fetch but don't pull.
+    let other = TestRepo::clone_of(&remote);
+    other.write("b.txt", "b\n");
+    other.commit_all("from upstream");
+    other.git(["push", "--quiet", "origin", "main"]);
+    local.git(["fetch", "--quiet"]);
+
+    local.write("c.txt", "c\n");
+    local.commit_all("local only");
+    let head = head_of(&local);
+
+    let markers = log::markers(local.git_handle(), local.path()).unwrap();
+    assert_eq!(markers.unpushed, std::slice::from_ref(&head));
+    let incoming: Vec<_> = markers
+        .incoming
+        .iter()
+        .map(|c| c.summary.as_str())
+        .collect();
+    assert_eq!(incoming, ["from upstream"]);
+
+    let label = |name: &str| markers.refs.iter().find(|r| r.name == name).unwrap();
+    assert_eq!(label("main").kind, RefKind::Branch);
+    assert_eq!(label("main").oid, head);
+    assert!(label("main").current);
+    assert_eq!(label("origin/main").kind, RefKind::Remote);
+    assert_eq!(label("origin/main").oid, markers.incoming[0].oid);
+    assert_eq!(label("v1").kind, RefKind::Tag);
+    assert_eq!(
+        label("v1").oid,
+        base,
+        "annotated tag is peeled to its commit"
+    );
+    assert!(
+        markers
+            .refs
+            .iter()
+            .all(|r| r.name != "origin/HEAD" && r.name != "origin"),
+        "symbolic refs are skipped"
+    );
+}
+
+#[test]
+fn branch_without_upstream_marks_commits_missing_from_remotes() {
+    let remote = TestRepo::bare();
+    let local = TestRepo::clone_of(&remote);
+    local.write("a.txt", "a\n");
+    local.commit_all("base");
+    local.git(["push", "--quiet", "origin", "main"]);
+    local.git(["switch", "--quiet", "-c", "feature"]);
+    local.write("b.txt", "b\n");
+    local.commit_all("feature work");
+
+    let markers = log::markers(local.git_handle(), local.path()).unwrap();
+    assert_eq!(markers.unpushed, [head_of(&local)]);
+    assert!(markers.incoming.is_empty());
+}
+
+#[test]
+fn repository_without_remote_marks_nothing() {
+    let repo = repo_with_history(2);
+    let markers = log::markers(repo.git_handle(), repo.path()).unwrap();
+    assert!(markers.unpushed.is_empty());
+    assert!(markers.incoming.is_empty());
+    assert_eq!(markers.refs.len(), 1);
+    assert!(markers.refs[0].current);
+}
+
+#[test]
+fn detached_head_gets_its_own_label() {
+    let repo = repo_with_history(2);
+    repo.git(["switch", "--quiet", "--detach", "HEAD~1"]);
+    let markers = log::markers(repo.git_handle(), repo.path()).unwrap();
+    let head = &markers.refs[0];
+    assert_eq!(head.kind, RefKind::Head);
+    assert_eq!(head.oid, head_of(&repo));
+    assert!(head.current);
+    assert!(markers.refs.iter().filter(|r| r.current).count() == 1);
+}
+
+#[test]
+fn unborn_branch_has_no_markers() {
+    let repo = TestRepo::new();
+    let markers = log::markers(repo.git_handle(), repo.path()).unwrap();
+    assert_eq!(markers, log::HistoryMarkers::default());
 }

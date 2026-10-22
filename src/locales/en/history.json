@@ -22,7 +22,21 @@
     "copyHash": "Copy commit hash {{hash}}",
     "files_one": "{{count}} changed file",
     "files_other": "{{count}} changed files",
-    "noFiles": "This commit doesn't change any files."
+    "noFiles": "This commit doesn't change any files.",
+    "incoming": "Not pulled yet"
   },
-  "reverted": "Reverted “{{summary}}” with a new commit."
+  "reverted": "Reverted “{{summary}}” with a new commit.",
+  "refs": {
+    "branch": "Branch {{name}}",
+    "currentBranch": "Current branch {{name}}",
+    "remote": "Remote branch {{name}}",
+    "tag": "Tag {{name}}",
+    "head": "Detached HEAD",
+    "alsoRemote": "{{names}} also points here.",
+    "more": "+{{count}}"
+  },
+  "sync": {
+    "unpushed": "Not pushed yet",
+    "incoming": "Not pulled yet. Pull to bring it into this branch."
+  }
 }

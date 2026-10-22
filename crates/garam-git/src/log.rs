@@ -1,4 +1,5 @@
-//! History: paged commit list, commit details, per-file diffs, revert.
+//! History: paged commit list, ref and sync markers, commit details,
+//! per-file diffs, revert.
 
 use std::path::Path;
 
@@ -30,6 +31,17 @@ pub fn list(git: &Git, repo: &Path, skip: u32, limit: u32) -> Result<Vec<CommitS
     if crate::commit::head_oid(git, repo)?.is_none() {
         return Ok(Vec::new());
     }
+    log_records(git, repo, &["HEAD"], skip, limit)
+}
+
+/// `git log` of `revs` as commit summaries.
+fn log_records(
+    git: &Git,
+    repo: &Path,
+    revs: &[&str],
+    skip: u32,
+    limit: u32,
+) -> Result<Vec<CommitSummary>, GitError> {
     let output = git
         .command()
         .cwd(repo)
@@ -40,9 +52,9 @@ pub fn list(git: &Git, repo: &Path, skip: u32, limit: u32) -> Result<Vec<CommitS
             "--format=%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%s",
             &format!("--skip={skip}"),
             &format!("--max-count={limit}"),
-            "HEAD",
-            "--",
         ])
+        .args(revs)
+        .arg("--")
         .run()?;
     output
         .stdout_str()
@@ -50,6 +62,148 @@ pub fn list(git: &Git, repo: &Path, skip: u32, limit: u32) -> Result<Vec<CommitS
         .filter(|record| !record.is_empty())
         .map(parse_summary)
         .collect()
+}
+
+/// At most this many unpushed commits are marked.
+const MAX_UNPUSHED: u32 = 1000;
+/// At most this many incoming commits are listed.
+const MAX_INCOMING: u32 = 100;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "snake_case")]
+pub enum RefKind {
+    /// A detached HEAD.
+    Head,
+    Branch,
+    Remote,
+    Tag,
+}
+
+/// A name pointing at a commit, shown next to it in the history.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct RefLabel {
+    /// The commit it points at (annotated tags are peeled).
+    pub oid: String,
+    pub kind: RefKind,
+    /// Short name: `main`, `origin/main`, `v1.0`, or `HEAD`.
+    pub name: String,
+    /// The checked-out branch, or a detached HEAD.
+    pub current: bool,
+}
+
+/// Where HEAD's history stands against its remote.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryMarkers {
+    pub refs: Vec<RefLabel>,
+    /// Commits on HEAD not yet on the upstream (or, without one, on any
+    /// remote branch). Empty when the repository has no remote branches.
+    pub unpushed: Vec<String>,
+    /// Commits on the upstream that HEAD doesn't have yet, newest first.
+    pub incoming: Vec<CommitSummary>,
+}
+
+pub fn markers(git: &Git, repo: &Path) -> Result<HistoryMarkers, GitError> {
+    const FORMAT: &str = "%(refname)%00%(refname:short)%00%(objectname)%00%(*objectname)%00\
+                          %(HEAD)%00%(upstream)%00%(upstream:track,nobracket)%00%(symref)";
+    let output = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["for-each-ref", &format!("--format={FORMAT}")])
+        .args(["refs/heads", "refs/remotes", "refs/tags"])
+        .run()?;
+    let parsed = parse_refs(&output.stdout_str());
+    let mut markers = HistoryMarkers {
+        refs: parsed.refs,
+        ..Default::default()
+    };
+
+    let Some(head) = crate::commit::head_oid(git, repo)? else {
+        return Ok(markers);
+    };
+    if !parsed.on_branch {
+        markers.refs.insert(
+            0,
+            RefLabel {
+                oid: head,
+                kind: RefKind::Head,
+                name: "HEAD".to_owned(),
+                current: true,
+            },
+        );
+    }
+
+    if let Some(upstream) = &parsed.upstream {
+        let not_upstream = format!("^{upstream}");
+        markers.unpushed = rev_list(git, repo, &["HEAD", &not_upstream])?;
+        markers.incoming = log_records(git, repo, &[upstream, "^HEAD"], 0, MAX_INCOMING)?;
+    } else if parsed.has_remote {
+        markers.unpushed = rev_list(git, repo, &["HEAD", "--not", "--remotes"])?;
+    }
+    Ok(markers)
+}
+
+fn rev_list(git: &Git, repo: &Path, revs: &[&str]) -> Result<Vec<String>, GitError> {
+    let output = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["rev-list", &format!("--max-count={MAX_UNPUSHED}")])
+        .args(revs)
+        .arg("--")
+        .run()?;
+    Ok(output.stdout_str().lines().map(str::to_owned).collect())
+}
+
+#[derive(Debug, Default)]
+struct ParsedRefs {
+    refs: Vec<RefLabel>,
+    /// The current branch's upstream ref, unless it is gone.
+    upstream: Option<String>,
+    /// HEAD is on a branch (not detached, not unborn-and-unlisted).
+    on_branch: bool,
+    has_remote: bool,
+}
+
+fn parse_refs(output: &str) -> ParsedRefs {
+    let mut parsed = ParsedRefs::default();
+    for line in output.lines() {
+        let f: Vec<&str> = line.splitn(8, '\0').collect();
+        let [full, short, oid, peeled, head, upstream, track, symref] = f[..] else {
+            continue;
+        };
+        // Symbolic refs such as origin/HEAD repeat another ref.
+        if !symref.is_empty() {
+            continue;
+        }
+        let kind = if full.starts_with("refs/heads/") {
+            RefKind::Branch
+        } else if full.starts_with("refs/remotes/") {
+            parsed.has_remote = true;
+            RefKind::Remote
+        } else {
+            RefKind::Tag
+        };
+        let current = head == "*";
+        if current {
+            parsed.on_branch = true;
+            if !upstream.is_empty() && track != "gone" {
+                parsed.upstream = Some(upstream.to_owned());
+            }
+        }
+        parsed.refs.push(RefLabel {
+            oid: if peeled.is_empty() { oid } else { peeled }.to_owned(),
+            kind,
+            name: short.to_owned(),
+            current,
+        });
+    }
+    parsed
 }
 
 fn parse_summary(record: &str) -> Result<CommitSummary, GitError> {
@@ -271,6 +425,25 @@ mod tests {
         let root = parse_summary("aaa\x1f\x1fA\x1fa@b\x1f1\x1fInit").unwrap();
         assert!(root.parents.is_empty());
         assert!(parse_summary("garbage").is_err());
+    }
+
+    #[test]
+    fn parses_refs() {
+        let out = "refs/heads/main\0main\0aaa\0\0*\0refs/remotes/origin/main\0ahead 1\0\n\
+                   refs/heads/old\0old\0bbb\0\0 \0refs/remotes/origin/old\0gone\0\n\
+                   refs/remotes/origin/HEAD\0origin\0aaa\0\0 \0\0\0refs/remotes/origin/main\n\
+                   refs/remotes/origin/main\0origin/main\0ccc\0\0 \0\0\0\n\
+                   refs/tags/v1\0v1\0ddd\0eee\0 \0\0\0\n";
+        let parsed = parse_refs(out);
+        assert!(parsed.on_branch);
+        assert!(parsed.has_remote);
+        assert_eq!(parsed.upstream.as_deref(), Some("refs/remotes/origin/main"));
+        let names: Vec<_> = parsed.refs.iter().map(|r| r.name.as_str()).collect();
+        assert_eq!(names, ["main", "old", "origin/main", "v1"]);
+        assert!(parsed.refs[0].current);
+        assert_eq!(parsed.refs[2].kind, RefKind::Remote);
+        assert_eq!(parsed.refs[3].kind, RefKind::Tag);
+        assert_eq!(parsed.refs[3].oid, "eee", "annotated tags are peeled");
     }
 
     #[test]

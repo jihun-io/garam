@@ -9,6 +9,9 @@ export const PAGE_SIZE = 100;
 // invalidated on every file change, while history only changes with HEAD,
 // which is part of the list key. Commit details never change.
 export const historyKeys = {
+  // Refs move on fetch and push without HEAD changing, so markers do live
+  // under the repo prefix and refresh with the file watcher.
+  markers: (repo: string) => ["repo", repo, "history-markers"] as const,
   list: (repo: string, head: string | null) => ["history", repo, "list", head] as const,
   detail: (repo: string, oid: string) => ["history", repo, "commit", oid] as const,
   diff: (repo: string, oid: string, path: string) =>
@@ -28,6 +31,14 @@ export function useHistory(repo: string, head: string | null | undefined) {
       last.length < PAGE_SIZE ? undefined : pages.length * PAGE_SIZE,
     enabled: head !== undefined,
     staleTime: Infinity,
+  });
+}
+
+/** Refs, unpushed commits and commits waiting to be pulled. */
+export function useHistoryMarkers(repo: string) {
+  return useQuery({
+    queryKey: historyKeys.markers(repo),
+    queryFn: () => unwrap(commands.historyMarkers(repo)),
   });
 }
 

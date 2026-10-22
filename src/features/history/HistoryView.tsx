@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { EmptyMessage } from "../../components/EmptyMessage";
@@ -11,22 +11,27 @@ import { useStatus } from "../changes/api";
 import changesStyles from "../changes/ChangesView.module.css";
 import { useNotify } from "../notify/notifyStore";
 import { SidebarSplitter } from "../settings/SidebarSplitter";
-import { useHistory, useRevert } from "./api";
+import { useHistory, useHistoryMarkers, useRevert } from "./api";
 import { CommitDetailView } from "./CommitDetailView";
 import { CommitList } from "./CommitList";
+import { toMarks } from "./refs";
 
 /** Commit list on the left, the selected commit on the right. */
 export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
   const { t } = useTranslation("history");
   const status = useStatus(repo);
   const history = useHistory(repo, status.data?.branch.oid);
+  const markers = useHistoryMarkers(repo);
+  const marks = useMemo(() => toMarks(markers.data), [markers.data]);
   const revert = useRevert(repo);
   const openBranchDialog = useBranchDialog((s) => s.open);
   const { showError, showInfo } = useNotify();
   const [selectedOid, setSelectedOid] = useState<string | null>(null);
 
-  const commits = history.data?.pages.flat() ?? [];
-  const selected = commits.find((c) => c.oid === selectedOid) ?? commits[0] ?? null;
+  // Commits waiting to be pulled sit above HEAD, where a pull puts them.
+  const own = history.data?.pages.flat() ?? [];
+  const commits = [...(markers.data?.incoming ?? []), ...own];
+  const selected = commits.find((c) => c.oid === selectedOid) ?? own[0] ?? null;
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = history;
   const loadMore = useCallback(() => {
     if (!isFetchingNextPage) void fetchNextPage();
@@ -57,7 +62,15 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
       </div>
     );
   } else if (selected) {
-    main = <CommitDetailView repo={repo} oid={selected.oid} onCopyHash={copyHash} />;
+    main = (
+      <CommitDetailView
+        repo={repo}
+        oid={selected.oid}
+        badges={marks.refs.get(selected.oid) ?? []}
+        sync={marks.sync.get(selected.oid)}
+        onCopyHash={copyHash}
+      />
+    );
   } else if (history.data) {
     main = <EmptyMessage icon="history" title={t("list.empty")} />;
   } else {
@@ -70,6 +83,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
         {tabs}
         <CommitList
           commits={commits}
+          marks={marks}
           selectedOid={selected?.oid ?? null}
           onSelect={setSelectedOid}
           hasMore={hasNextPage}

@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { commands, type CommitDetail, type CommitSummary } from "../../ipc";
+import { commands, type CommitDetail, type CommitSummary, type HistoryMarkers } from "../../ipc";
 import { axeViolations } from "../../test/axe";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { useBranchDialog } from "../branches/branchDialogStore";
@@ -14,6 +14,7 @@ vi.mock("../../ipc/bindings", () => ({
   commands: {
     statusGet: vi.fn(),
     historyList: vi.fn(),
+    historyMarkers: vi.fn(),
     commitDetail: vi.fn(),
     commitFileDiff: vi.fn(),
     commitRevert: vi.fn(),
@@ -46,7 +47,18 @@ const detail = (c: CommitSummary): CommitDetail => ({
   ],
 });
 
-function setup() {
+// main is one commit ahead of origin/main, which also has v1.
+const markers: HistoryMarkers = {
+  refs: [
+    { oid: commits[0].oid, kind: "branch", name: "main", current: true },
+    { oid: commits[1].oid, kind: "remote", name: "origin/main", current: false },
+    { oid: commits[1].oid, kind: "tag", name: "v1", current: false },
+  ],
+  unpushed: [commits[0].oid],
+  incoming: [],
+};
+
+function setup(historyMarkers: HistoryMarkers = markers) {
   vi.mocked(commands.statusGet).mockResolvedValue(
     ok({
       branch: { head: "main", oid: commits[0].oid, upstream: null, ahead: 0, behind: 0 },
@@ -54,6 +66,7 @@ function setup() {
     }),
   );
   vi.mocked(commands.historyList).mockResolvedValue(ok(commits));
+  vi.mocked(commands.historyMarkers).mockResolvedValue(ok(historyMarkers));
   vi.mocked(commands.commitDetail).mockImplementation(async (_repo, oid) =>
     ok(detail(commits.find((c) => c.oid === oid)!)),
   );
@@ -116,6 +129,58 @@ describe("HistoryView", () => {
     expect(screen.getByText("Explains why.")).toBeVisible();
     expect(screen.getByText("2 changed files")).toBeVisible();
     expect(await screen.findByText("contents of src/login.tsx")).toBeVisible();
+  });
+
+  it("marks refs and unpushed commits", async () => {
+    setup();
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    const [first, second, third] = await within(list).findAllByRole("option");
+    expect(await within(first).findByText("main")).toBeVisible();
+    expect(first).toHaveAccessibleName(/Current branch main/);
+    expect(first).toHaveAccessibleName(/Not pushed yet/);
+    expect(second).toHaveAccessibleName(/Remote branch origin\/main.*Tag v1/);
+    expect(second).not.toHaveAccessibleName(/Not pushed yet/);
+    expect(third).toHaveAccessibleName("Commit number 3 김가람 · 3 hours ago");
+  });
+
+  it("folds a remote branch at the same commit into the local badge", async () => {
+    setup({
+      ...markers,
+      refs: [
+        { oid: commits[0].oid, kind: "branch", name: "main", current: true },
+        { oid: commits[0].oid, kind: "remote", name: "origin/main", current: false },
+      ],
+      unpushed: [],
+    });
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    const [first] = await within(list).findAllByRole("option");
+    await within(first).findByText("main");
+    expect(within(first).queryByText("origin/main")).toBeNull();
+    expect(first).toHaveAccessibleName(/origin\/main also points here/);
+  });
+
+  it("shows commits waiting to be pulled above the branch", async () => {
+    const user = userEvent.setup();
+    const incoming = commit(9, { summary: "Teammate's fix", authoredAt: now });
+    setup({ ...markers, incoming: [incoming] });
+    vi.mocked(commands.commitDetail).mockImplementation(async (_repo, oid) =>
+      ok(detail([incoming, ...commits].find((c) => c.oid === oid)!)),
+    );
+
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    await within(list).findByText("Teammate's fix");
+    await within(list).findByText("Add login screen");
+    const options = within(list).getAllByRole("option");
+    expect(options[0]).toHaveAccessibleName(/Not pulled yet/);
+    // The branch's own newest commit stays selected.
+    expect(options.find((o) => o.getAttribute("aria-selected") === "true")).toHaveTextContent(
+      "Add login screen",
+    );
+
+    // An incoming commit can't be reverted from here.
+    await user.pointer({ keys: "[MouseRight]", target: screen.getByText("Teammate's fix") });
+    await screen.findByRole("menuitem", { name: "Copy commit hash" });
+    expect(screen.queryByRole("menuitem", { name: "Revert this commit" })).toBeNull();
   });
 
   it("selects other commits and files", async () => {

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use garam_git::Git;
 use garam_git::diff::FileDiff;
-use garam_git::log::{self, CommitDetail, CommitFile, CommitSummary};
+use garam_git::log::{self, CommitDetail, CommitFile, CommitSummary, HistoryMarkers};
 
 use crate::error::{AppResult, blocking};
 
@@ -11,6 +11,13 @@ use crate::error::{AppResult, blocking};
 #[specta::specta]
 pub async fn history_list(repo: String, skip: u32, limit: u32) -> AppResult<Vec<CommitSummary>> {
     blocking(move || Ok(log::list(&Git::locate()?, Path::new(&repo), skip, limit)?)).await
+}
+
+/// Refs, unpushed and incoming commits, shown alongside the history.
+#[tauri::command]
+#[specta::specta]
+pub async fn history_markers(repo: String) -> AppResult<HistoryMarkers> {
+    blocking(move || Ok(log::markers(&Git::locate()?, Path::new(&repo))?)).await
 }
 
 #[tauri::command]

@@ -220,3 +220,78 @@
 .renamed {
   color: var(--color-link);
 }
+
+/* Refs and sync marks */
+
+.titleLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.titleLine .summary {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Muted like the rest of the row's secondary text; the river-filled
+   selection recolors them through `color: inherit`. */
+.refs {
+  display: inline-flex;
+  flex: 0 1 auto;
+  gap: var(--space-1);
+  min-width: 0;
+  max-width: 60%;
+}
+
+.ref {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.ref[data-current] {
+  border-color: var(--color-ink-muted);
+  color: var(--color-ink);
+  font-weight: 550;
+}
+
+.refName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sync {
+  display: inline-flex;
+  vertical-align: -0.15em;
+}
+
+/* Not on this branch yet: quieter than its own commits. */
+.row[data-sync="incoming"] .summary {
+  color: var(--color-ink-muted);
+  font-weight: 400;
+}
+
+.scroll:focus-visible .row[aria-selected="true"] .ref,
+.scroll:focus-visible .row[aria-selected="true"] .summary {
+  border-color: currentColor;
+  color: inherit;
+}
+
+.syncNote {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}

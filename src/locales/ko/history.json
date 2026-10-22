@@ -22,7 +22,21 @@
     "copyHash": "커밋 해시 {{hash}} 복사",
     "files_one": "변경된 파일 {{count}}개",
     "files_other": "변경된 파일 {{count}}개",
-    "noFiles": "이 커밋은 파일을 바꾸지 않았습니다."
+    "noFiles": "이 커밋은 파일을 바꾸지 않았습니다.",
+    "incoming": "아직 풀하지 않은 커밋"
   },
-  "reverted": "“{{summary}}” 커밋을 되돌리는 새 커밋을 만들었습니다."
+  "reverted": "“{{summary}}” 커밋을 되돌리는 새 커밋을 만들었습니다.",
+  "refs": {
+    "branch": "브랜치 {{name}}",
+    "currentBranch": "현재 브랜치 {{name}}",
+    "remote": "원격 브랜치 {{name}}",
+    "tag": "태그 {{name}}",
+    "head": "분리된 HEAD",
+    "alsoRemote": "{{names}}도 이 커밋을 가리킵니다.",
+    "more": "+{{count}}"
+  },
+  "sync": {
+    "unpushed": "아직 푸시하지 않은 커밋",
+    "incoming": "아직 풀하지 않은 커밋. 풀하면 이 브랜치에 들어옵니다."
+  }
 }

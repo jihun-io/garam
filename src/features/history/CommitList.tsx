@@ -8,6 +8,8 @@ import { Tooltip } from "../../components/ui/Tooltip";
 import type { CommitSummary } from "../../ipc";
 import { useRelativeTime } from "../../lib/time";
 import styles from "./History.module.css";
+import { RefBadges, SyncMark } from "./RefBadges";
+import type { HistoryMarks } from "./refs";
 
 const ROW_HEIGHT = 48;
 /** Start loading the next page this many rows before the end. */
@@ -21,6 +23,7 @@ export type CommitActions = {
 
 export function CommitList({
   commits,
+  marks,
   selectedOid,
   onSelect,
   hasMore,
@@ -28,6 +31,7 @@ export function CommitList({
   actions,
 }: {
   commits: CommitSummary[];
+  marks: HistoryMarks;
   selectedOid: string | null;
   onSelect: (oid: string) => void;
   hasMore: boolean;
@@ -83,6 +87,7 @@ export function CommitList({
               </p>
             );
           }
+          const sync = marks.sync.get(commit.oid);
           return (
             <ContextMenu.Root key={commit.oid}>
               <ContextMenu.Trigger asChild>
@@ -91,13 +96,20 @@ export function CommitList({
                   role="option"
                   aria-selected={commit.oid === selectedOid}
                   className={styles.row}
+                  data-sync={sync}
                   style={style}
                   onMouseDown={() => onSelect(commit.oid)}
                 >
-                  <Tooltip content={commit.summary} whenTruncated>
-                    <span className={styles.summary}>{commit.summary}</span>
-                  </Tooltip>
+                  <span className={styles.titleLine}>
+                    <Tooltip content={commit.summary} whenTruncated>
+                      <span className={styles.summary}>{commit.summary}</span>
+                    </Tooltip>{" "}
+                    <RefBadges badges={marks.refs.get(commit.oid) ?? []} />
+                  </span>
+                  {/* Keeps the two lines apart in the row's accessible name. */}{" "}
                   <span className={styles.meta}>
+                    {sync && <SyncMark state={sync} />}
+                    {sync && " "}
                     {commit.authorName} · {relativeTime(commit.authoredAt)}
                   </span>
                 </div>
@@ -113,10 +125,18 @@ export function CommitList({
                   >
                     {t("menu.createBranch")}
                   </ContextMenu.Item>
-                  <ContextMenu.Separator className={menu.separator} />
-                  <ContextMenu.Item className={menu.item} onSelect={() => actions.revert(commit)}>
-                    {t("menu.revert")}
-                  </ContextMenu.Item>
+                  {/* Reverting needs the commit to be on this branch. */}
+                  {sync !== "incoming" && (
+                    <>
+                      <ContextMenu.Separator className={menu.separator} />
+                      <ContextMenu.Item
+                        className={menu.item}
+                        onSelect={() => actions.revert(commit)}
+                      >
+                        {t("menu.revert")}
+                      </ContextMenu.Item>
+                    </>
+                  )}
                 </ContextMenu.Content>
               </ContextMenu.Portal>
             </ContextMenu.Root>
