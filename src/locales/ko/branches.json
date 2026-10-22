@@ -1,5 +1,6 @@
 {
   "picker": {
+    "caption": "현재 브랜치",
     "label": "현재 브랜치: {{name}}",
     "detached": "분리된 HEAD",
     "search": "브랜치 검색",

@@ -1,9 +1,11 @@
 import { Fragment } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { RepositoryEntry } from "../../ipc";
 import { BranchControls } from "../branches/BranchControls";
 import { useRepoWatcher } from "../changes/useRepoWatcher";
-import { LanguageSelect } from "../settings/LanguageSelect";
+import { IconButton } from "../../components/ui/IconButton";
+import { useSettingsDialog } from "../settings/settingsDialogStore";
 import { SyncButton } from "../sync/SyncButton";
 import { OpenInMenu } from "./OpenInMenu";
 import { RepoPicker } from "./RepoPicker";
@@ -19,12 +21,15 @@ export function Workspace({
   repositories: RepositoryEntry[];
   selected: RepositoryEntry | null;
 }) {
+  const { t } = useTranslation("settings");
+  const openSettings = useSettingsDialog((s) => s.setOpen);
   const active = selected && !selected.missing ? selected.path : null;
   useRepoWatcher(active);
 
   return (
     <div className={styles.root}>
-      <header className={styles.toolbar}>
+      {/* The bare toolbar (and spacer) moves the window; buttons don't. */}
+      <header className={styles.toolbar} data-tauri-drag-region>
         <RepoPicker repositories={repositories} selected={selected} />
         {/* Keyed together so both remount when the repository changes. */}
         {active && (
@@ -33,9 +38,11 @@ export function Workspace({
             <SyncButton repo={active} />
           </Fragment>
         )}
-        <div className={styles.spacer} />
-        {selected && <OpenInMenu path={selected.path} disabled={selected.missing} />}
-        <LanguageSelect />
+        <div className={styles.spacer} data-tauri-drag-region />
+        <div className={styles.actions}>
+          {selected && <OpenInMenu path={selected.path} disabled={selected.missing} />}
+          <IconButton icon="settings" label={t("open")} onClick={() => openSettings(true)} />
+        </div>
       </header>
       <main className={styles.main}>
         {selected &&

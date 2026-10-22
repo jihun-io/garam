@@ -11,6 +11,7 @@ import { useRepositoryActions } from "./api";
 import { useRepoDialog } from "./dialogStore";
 import styles from "./RepoPicker.module.css";
 import { Icon } from "../../components/Icon";
+import { ToolbarButton } from "../../components/ui/ToolbarButton";
 
 export function RepoPicker({
   repositories,
@@ -68,14 +69,13 @@ export function RepoPicker({
       }}
     >
       <Popover.Trigger asChild>
-        <button
-          type="button"
-          className={styles.trigger}
+        <ToolbarButton
+          icon="repository"
+          caption={t("picker.caption")}
+          value={selected?.name ?? t("picker.placeholder")}
+          trailing={<Icon name="dropdown" size={12} />}
           aria-label={selected ? t("picker.label", { name: selected.name }) : undefined}
-        >
-          <span className={styles.triggerName}>{selected?.name ?? t("picker.placeholder")}</span>
-          <Icon name="dropdown" size={12} />
-        </button>
+        />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content className={styles.content} align="start" sideOffset={4}>

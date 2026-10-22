@@ -11,6 +11,7 @@ import { useBranchDialog } from "./branchDialogStore";
 import { CommitCounts } from "./CommitCounts";
 import styles from "./branches.module.css";
 import { Icon } from "../../components/Icon";
+import { ToolbarButton } from "../../components/ui/ToolbarButton";
 
 /** Toolbar button showing the current branch, with a searchable list. */
 export function BranchPicker({
@@ -130,15 +131,13 @@ export function BranchPicker({
       }}
     >
       <Popover.Trigger asChild>
-        <button
-          type="button"
-          className={styles.trigger}
+        <ToolbarButton
+          icon="branch"
+          caption={t("picker.caption")}
+          value={label}
+          trailing={<Icon name="dropdown" size={12} />}
           aria-label={t("picker.label", { name: label })}
-        >
-          <Icon name="branch" className={styles.icon} />
-          <span className={styles.triggerName}>{label}</span>
-          <Icon name="dropdown" size={12} />
-        </button>
+        />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content className={styles.content} align="start" sideOffset={4}>

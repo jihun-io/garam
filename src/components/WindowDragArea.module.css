@@ -1,0 +1,11 @@
+.area {
+  display: none;
+}
+
+:global(:root[data-platform="macos"]) .area {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 0;
+  display: block;
+  height: 28px;
+}

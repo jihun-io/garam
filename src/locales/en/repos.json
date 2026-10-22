@@ -12,6 +12,7 @@
     "createDescription": "Start a new project in an empty folder."
   },
   "picker": {
+    "caption": "Current repository",
     "label": "Repository: {{name}}",
     "placeholder": "Choose a repository",
     "search": "Filter repositories",

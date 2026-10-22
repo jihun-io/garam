@@ -1,7 +1,7 @@
 import { DropdownMenu } from "radix-ui";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "../../components/ui/Button";
+import { IconButton } from "../../components/ui/IconButton";
 import menu from "../../components/ui/Menu.module.css";
 import { commands, unwrap } from "../../ipc";
 import { currentPlatform } from "../../lib/platform";
@@ -19,7 +19,7 @@ export function OpenInMenu({ path, disabled }: { path: string; disabled?: boolea
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild disabled={disabled}>
-        <Button>{t("open.menu")}</Button>
+        <IconButton icon="openIn" label={t("open.menu")} />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content className={menu.content} align="end" sideOffset={4}>

@@ -12,6 +12,7 @@
     "createDescription": "빈 폴더에서 새 프로젝트를 시작합니다."
   },
   "picker": {
+    "caption": "현재 저장소",
     "label": "저장소: {{name}}",
     "placeholder": "저장소 선택",
     "search": "저장소 검색",

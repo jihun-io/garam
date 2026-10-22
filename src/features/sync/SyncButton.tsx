@@ -15,6 +15,7 @@ import styles from "./SyncButton.module.css";
 import { useSyncStore, type SyncAction } from "./syncStore";
 import { useBackgroundFetch } from "./useBackgroundFetch";
 import { Icon } from "../../components/Icon";
+import { ToolbarButton } from "../../components/ui/ToolbarButton";
 import { Tooltip } from "../../components/ui/Tooltip";
 
 /** Re-renders every `ms` so relative times stay current. */
@@ -92,35 +93,32 @@ export function SyncButton({ repo }: { repo: string }) {
 
   return (
     <div className={styles.root}>
-      <button
-        type="button"
-        className={styles.button}
+      <ToolbarButton
+        icon={shown}
+        value={label}
+        caption={detail}
+        captionBelow
+        className={styles.main}
+        progress={busy ? percent : undefined}
         disabled={busy || (primary.action === "publish" && primary.disabled)}
         aria-busy={busy}
         onClick={() => start(primary.action)}
-      >
-        {busy && (
-          <span
-            className={styles.fill}
-            style={{ width: `${percent}%` }}
-            role="progressbar"
-            aria-label={label}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={percent}
-          />
-        )}
-        <Icon name={shown} className={styles.icon} />
-        <span className={styles.text}>
-          <span className={styles.label}>{label}</span>
-          <span className={styles.detail}>{detail}</span>
-        </span>
-        {tracked && (
-          <span className={styles.counts}>
-            <CommitCounts ahead={branch.ahead} behind={branch.behind} />
-          </span>
-        )}
-      </button>
+        trailing={
+          <>
+            {busy && (
+              <span
+                className="sr-only"
+                role="progressbar"
+                aria-label={label}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={percent}
+              />
+            )}
+            {tracked && <CommitCounts ahead={branch.ahead} behind={branch.behind} />}
+          </>
+        }
+      />
       {busy ? (
         <Tooltip content={t("cancel")}>
           <button type="button" className={styles.side} onClick={cancel} aria-label={t("cancel")}>

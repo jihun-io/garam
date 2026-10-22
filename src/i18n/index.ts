@@ -9,6 +9,7 @@ import enCredentials from "../locales/en/credentials.json";
 import enErrors from "../locales/en/errors.json";
 import enHistory from "../locales/en/history.json";
 import enRepos from "../locales/en/repos.json";
+import enSettings from "../locales/en/settings.json";
 import enStartup from "../locales/en/startup.json";
 import enSync from "../locales/en/sync.json";
 import koBranches from "../locales/ko/branches.json";
@@ -19,6 +20,7 @@ import koCredentials from "../locales/ko/credentials.json";
 import koErrors from "../locales/ko/errors.json";
 import koHistory from "../locales/ko/history.json";
 import koRepos from "../locales/ko/repos.json";
+import koSettings from "../locales/ko/settings.json";
 import koStartup from "../locales/ko/startup.json";
 import koSync from "../locales/ko/sync.json";
 
@@ -32,6 +34,7 @@ export const resources = {
     errors: enErrors,
     history: enHistory,
     repos: enRepos,
+    settings: enSettings,
     startup: enStartup,
     sync: enSync,
   },
@@ -44,6 +47,7 @@ export const resources = {
     errors: koErrors,
     history: koHistory,
     repos: koRepos,
+    settings: koSettings,
     startup: koStartup,
     sync: koSync,
   },

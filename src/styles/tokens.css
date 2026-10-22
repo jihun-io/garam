@@ -49,6 +49,15 @@
 
   --radius-sm: 4px;
   --radius-md: 6px;
+
+  /* Space the macOS window buttons take inside the toolbar. */
+  --titlebar-inset: 0px;
+}
+
+/* The window buttons end about 77px from the left edge (inset 18px, see
+   tauri.conf.json); the rest keeps them from touching the first button. */
+:root[data-platform="macos"]:not([data-fullscreen]) {
+  --titlebar-inset: 96px;
 }
 
 /* Dark theme. `src/lib/theme.ts` sets `data-theme` on <html>, also when

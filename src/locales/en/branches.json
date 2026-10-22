@@ -1,5 +1,6 @@
 {
   "picker": {
+    "caption": "Current branch",
     "label": "Current branch: {{name}}",
     "detached": "Detached HEAD",
     "search": "Filter branches",
