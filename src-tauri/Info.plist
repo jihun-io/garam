@@ -6,7 +6,7 @@
 	     Declaring the UI languages lets macOS show its own menu items
 	     (Writing Tools, Emoji & Symbols, ...) in the app's language. -->
 	<key>CFBundleIdentifier</key>
-	<string>io.garam.app</string>
+	<string>io.jihun.garam</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleLocalizations</key>

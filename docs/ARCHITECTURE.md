@@ -182,7 +182,7 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 
 - **로그인**: OAuth Device Flow(`garam-github`). client secret 없이 client ID만 쓴다. `github_sign_in`이 일회용 코드를 `Channel`로 보내고 승인될 때까지 기다린다. 취소는 다른 장시간 작업처럼 `operation_cancel`이다. 프론트는 코드를 클립보드에 복사하고 인증 페이지를 시스템 브라우저로 연다.
 - **scope**: `repo`(비공개 저장소 push·pull), `workflow`(워크플로 파일 push), `read:org`(저장소별 계정 추천), `user:email`(작성자 이메일 추천).
-- **저장**: 계정 정보(로그인 이름, 이름, 아바타, 인증된 이메일, noreply 주소)는 앱 데이터 폴더의 `accounts.json`에, 토큰은 OS 키체인(`keyring`, 서비스 `io.garam.app.github`, 계정 `<host>/<user id>`)에 둔다. 키를 사용자 ID로 잡아 로그인 이름이 바뀌어도 같은 계정으로 본다.
+- **저장**: 계정 정보(로그인 이름, 이름, 아바타, 인증된 이메일, noreply 주소)는 앱 데이터 폴더의 `accounts.json`에, 토큰은 OS 키체인(`keyring`, 서비스 `io.jihun.garam.github`, 계정 `<host>/<user id>`)에 둔다. 키를 사용자 ID로 잡아 로그인 이름이 바뀌어도 같은 계정으로 본다.
 - 토큰은 백엔드 밖으로 나가지 않는다. 프론트로 보내는 타입에는 토큰이 없다.
 - 키체인에서 읽은 토큰은 앱이 실행되는 동안 메모리에 둔다. macOS는 키체인 항목을 만든 실행 파일과 서명이 다른 실행 파일이 읽으려 하면 사용자에게 묻는데, 개발 빌드(ad-hoc 서명)는 다시 빌드할 때마다 서명이 바뀌어 매번 묻게 된다. 그래서 한 번 실행하는 동안에는 한 번만 읽는다. 사용자가 거절하거나 창을 닫으면 `keychain_failed`로 '항상 허용'을 안내한다. 고정된 Developer ID로 서명하는 릴리스 빌드에서는 처음 한 번만 묻는다.
 - **로그아웃**: 키체인에서 토큰을 지운다. GitHub의 토큰 폐기 API는 client secret이 필요해 부를 수 없으므로, 권한 취소는 GitHub 설정 페이지로 안내한다.

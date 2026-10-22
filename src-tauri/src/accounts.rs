@@ -14,7 +14,7 @@ use crate::error::{AppError, AppErrorKind, AppResult};
 use crate::storage;
 
 /// Keychain service name for Garam's GitHub tokens.
-const KEYCHAIN_SERVICE: &str = "io.garam.app.github";
+const KEYCHAIN_SERVICE: &str = "io.jihun.garam.github";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
