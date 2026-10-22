@@ -170,6 +170,26 @@ jobs:
           tauriScript: pnpm tauri
           args: ${{ steps.bundles.outputs.args }}
 
+      # Tauri notarizes the app but not the disk image around it, and
+      # Gatekeeper rejects an unnotarized image when a downloaded copy is
+      # opened. The release asset is replaced with the stapled image.
+      - name: Notarize the disk image
+        if: runner.os == 'macOS'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release-id }}
+        run: |
+          dmg=$(ls target/universal-apple-darwin/release/bundle/dmg/*.dmg)
+          xcrun notarytool submit "$dmg" --wait \
+            --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY" --issuer "$APPLE_API_ISSUER"
+          xcrun stapler staple "$dmg"
+          spctl --assess --type open --context context:primary-signature -v "$dmg"
+          if [ -n "$RELEASE_ID" ]; then
+            gh release upload "$GITHUB_REF_NAME" "$dmg" --clobber
+          fi
+
       - name: Keep installers from a manual run
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
