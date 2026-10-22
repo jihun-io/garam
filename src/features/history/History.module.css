@@ -201,10 +201,24 @@
 
 .fileList {
   flex: 1;
-  margin: 0;
-  padding: 0 0 var(--space-2);
+  min-height: 0;
+  padding-bottom: var(--space-2);
   overflow-y: auto;
+}
+
+/* Rows are placed by the virtualizer; the list is as tall as all of them. */
+.fileRows {
+  position: relative;
+  margin: 0;
+  padding: 0;
   list-style: none;
+}
+
+.fileRow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
 }
 
 .file {
@@ -212,7 +226,7 @@
   align-items: center;
   gap: var(--space-2);
   width: calc(100% - 12px);
-  min-height: 28px;
+  height: 100%;
   margin: 0 6px;
   padding: 0 6px;
   border: 0;

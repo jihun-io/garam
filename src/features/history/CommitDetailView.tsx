@@ -1,5 +1,6 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
@@ -208,36 +209,71 @@ export function ChangedFiles({
     <div className={styles.split}>
       <nav className={styles.files} aria-label={t("detail.files", { count: files.length })}>
         <p className={styles.filesTitle}>{t("detail.files", { count: files.length })}</p>
-        <ul className={styles.fileList}>
-          {files.map((file) => {
-            const kind = displayKind(file.kind);
-            const { dir, name } = splitPath(file.path);
-            return (
-              <li key={file.path}>
-                <button
-                  type="button"
-                  className={styles.file}
-                  aria-current={file.path === selected?.path ? "true" : undefined}
-                  onClick={() => setSelectedPath(file.path)}
-                >
-                  <Tooltip content={file.path} whenTruncated>
-                    <span className={styles.fileName}>
-                      <span className={styles.fileDir}>{dir}</span>
-                      {name}
-                    </span>
-                  </Tooltip>
-                  <Tooltip content={t(`changes:kind.${kind}`)} side="right">
-                    <span className={`${styles.fileKind} ${styles[kind]}`}>
-                      <Icon name={kind} label={t(`changes:kind.${kind}`)} />
-                    </span>
-                  </Tooltip>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <FileList files={files} selected={selected} onSelect={setSelectedPath} />
       </nav>
       {selected && <FileDiffPane repo={repo} source={source} file={selected} />}
+    </div>
+  );
+}
+
+const FILE_ROW_HEIGHT = 28;
+
+/**
+ * Only the rows in view are drawn: a commit that adds a whole project can
+ * change 100k files, and drawing them all freezes the window.
+ */
+function FileList({
+  files,
+  selected,
+  onSelect,
+}: {
+  files: CommitFile[];
+  selected: CommitFile | null;
+  onSelect: (path: string) => void;
+}) {
+  const { t } = useTranslation("changes");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: files.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => FILE_ROW_HEIGHT,
+    overscan: 12,
+  });
+  return (
+    <div ref={scrollRef} className={styles.fileList}>
+      <ul className={styles.fileRows} style={{ height: virtualizer.getTotalSize() }}>
+        {virtualizer.getVirtualItems().map((item) => {
+          const file = files[item.index];
+          const kind = displayKind(file.kind);
+          const { dir, name } = splitPath(file.path);
+          return (
+            <li
+              key={file.path}
+              className={styles.fileRow}
+              style={{ transform: `translateY(${item.start}px)`, height: FILE_ROW_HEIGHT }}
+            >
+              <button
+                type="button"
+                className={styles.file}
+                aria-current={file.path === selected?.path ? "true" : undefined}
+                onClick={() => onSelect(file.path)}
+              >
+                <Tooltip content={file.path} whenTruncated>
+                  <span className={styles.fileName}>
+                    <span className={styles.fileDir}>{dir}</span>
+                    {name}
+                  </span>
+                </Tooltip>
+                <Tooltip content={t(`kind.${kind}`)} side="right">
+                  <span className={`${styles.fileKind} ${styles[kind]}`}>
+                    <Icon name={kind} label={t(`kind.${kind}`)} />
+                  </span>
+                </Tooltip>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

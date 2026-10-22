@@ -690,6 +690,23 @@ describe("HistoryView", () => {
     expect(screen.queryByRole("checkbox", { name: "Ignore whitespace" })).toBeNull();
   });
 
+  it("draws only the visible files of a commit that changes 100k", async () => {
+    const user = userEvent.setup();
+    setup();
+    const files = Array.from({ length: 100_000 }, (_, i) => ({
+      path: `src/f${i}.txt`,
+      origPath: null,
+      kind: "added" as const,
+    }));
+    vi.mocked(commands.commitDetail).mockResolvedValue(ok({ ...detail(commits[1]), files }));
+    await user.click(await screen.findByText("Commit number 2"));
+
+    const list = await screen.findByRole("navigation", { name: /^100,?000 changed files$/ });
+    const rows = within(list).getAllByRole("button");
+    expect(rows[0]).toHaveTextContent("src/f0.txt");
+    expect(rows.length).toBeLessThan(100);
+  });
+
   it("copies and saves a commit as a patch", async () => {
     const user = userEvent.setup();
     vi.mocked(commands.commitPatch).mockResolvedValue(ok("From abc\nSubject: [PATCH] x\n"));
