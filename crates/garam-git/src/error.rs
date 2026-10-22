@@ -30,6 +30,13 @@ pub enum ErrorKind {
     MergeConflict,
     RebaseConflict,
     RevertConflict,
+    CherryPickConflict,
+    /// The branch already has the commit's changes; nothing was picked.
+    CherryPickEmpty,
+    InvalidTagName,
+    TagExists,
+    /// HEAD moved since the screen was drawn (e.g. a commit from a terminal).
+    HeadMoved,
     UnrelatedHistories,
     /// The remote has commits the local branch doesn't; pull first.
     NonFastForward,
@@ -89,6 +96,12 @@ pub enum GitError {
     #[error("invalid branch name: {0}")]
     InvalidBranchName(String),
 
+    #[error("invalid tag name: {0}")]
+    InvalidTagName(String),
+
+    #[error("HEAD is no longer the expected commit")]
+    HeadMoved,
+
     #[error("HEAD is detached")]
     DetachedHead,
 
@@ -132,6 +145,8 @@ impl GitError {
             Self::DestinationNotEmpty(_) => ErrorKind::DestinationNotEmpty,
             Self::Cancelled => ErrorKind::Cancelled,
             Self::InvalidBranchName(_) => ErrorKind::InvalidBranchName,
+            Self::InvalidTagName(_) => ErrorKind::InvalidTagName,
+            Self::HeadMoved => ErrorKind::HeadMoved,
             Self::DetachedHead => ErrorKind::DetachedHead,
             Self::NoUpstream => ErrorKind::NoUpstream,
             Self::RemoteBranchNotFound => ErrorKind::RemoteBranchNotFound,
@@ -148,6 +163,7 @@ impl GitError {
             Self::NotFound
             | Self::Cancelled
             | Self::DetachedHead
+            | Self::HeadMoved
             | Self::NoUpstream
             | Self::RemoteBranchNotFound
             | Self::NoRemote
@@ -184,6 +200,7 @@ fn classify(stderr: &str) -> ErrorKind {
         ("conflict (", ErrorKind::MergeConflict),
         ("is not fully merged", ErrorKind::BranchNotMerged),
         ("a branch named", ErrorKind::BranchExists),
+        ("fatal: tag '", ErrorKind::TagExists),
         ("nothing to commit", ErrorKind::NothingToCommit),
         ("no changes added to commit", ErrorKind::NothingToCommit),
         ("please tell me who you are", ErrorKind::IdentityMissing),

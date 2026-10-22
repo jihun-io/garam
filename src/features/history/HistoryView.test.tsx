@@ -6,10 +6,12 @@ import { commands, type CommitDetail, type CommitSummary, type HistoryMarkers } 
 import { axeViolations } from "../../test/axe";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { useBranchDialog } from "../branches/branchDialogStore";
+import { useCommitDrafts } from "../changes/commitDraftStore";
 import { Notifications } from "../notify/Notifications";
 import { useNotify } from "../notify/notifyStore";
 import { runCommand } from "../../lib/commands";
 import { DEFAULT_FILTER, useHistoryFilters } from "./filterStore";
+import { useHistoryDialog } from "./historyDialogStore";
 import { HistoryView } from "./HistoryView";
 
 vi.mock("../../ipc/bindings", () => ({
@@ -21,6 +23,11 @@ vi.mock("../../ipc/bindings", () => ({
     commitDetail: vi.fn(),
     commitFileDiff: vi.fn(),
     commitRevert: vi.fn(),
+    commitCherryPick: vi.fn(),
+    commitReset: vi.fn(),
+    commitUndo: vi.fn(),
+    commitCheckout: vi.fn(),
+    tagCreate: vi.fn(),
   },
 }));
 
@@ -142,7 +149,15 @@ describe("HistoryView", () => {
     useNotify.setState({ notice: null });
     useBranchDialog.setState({ dialog: null });
     useHistoryFilters.setState({ filters: {} });
+    useHistoryDialog.setState({ dialog: null });
+    useCommitDrafts.setState({ drafts: {} });
   });
+
+  const openMenu = async (user: ReturnType<typeof userEvent.setup>, text: string) => {
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    await user.pointer({ keys: "[MouseRight]", target: await within(list).findByText(text) });
+    return screen.findByRole("menu");
+  };
 
   it("has no accessibility violations", async () => {
     const { container } = setup();
@@ -360,6 +375,155 @@ describe("HistoryView", () => {
     await screen.findByRole("heading", { name: "Add login screen" });
     expect(runCommand("history.search")).toBe(true);
     expect(screen.getByRole("searchbox")).toHaveFocus();
+  });
+
+  it("offers undo only on an unpushed last commit, and cherry-pick only off HEAD", async () => {
+    const user = userEvent.setup();
+    setup({ ...markers, incoming: [commit(9, { summary: "Teammate's fix" })] });
+    await screen.findByText("Teammate's fix");
+
+    let menu = await openMenu(user, "Add login screen");
+    expect(within(menu).getByRole("menuitem", { name: "Undo Last Commit" })).toBeVisible();
+    expect(within(menu).queryByRole("menuitem", { name: /Cherry-pick/ })).toBeNull();
+    await user.keyboard("{Escape}");
+
+    menu = await openMenu(user, "Commit number 2");
+    expect(within(menu).queryByRole("menuitem", { name: "Undo Last Commit" })).toBeNull();
+    expect(within(menu).getByRole("menuitem", { name: "Reset to This Commit…" })).toBeVisible();
+    await user.keyboard("{Escape}");
+
+    menu = await openMenu(user, "Teammate's fix");
+    expect(
+      within(menu).getByRole("menuitem", { name: "Cherry-pick onto Current Branch" }),
+    ).toBeVisible();
+  });
+
+  it("undoes the last commit and keeps its message for the commit form", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.commitUndo).mockResolvedValue(
+      ok({ oid: commits[0].oid, summary: "Add login screen", body: "Explains why." }),
+    );
+    setup();
+    const menu = await openMenu(user, "Add login screen");
+    await user.click(within(menu).getByRole("menuitem", { name: "Undo Last Commit" }));
+    expect(commands.commitUndo).toHaveBeenCalledWith("/repo", commits[0].oid);
+    expect(
+      await screen.findByText("Undid the last commit. Its changes and message are still here."),
+    ).toBeVisible();
+    expect(useCommitDrafts.getState().drafts["/repo"]).toEqual({
+      summary: "Add login screen",
+      description: "Explains why.",
+    });
+  });
+
+  it("cherry-picks and explains an empty pick", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.commitCherryPick)
+      .mockResolvedValueOnce(ok(null))
+      .mockResolvedValueOnce({
+        status: "error",
+        error: { kind: "cherry_pick_empty", params: {}, detail: null },
+      });
+    setup({ ...markers, incoming: [commit(9, { summary: "Teammate's fix" })] });
+
+    let menu = await openMenu(user, "Teammate's fix");
+    await user.click(within(menu).getByRole("menuitem", { name: /Cherry-pick/ }));
+    expect(commands.commitCherryPick).toHaveBeenCalledWith("/repo", commit(9).oid);
+    expect(await screen.findByText("Cherry-picked “Teammate's fix”.")).toBeVisible();
+
+    menu = await openMenu(user, "Teammate's fix");
+    await user.click(within(menu).getByRole("menuitem", { name: /Cherry-pick/ }));
+    expect(
+      await screen.findByText(
+        "This branch already has these changes, so there was nothing to cherry-pick.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("resets after choosing what to keep, warning before discarding", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.commitReset).mockResolvedValue(ok(null));
+    setup();
+    vi.mocked(commands.statusGet).mockResolvedValue(
+      ok({
+        branch: { head: "main", oid: commits[0].oid, upstream: null, ahead: 0, behind: 0 },
+        files: [
+          {
+            path: "a.txt",
+            origPath: null,
+            staged: null,
+            unstaged: "modified",
+            isSubmodule: false,
+          },
+        ],
+      }),
+    );
+    const menu = await openMenu(user, "Commit number 2");
+    await user.click(within(menu).getByRole("menuitem", { name: "Reset to This Commit…" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Reset to This Commit" });
+    expect(
+      within(dialog).getByText(/Moves the current branch main to “Commit number 2”/),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole("radio", { name: /Keep changes in the working folder/ }),
+    ).toBeChecked();
+    expect(await axeViolations(dialog)).toEqual([]);
+
+    await user.click(within(dialog).getByRole("radio", { name: /Discard changes/ }));
+    expect(
+      await within(dialog).findByText(
+        "1 file with uncommitted changes will also lose its current state.",
+      ),
+    ).toBeVisible();
+    await user.click(within(dialog).getByRole("button", { name: "Reset and Discard Changes" }));
+    expect(commands.commitReset).toHaveBeenCalledWith("/repo", commits[1].oid, "hard");
+    expect(await screen.findByText("Reset to “Commit number 2”.")).toBeVisible();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("checks out a commit, or starts a branch there instead", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.commitCheckout).mockResolvedValue(ok(null));
+    setup();
+    let menu = await openMenu(user, "Commit number 3");
+    await user.click(within(menu).getByRole("menuitem", { name: "Check Out This Commit…" }));
+    let dialog = await screen.findByRole("dialog", { name: "Check Out This Commit" });
+    expect(within(dialog).getByText(/detached HEAD/)).toBeVisible();
+    await user.click(within(dialog).getByRole("button", { name: "Check Out" }));
+    expect(commands.commitCheckout).toHaveBeenCalledWith("/repo", commits[2].oid);
+    expect(await screen.findByText(/Checked out “Commit number 3”/)).toBeVisible();
+
+    menu = await openMenu(user, "Commit number 3");
+    await user.click(within(menu).getByRole("menuitem", { name: "Check Out This Commit…" }));
+    dialog = await screen.findByRole("dialog", { name: "Check Out This Commit" });
+    await user.click(within(dialog).getByRole("button", { name: "Create Branch Here…" }));
+    expect(useBranchDialog.getState().dialog).toEqual({ kind: "create", from: commits[2] });
+  });
+
+  it("creates a tag, showing git's refusal in the dialog", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.tagCreate)
+      .mockResolvedValueOnce({
+        status: "error",
+        error: { kind: "tag_exists", params: {}, detail: null },
+      })
+      .mockResolvedValueOnce(ok(null));
+    setup();
+    const menu = await openMenu(user, "Commit number 2");
+    await user.click(within(menu).getByRole("menuitem", { name: "Create Tag Here…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Create Tag" });
+    const submit = within(dialog).getByRole("button", { name: "Create Tag" });
+    expect(submit).toBeDisabled();
+
+    await user.type(within(dialog).getByRole("textbox", { name: "Tag name" }), " v1.0 ");
+    await user.type(within(dialog).getByRole("textbox", { name: "Message (optional)" }), "First");
+    await user.click(submit);
+    expect(commands.tagCreate).toHaveBeenLastCalledWith("/repo", "v1.0", commits[1].oid, "First");
+    expect(await within(dialog).findByText("A tag with this name already exists.")).toBeVisible();
+
+    await user.click(submit);
+    expect(await screen.findByText("Created tag v1.0.")).toBeVisible();
   });
 
   it("explains an empty history", async () => {

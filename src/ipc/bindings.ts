@@ -97,6 +97,16 @@ export const commands = {
 	commitFileDiff: (repo: string, oid: string, file: CommitFile) => typedError<FileDiff, AppError>(__TAURI_INVOKE("commit_file_diff", { repo, oid, file })),
 	/**  Adds a commit that undoes `oid`. */
 	commitRevert: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_revert", { repo, oid })),
+	/**  Applies `oid`'s changes as a new commit on HEAD. */
+	commitCherryPick: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_cherry_pick", { repo, oid })),
+	/**  Moves the current branch to `oid`. */
+	commitReset: (repo: string, oid: string, mode: ResetMode) => typedError<null, AppError>(__TAURI_INVOKE("commit_reset", { repo, oid, mode })),
+	/**  Undoes the last commit (`oid`), returning its message. */
+	commitUndo: (repo: string, oid: string) => typedError<HeadCommit, AppError>(__TAURI_INVOKE("commit_undo", { repo, oid })),
+	/**  Checks out `oid` on a detached HEAD. */
+	commitCheckout: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_checkout", { repo, oid })),
+	/**  Tags `oid`; annotated when `message` is given. */
+	tagCreate: (repo: string, name: string, oid: string, message: string | null) => typedError<null, AppError>(__TAURI_INVOKE("tag_create", { repo, name, oid, message })),
 	remoteInfo: (repo: string) => typedError<RemoteInfo, AppError>(__TAURI_INVOKE("remote_info", { repo })),
 	/**
 	 *  Fetches `remote`. With `interactive: false` (background fetch), nothing
@@ -343,7 +353,11 @@ export type ErrorCode = ErrorKind | AppErrorKind;
  *  `errors:<kind>` i18n key, so adding a variant requires adding that key to
  *  every locale.
  */
-export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "invalid_branch_name" | "branch_exists" | "branch_not_merged" | "local_changes_would_be_overwritten" | "merge_conflict" | "rebase_conflict" | "revert_conflict" | "unrelated_histories" | 
+export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "invalid_branch_name" | "branch_exists" | "branch_not_merged" | "local_changes_would_be_overwritten" | "merge_conflict" | "rebase_conflict" | "revert_conflict" | "cherry_pick_conflict" | 
+/**  The branch already has the commit's changes; nothing was picked. */
+"cherry_pick_empty" | "invalid_tag_name" | "tag_exists" | 
+/**  HEAD moved since the screen was drawn (e.g. a commit from a terminal). */
+"head_moved" | "unrelated_histories" | 
 /**  The remote has commits the local branch doesn't; pull first. */
 "non_fast_forward" | 
 /**  The server refused the push (protected branch, hook, ...). */
@@ -588,6 +602,15 @@ export type RepositoryList = {
 	/**  Path of the repository that was open last. */
 	selected: string | null,
 };
+
+/**  What `reset` keeps. */
+export type ResetMode = 
+/**  Keep the undone commits' changes staged. */
+"soft" | 
+/**  Keep them in the working tree, unstaged. */
+"mixed" | 
+/**  Discard them, and any uncommitted changes to tracked files. */
+"hard";
 
 /**  What a history search looks at. */
 export type SearchField = 

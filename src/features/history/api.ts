@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { commands, unwrap, type CommitFile, type HistoryFilter } from "../../ipc";
+import { commands, unwrap, type CommitFile, type HistoryFilter, type ResetMode } from "../../ipc";
 import { changesKeys, indexScope } from "../changes/api";
 
 export const PAGE_SIZE = 100;
@@ -86,4 +86,42 @@ export function useRevert(repo: string) {
     onSettled: () => client.invalidateQueries({ queryKey: changesKeys.all(repo) }),
     scope: indexScope(repo),
   });
+}
+
+/**
+ * Commit actions from the history. Those that move HEAD or write commits
+ * queue with other index writes; tagging only adds a ref.
+ */
+export function useCommitActions(repo: string) {
+  const client = useQueryClient();
+  const onSettled = () => client.invalidateQueries({ queryKey: changesKeys.all(repo) });
+  const scope = indexScope(repo);
+  return {
+    cherryPick: useMutation({
+      mutationFn: (oid: string) => unwrap(commands.commitCherryPick(repo, oid)),
+      onSettled,
+      scope,
+    }),
+    reset: useMutation({
+      mutationFn: ({ oid, mode }: { oid: string; mode: ResetMode }) =>
+        unwrap(commands.commitReset(repo, oid, mode)),
+      onSettled,
+      scope,
+    }),
+    undo: useMutation({
+      mutationFn: (oid: string) => unwrap(commands.commitUndo(repo, oid)),
+      onSettled,
+      scope,
+    }),
+    checkout: useMutation({
+      mutationFn: (oid: string) => unwrap(commands.commitCheckout(repo, oid)),
+      onSettled,
+      scope,
+    }),
+    createTag: useMutation({
+      mutationFn: ({ name, oid, message }: { name: string; oid: string; message: string }) =>
+        unwrap(commands.tagCreate(repo, name, oid, message.trim() || null)),
+      onSettled,
+    }),
+  };
 }

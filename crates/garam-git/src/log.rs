@@ -352,7 +352,7 @@ pub struct CommitDetail {
 
 /// Accepts only hexadecimal object ids, so input can't pose as an option
 /// or a revision expression.
-fn check_oid(oid: &str) -> Result<(), GitError> {
+pub(crate) fn check_oid(oid: &str) -> Result<(), GitError> {
     if !oid.is_empty() && oid.len() <= 64 && oid.bytes().all(|b| b.is_ascii_hexdigit()) {
         Ok(())
     } else {
@@ -510,6 +510,118 @@ pub fn revert(git: &Git, repo: &Path, oid: &str) -> Result<(), GitError> {
         command = command.args(["--mainline", "1"]);
     }
     command.arg(&summary.oid).run()?;
+    Ok(())
+}
+
+/// Applies `oid`'s changes as a new commit on HEAD. Merge commits are
+/// picked relative to their first parent. Conflicts leave the cherry-pick
+/// in progress and return [`crate::ErrorKind::CherryPickConflict`]; a pick
+/// that would change nothing is undone and returns
+/// [`crate::ErrorKind::CherryPickEmpty`].
+pub fn cherry_pick(git: &Git, repo: &Path, oid: &str) -> Result<(), GitError> {
+    let summary = detail(git, repo, oid)?.commit;
+    let mut command = git.command().cwd(repo).arg("cherry-pick");
+    if summary.parents.len() > 1 {
+        command = command.args(["--mainline", "1"]);
+    }
+    match command.arg(&summary.oid).run() {
+        Ok(_) => Ok(()),
+        Err(err) => Err(classify_cherry_pick(git, repo, err)?),
+    }
+}
+
+/// Tells a stopped cherry-pick's conflicts from an empty pick, which git
+/// also leaves in progress.
+fn classify_cherry_pick(git: &Git, repo: &Path, err: GitError) -> Result<GitError, GitError> {
+    let GitError::Failed { code, stderr, .. } = err else {
+        return Ok(err);
+    };
+    let state = crate::conflict::state(git, repo)?;
+    if state.operation != Some(crate::conflict::Operation::CherryPick) {
+        return Ok(GitError::failed(code, stderr));
+    }
+    let kind = if state.files.is_empty() {
+        git.command()
+            .cwd(repo)
+            .args(["cherry-pick", "--abort"])
+            .run()?;
+        crate::ErrorKind::CherryPickEmpty
+    } else {
+        crate::ErrorKind::CherryPickConflict
+    };
+    Ok(GitError::Failed { kind, code, stderr })
+}
+
+/// What `reset` keeps.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "snake_case")]
+pub enum ResetMode {
+    /// Keep the undone commits' changes staged.
+    Soft,
+    /// Keep them in the working tree, unstaged.
+    Mixed,
+    /// Discard them, and any uncommitted changes to tracked files.
+    Hard,
+}
+
+/// Moves the current branch (or detached HEAD) to `oid`.
+pub fn reset(git: &Git, repo: &Path, oid: &str, mode: ResetMode) -> Result<(), GitError> {
+    check_oid(oid)?;
+    let flag = match mode {
+        ResetMode::Soft => "--soft",
+        ResetMode::Mixed => "--mixed",
+        ResetMode::Hard => "--hard",
+    };
+    git.command()
+        .cwd(repo)
+        .args(["reset", "--quiet", flag])
+        .arg(format!("{oid}^{{commit}}"))
+        .arg("--")
+        .run()?;
+    Ok(())
+}
+
+/// Undoes the last commit, which must still be `oid`, keeping its changes
+/// staged. Returns its message so it can be edited and committed again.
+/// Merge commits can't be undone this way.
+pub fn undo_last_commit(
+    git: &Git,
+    repo: &Path,
+    oid: &str,
+) -> Result<crate::commit::HeadCommit, GitError> {
+    let head = crate::commit::head_oid(git, repo)?;
+    if head.as_deref() != Some(oid) {
+        return Err(GitError::HeadMoved);
+    }
+    let detail = detail(git, repo, oid)?;
+    match detail.commit.parents.as_slice() {
+        [] => {
+            // The first commit: leave the branch unborn, its files staged.
+            git.command()
+                .cwd(repo)
+                .args(["update-ref", "-d", "HEAD", oid])
+                .run()?;
+        }
+        [parent] => reset(git, repo, parent, ResetMode::Soft)?,
+        _ => return Err(GitError::Parse("can't undo a merge commit".into())),
+    }
+    Ok(crate::commit::HeadCommit {
+        oid: detail.commit.oid,
+        summary: detail.commit.summary,
+        body: detail.body,
+    })
+}
+
+/// Checks out `oid` on a detached HEAD. Local changes come along when they
+/// don't clash with it.
+pub fn checkout(git: &Git, repo: &Path, oid: &str) -> Result<(), GitError> {
+    check_oid(oid)?;
+    git.command()
+        .cwd(repo)
+        .args(["switch", "--quiet", "--detach"])
+        .arg(format!("{oid}^{{commit}}"))
+        .run()?;
     Ok(())
 }
 

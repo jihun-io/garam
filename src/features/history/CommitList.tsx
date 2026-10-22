@@ -15,10 +15,19 @@ const ROW_HEIGHT = 48;
 /** Start loading the next page this many rows before the end. */
 const PREFETCH_ROWS = 20;
 
+type Action = (commit: CommitSummary) => void;
+
 export type CommitActions = {
-  copyHash: (commit: CommitSummary) => void;
-  createBranch: (commit: CommitSummary) => void;
-  revert: (commit: CommitSummary) => void;
+  copyHash: Action;
+  createBranch: Action;
+  createTag: Action;
+  checkout: Action;
+  cherryPick: Action;
+  revert: Action;
+  undo: Action;
+  reset: Action;
+  /** Which actions make sense for this commit right now. */
+  available: (commit: CommitSummary) => { cherryPick: boolean; revert: boolean; undo: boolean };
 };
 
 export function CommitList({
@@ -115,34 +124,36 @@ export function CommitList({
                 </div>
               </ContextMenu.Trigger>
               <ContextMenu.Portal>
-                <ContextMenu.Content className={menu.content}>
-                  <ContextMenu.Item className={menu.item} onSelect={() => actions.copyHash(commit)}>
-                    {t("menu.copyHash")}
-                  </ContextMenu.Item>
-                  <ContextMenu.Item
-                    className={menu.item}
-                    onSelect={() => actions.createBranch(commit)}
-                  >
-                    {t("menu.createBranch")}
-                  </ContextMenu.Item>
-                  {/* Reverting needs the commit to be on this branch. */}
-                  {sync !== "incoming" && (
-                    <>
-                      <ContextMenu.Separator className={menu.separator} />
-                      <ContextMenu.Item
-                        className={menu.item}
-                        onSelect={() => actions.revert(commit)}
-                      >
-                        {t("menu.revert")}
-                      </ContextMenu.Item>
-                    </>
-                  )}
-                </ContextMenu.Content>
+                <CommitMenu commit={commit} actions={actions} />
               </ContextMenu.Portal>
             </ContextMenu.Root>
           );
         })}
       </div>
     </div>
+  );
+}
+
+function CommitMenu({ commit, actions }: { commit: CommitSummary; actions: CommitActions }) {
+  const { t } = useTranslation("history");
+  const can = actions.available(commit);
+  const item = (label: string, action: Action) => (
+    <ContextMenu.Item className={menu.item} onSelect={() => action(commit)}>
+      {label}
+    </ContextMenu.Item>
+  );
+  return (
+    <ContextMenu.Content className={menu.content}>
+      {item(t("menu.copyHash"), actions.copyHash)}
+      <ContextMenu.Separator className={menu.separator} />
+      {item(t("menu.createBranch"), actions.createBranch)}
+      {item(t("menu.createTag"), actions.createTag)}
+      {item(t("menu.checkout"), actions.checkout)}
+      <ContextMenu.Separator className={menu.separator} />
+      {can.cherryPick && item(t("menu.cherryPick"), actions.cherryPick)}
+      {can.revert && item(t("menu.revert"), actions.revert)}
+      {can.undo && item(t("menu.undo"), actions.undo)}
+      {item(t("menu.reset"), actions.reset)}
+    </ContextMenu.Content>
   );
 }

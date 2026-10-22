@@ -1,4 +1,4 @@
-import { useId, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useState, type KeyboardEvent } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
@@ -10,6 +10,7 @@ import { currentPlatform } from "../../lib/platform";
 import { useRepoAccount } from "../accounts/api";
 import { emailBelongsTo } from "../accounts/repoAccount";
 import { useChangeActions, useHeadCommit, useIdentity } from "./api";
+import { useCommitDrafts } from "./commitDraftStore";
 import styles from "./CommitForm.module.css";
 import { parseCoAuthors } from "./fileState";
 import { IdentityDialog } from "./IdentityDialog";
@@ -31,8 +32,14 @@ export function CommitForm({
   const { commit } = useChangeActions(repo);
   const identity = useIdentity(repo);
   const repoAccount = useRepoAccount(repo, identity.data?.effective.email ?? null);
-  const [summary, setSummary] = useState("");
-  const [description, setDescription] = useState("");
+  // A waiting draft (from an undone commit) fills the form once.
+  const draft = useCommitDrafts((s) => s.drafts[repo]);
+  const clearDraft = useCommitDrafts((s) => s.clear);
+  const [summary, setSummary] = useState(draft?.summary ?? "");
+  const [description, setDescription] = useState(draft?.description ?? "");
+  useEffect(() => {
+    if (draft) clearDraft(repo);
+  }, [draft, clearDraft, repo]);
   const [coAuthorsText, setCoAuthorsText] = useState("");
   const [showCoAuthors, setShowCoAuthors] = useState(false);
   const [amend, setAmend] = useState(false);

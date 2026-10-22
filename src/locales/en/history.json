@@ -13,7 +13,12 @@
     "copyHash": "Copy commit hash",
     "copied": "Copied {{hash}}.",
     "createBranch": "Create branch from commit…",
-    "revert": "Revert this commit"
+    "revert": "Revert this commit",
+    "createTag": "Create Tag Here…",
+    "checkout": "Check Out This Commit…",
+    "cherryPick": "Cherry-pick onto Current Branch",
+    "undo": "Undo Last Commit",
+    "reset": "Reset to This Commit…"
   },
   "detail": {
     "select": "Select a commit to see its changes.",
@@ -68,5 +73,47 @@
     "pathHint": "Only commits that change this path. For example: src/",
     "firstParent": "Follow only the first parent of merges",
     "reset": "Reset filters"
+  },
+  "done": {
+    "cherryPicked": "Cherry-picked “{{summary}}”.",
+    "reset": "Reset to “{{summary}}”.",
+    "undone": "Undid the last commit. Its changes and message are still here.",
+    "checkedOut": "Checked out “{{summary}}”. HEAD is now detached.",
+    "tagged": "Created tag {{name}}."
+  },
+  "reset": {
+    "title": "Reset to This Commit",
+    "body": "Moves {{target}} to “{{summary}}” ({{hash}}). Commits after it leave {{target}}.",
+    "current": "the current branch {{branch}}",
+    "detached": "the detached HEAD",
+    "modes": {
+      "soft": "Keep changes staged",
+      "softHint": "The changes from the commits that leave stay included in the next commit.",
+      "mixed": "Keep changes in the working folder",
+      "mixedHint": "The changes from the commits that leave stay, excluded from the next commit.",
+      "hard": "Discard changes",
+      "hardHint": "Discards the changes from the commits that leave and any uncommitted changes. Untracked files stay."
+    },
+    "uncommitted_one": "{{count}} file with uncommitted changes will also lose its current state.",
+    "uncommitted_other": "{{count}} files with uncommitted changes will also lose their current state.",
+    "cancel": "Cancel",
+    "submit": "Reset",
+    "submitHard": "Reset and Discard Changes"
+  },
+  "checkout": {
+    "title": "Check Out This Commit",
+    "body": "Checking out “{{summary}}” ({{hash}}) leaves you on a detached HEAD, on no branch. To keep commits you make there, create a branch.",
+    "cancel": "Cancel",
+    "createBranch": "Create Branch Here…",
+    "submit": "Check Out"
+  },
+  "tag": {
+    "title": "Create Tag",
+    "for": "On “{{summary}}” ({{hash}}).",
+    "name": "Tag name",
+    "message": "Message (optional)",
+    "messageHint": "With a message, the tag is annotated: it records who made it and when.",
+    "cancel": "Cancel",
+    "submit": "Create Tag"
   }
 }

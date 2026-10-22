@@ -23,6 +23,7 @@ mod progress;
 pub mod remote;
 pub mod repo;
 pub mod status;
+pub mod tag;
 mod version;
 
 #[cfg(feature = "testing")]

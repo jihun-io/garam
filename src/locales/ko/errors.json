@@ -40,5 +40,10 @@
   "github_unauthorized": "GitHub가 이 계정의 로그인을 더 이상 받지 않습니다. 다시 로그인하세요.",
   "github_login_expired": "코드를 승인하기 전에 만료되었습니다. 다시 시도하세요.",
   "github_login_denied": "GitHub에서 접근을 거부했습니다.",
-  "github_unexpected": "GitHub에서 예상하지 못한 응답을 받았습니다."
+  "github_unexpected": "GitHub에서 예상하지 못한 응답을 받았습니다.",
+  "cherry_pick_conflict": "충돌 때문에 체리픽이 멈췄습니다. 충돌한 파일을 해결한 뒤 계속하세요.",
+  "cherry_pick_empty": "이 브랜치에 이미 같은 변경이 있어서 체리픽할 것이 없습니다.",
+  "invalid_tag_name": "올바른 태그 이름이 아닙니다. 공백과 ~ ^ : ? * [ \\ 같은 문자는 쓸 수 없습니다.",
+  "tag_exists": "같은 이름의 태그가 이미 있습니다.",
+  "head_moved": "그사이 마지막 커밋이 바뀌었습니다. 기록을 다시 확인한 뒤 시도하세요."
 }

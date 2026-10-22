@@ -5,17 +5,21 @@ import { EmptyMessage } from "../../components/EmptyMessage";
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
 import { Loading } from "../../components/ui/Loading";
-import { toAppError, type CommitSummary } from "../../ipc";
+import { toAppError } from "../../ipc";
+import { runCommand } from "../../lib/commands";
 import { shortHash } from "../../lib/hash";
 import { useBranchDialog } from "../branches/branchDialogStore";
 import { useStatus } from "../changes/api";
+import { useCommitDrafts } from "../changes/commitDraftStore";
 import changesStyles from "../changes/ChangesView.module.css";
 import { useNotify } from "../notify/notifyStore";
 import { SidebarSplitter } from "../settings/SidebarSplitter";
-import { useHistory, useHistoryMarkers, useRevert } from "./api";
+import { useCommitActions, useHistory, useHistoryMarkers, useRevert } from "./api";
 import { CommitDetailView } from "./CommitDetailView";
-import { CommitList } from "./CommitList";
+import { CommitList, type CommitActions } from "./CommitList";
 import { isUnfiltered, useHistoryFilter, useHistoryFilters, useSettledFilter } from "./filterStore";
+import { HistoryDialogs } from "./HistoryDialogs";
+import { useHistoryDialog } from "./historyDialogStore";
 import { HistorySearch } from "./HistorySearch";
 import { toMarks } from "./refs";
 
@@ -35,7 +39,10 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
       : markers.data?.refs.map((r) => `${r.name}@${r.oid}`).join(" ");
   const history = useHistory(repo, status.data?.branch.oid, filter, refs);
   const revert = useRevert(repo);
+  const commitActions = useCommitActions(repo);
   const openBranchDialog = useBranchDialog((s) => s.open);
+  const openDialog = useHistoryDialog((s) => s.open);
+  const setDraft = useCommitDrafts((s) => s.set);
   const { showError, showInfo } = useNotify();
   const [selectedOid, setSelectedOid] = useState<string | null>(null);
 
@@ -56,14 +63,46 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
       .catch(showError);
   };
 
-  const actions = {
-    copyHash: (commit: CommitSummary) => copyHash(commit.oid),
-    createBranch: (commit: CommitSummary) => openBranchDialog({ kind: "create", from: commit }),
-    revert: (commit: CommitSummary) =>
+  const head = status.data?.branch.oid ?? null;
+  const hasRemote = markers.data?.refs.some((r) => r.kind === "remote") ?? false;
+  const actions: CommitActions = {
+    copyHash: (commit) => copyHash(commit.oid),
+    createBranch: (commit) => openBranchDialog({ kind: "create", from: commit }),
+    createTag: (commit) => openDialog({ kind: "tag", commit }),
+    checkout: (commit) => openDialog({ kind: "checkout", commit }),
+    reset: (commit) => openDialog({ kind: "reset", commit }),
+    cherryPick: (commit) =>
+      commitActions.cherryPick.mutate(commit.oid, {
+        onSuccess: () => showInfo(t("done.cherryPicked", { summary: commit.summary })),
+        onError: showError,
+      }),
+    revert: (commit) =>
       revert.mutate(commit.oid, {
         onSuccess: () => showInfo(t("reverted", { summary: commit.summary })),
         onError: showError,
       }),
+    // The changes stay staged; the message goes back into the commit form.
+    undo: (commit) =>
+      commitActions.undo.mutate(commit.oid, {
+        onSuccess: (undone) => {
+          setDraft(repo, { summary: undone.summary, description: undone.body });
+          runCommand("view.changes");
+          showInfo(t("done.undone"));
+        },
+        onError: showError,
+      }),
+    available: (commit) => {
+      const sync = marks.sync.get(commit.oid);
+      // Listed from HEAD, so already on it (except commits not pulled yet).
+      const onHead = filter.scope.kind === "head" && sync !== "incoming";
+      return {
+        cherryPick: head !== null && !onHead && commit.oid !== head,
+        revert: sync !== "incoming",
+        // Only before anyone else could have it.
+        undo:
+          commit.oid === head && commit.parents.length <= 1 && (sync === "unpushed" || !hasRemote),
+      };
+    },
   };
 
   let main;
@@ -110,6 +149,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
           actions={actions}
         />
         <SidebarSplitter />
+        <HistoryDialogs repo={repo} />
       </aside>
       <div className={changesStyles.main}>{main}</div>
     </div>

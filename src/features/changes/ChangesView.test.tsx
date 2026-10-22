@@ -13,6 +13,7 @@ import {
 import { axeViolations } from "../../test/axe";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { ChangesView } from "./ChangesView";
+import { useCommitDrafts } from "./commitDraftStore";
 
 const GLOBAL: Identity = { name: "Garam", email: "garam@example.com" };
 const NONE: Identity = { name: null, email: null };
@@ -274,6 +275,14 @@ describe("ChangesView", () => {
       [],
       true,
     );
+  });
+
+  it("fills the form once with a waiting draft", async () => {
+    useCommitDrafts.getState().set("/repo", { summary: "Undone work", description: "Why." });
+    setup([change("a.txt", "modified", null)]);
+    expect(await screen.findByDisplayValue("Undone work")).toBeVisible();
+    expect(screen.getByDisplayValue("Why.")).toBeVisible();
+    await waitFor(() => expect(useCommitDrafts.getState().drafts).toEqual({}));
   });
 
   it("asks for an identity before the first commit", async () => {
