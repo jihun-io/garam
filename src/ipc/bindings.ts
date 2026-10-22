@@ -53,8 +53,8 @@ export const commands = {
 	identityGet: (repo: string) => typedError<Identity, AppError>(__TAURI_INVOKE("identity_get", { repo })),
 	identitySet: (name: string, email: string) => typedError<null, AppError>(__TAURI_INVOKE("identity_set", { name, email })),
 	branchList: (repo: string) => typedError<Branch[], AppError>(__TAURI_INVOKE("branch_list", { repo })),
-	/**  Creates a branch from HEAD and switches to it. */
-	branchCreate: (repo: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("branch_create", { repo, name })),
+	/**  Creates a branch at `start` (default: HEAD) and switches to it. */
+	branchCreate: (repo: string, name: string, start: string | null) => typedError<null, AppError>(__TAURI_INVOKE("branch_create", { repo, name, start })),
 	/**
 	 *  Switches branches. `current` names the branch being left, used to label
 	 *  a stash when `mode` is `leave_changes`.
@@ -73,6 +73,12 @@ export const commands = {
 } | null, AppError>(__TAURI_INVOKE("stash_find_auto", { repo, branch })),
 	stashPop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_pop", { repo, oid })),
 	stashDrop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_drop", { repo, oid })),
+	/**  A page of HEAD's history, newest first. */
+	historyList: (repo: string, skip: number, limit: number) => typedError<CommitSummary[], AppError>(__TAURI_INVOKE("history_list", { repo, skip, limit })),
+	commitDetail: (repo: string, oid: string) => typedError<CommitDetail, AppError>(__TAURI_INVOKE("commit_detail", { repo, oid })),
+	commitFileDiff: (repo: string, oid: string, file: CommitFile) => typedError<FileDiff, AppError>(__TAURI_INVOKE("commit_file_diff", { repo, oid, file })),
+	/**  Adds a commit that undoes `oid`. */
+	commitRevert: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_revert", { repo, oid })),
 	remoteInfo: (repo: string) => typedError<RemoteInfo, AppError>(__TAURI_INVOKE("remote_info", { repo })),
 	/**
 	 *  Fetches `remote`. With `interactive: false` (background fetch), nothing
@@ -158,6 +164,32 @@ export type CoAuthor = {
 	email: string,
 };
 
+export type CommitDetail = {
+	/**  The message after the summary line, trimmed. */
+	body: string,
+	committerName: string,
+	committedAt: number,
+	files: CommitFile[],
+} & CommitSummary;
+
+/**  A file changed by a commit, compared with its first parent. */
+export type CommitFile = {
+	path: string,
+	/**  Previous path for renames and copies. */
+	origPath: string | null,
+	kind: ChangeKind,
+};
+
+export type CommitSummary = {
+	oid: string,
+	parents: string[],
+	authorName: string,
+	authorEmail: string,
+	/**  Seconds since the Unix epoch. */
+	authoredAt: number,
+	summary: string,
+};
+
 export type CredentialPrompt = {
 	kind: PromptKind,
 	/**  What the prompt is for: a URL, a key file, `user@host` or a host. */
@@ -198,7 +230,7 @@ export type ErrorCode = ErrorKind | AppErrorKind;
  *  `errors:<kind>` i18n key, so adding a variant requires adding that key to
  *  every locale.
  */
-export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "invalid_branch_name" | "branch_exists" | "branch_not_merged" | "local_changes_would_be_overwritten" | "merge_conflict" | "rebase_conflict" | "unrelated_histories" | 
+export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "invalid_branch_name" | "branch_exists" | "branch_not_merged" | "local_changes_would_be_overwritten" | "merge_conflict" | "rebase_conflict" | "revert_conflict" | "unrelated_histories" | 
 /**  The remote has commits the local branch doesn't; pull first. */
 "non_fast_forward" | 
 /**  The server refused the push (protected branch, hook, ...). */

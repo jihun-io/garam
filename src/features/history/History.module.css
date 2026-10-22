@@ -1,0 +1,194 @@
+/* Commit list */
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  outline: none;
+}
+
+.row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  width: 100%;
+  margin: 0;
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--color-line);
+  cursor: default;
+}
+
+.row:hover {
+  background: var(--color-hover);
+}
+
+.row[aria-selected="true"] {
+  background: var(--color-selected);
+}
+
+.scroll:focus-visible .row[aria-selected="true"] {
+  background: var(--color-river);
+  color: #fff;
+}
+
+.scroll:focus-visible .row[aria-selected="true"] .meta {
+  color: inherit;
+}
+
+.summary,
+.meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary {
+  font-weight: 550;
+}
+
+.meta,
+.loading {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+/* Commit detail */
+
+.detail {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  min-height: 0;
+}
+
+.commitHeader {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 40vh;
+  padding: var(--space-4);
+  overflow-y: auto;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.commitSummary {
+  font-size: var(--text-lg);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.commitBody {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.commitMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.hash {
+  padding: 1px var(--space-1);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.hash:hover {
+  border-color: var(--color-ink-faint);
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) 1fr;
+  min-height: 0;
+}
+
+.files {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--color-line);
+}
+
+.filesTitle {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.fileList {
+  flex: 1;
+  margin: 0;
+  padding: 0 0 var(--space-2);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 28px;
+  padding: 0 var(--space-3);
+  border: 0;
+  background: none;
+  text-align: start;
+  cursor: default;
+}
+
+.file:hover {
+  background: var(--color-hover);
+}
+
+.file[aria-current="true"] {
+  background: var(--color-selected);
+}
+
+.fileName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileDir {
+  color: var(--color-ink-muted);
+}
+
+.fileKind {
+  flex: none;
+  font-size: var(--text-sm);
+}
+
+.added {
+  color: var(--color-added-ink);
+}
+
+.modified {
+  color: var(--color-modified-ink);
+}
+
+.deleted,
+.conflicted {
+  color: var(--color-danger);
+}
+
+.renamed {
+  color: var(--color-link);
+}

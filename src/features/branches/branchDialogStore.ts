@@ -1,9 +1,10 @@
 import { create } from "zustand";
 
-import type { Branch } from "../../ipc";
+import type { Branch, CommitSummary } from "../../ipc";
 
 export type BranchDialog =
-  | { kind: "create" }
+  /** `from` starts the branch at that commit instead of HEAD. */
+  | { kind: "create"; from?: CommitSummary }
   | { kind: "rename"; branch: Branch }
   | { kind: "delete"; branch: Branch }
   | { kind: "merge"; branch?: Branch }

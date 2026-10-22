@@ -29,6 +29,7 @@ pub enum ErrorKind {
     LocalChangesWouldBeOverwritten,
     MergeConflict,
     RebaseConflict,
+    RevertConflict,
     UnrelatedHistories,
     /// The remote has commits the local branch doesn't; pull first.
     NonFastForward,
@@ -165,6 +166,7 @@ fn classify(stderr: &str) -> ErrorKind {
         ),
         // A rebase conflict also prints "CONFLICT (...)", so check it first.
         ("could not apply", ErrorKind::RebaseConflict),
+        ("could not revert", ErrorKind::RevertConflict),
         ("automatic merge failed", ErrorKind::MergeConflict),
         ("conflict (", ErrorKind::MergeConflict),
         ("is not fully merged", ErrorKind::BranchNotMerged),

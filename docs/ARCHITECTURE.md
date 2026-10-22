@@ -87,7 +87,7 @@ garam-git/src/
 ├── branch.rs      # 브랜치 목록·생성·전환·삭제·병합
 ├── remote.rs      # fetch/pull/push/publish, 원격 저장소 정보
 ├── credential.rs  # askpass로 들어온 git·ssh 프롬프트 분류
-├── log.rs         # 히스토리 페이지 단위 조회
+├── log.rs         # 히스토리 페이지 조회, 커밋 상세·diff, revert
 ├── stash.rs
 └── conflict.rs    # 충돌 상태 감지, ours/theirs 해결
 ```
@@ -154,6 +154,14 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - 툴바의 동기화 버튼 하나가 상황에 따라 바뀐다: 분리된 HEAD·동기화됨 → 가져오기, 받을 커밋 있음 → 풀, 보낼 커밋만 있음 → 푸시, 업스트림 없음·삭제됨 → 브랜치 게시. 옆 메뉴에서 다른 작업을 직접 고를 수 있다.
 - 저장소마다 네트워크 작업은 한 번에 하나다(`syncStore`). pull은 index를 바꾸므로 커밋·스테이지와 같은 mutation scope에 들어간다.
 - 백그라운드 fetch: 1분마다 확인해서 마지막 fetch(또는 시도)가 5분보다 오래됐으면 프롬프트 없이 fetch한다. 실패는 조용히 무시한다. 주기 설정은 M8.
+
+### 2.8 히스토리
+
+- 커밋 목록은 `git log -z --format=...`(필드 구분자 `0x1f`)로 HEAD에서 페이지 단위(100개, `--skip`/`--max-count`)로 가져온다. 프론트는 `useInfiniteQuery`로 끝에서 20줄 전에 다음 페이지를 미리 불러온다.
+- 커밋의 변경 파일과 diff는 **첫 번째 부모**와 비교한다. 루트 커밋은 빈 트리와 비교한다. 병합 커밋 되돌리기도 `--mainline 1`로 첫 번째 부모 기준이다.
+- 프론트에서 받은 커밋 id는 16진수만 허용한다. `HEAD~1`이나 `-`로 시작하는 값이 옵션·리비전 식으로 해석되지 않게 하기 위해서다. 브랜치 시작점도 `-`로 시작하면 거부한다.
+- 히스토리 쿼리 키는 `["history", repo, ...]`로, 파일이 바뀔 때마다 무효화되는 `["repo", repo]` 아래에 두지 않는다. 목록 키에 HEAD 커밋 id를 넣어 HEAD가 움직일 때만 다시 불러오고, 커밋 상세와 diff는 바뀌지 않으므로 계속 캐시한다.
+- revert는 커밋을 만들므로 다른 index 쓰기와 같은 mutation scope에서 실행한다. 충돌하면 `revert_conflict`로 안내하고 해결은 M7에서 한다.
 
 ## 3. IPC 설계
 

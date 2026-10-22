@@ -6,6 +6,7 @@ import enChanges from "../locales/en/changes.json";
 import enCommon from "../locales/en/common.json";
 import enCredentials from "../locales/en/credentials.json";
 import enErrors from "../locales/en/errors.json";
+import enHistory from "../locales/en/history.json";
 import enRepos from "../locales/en/repos.json";
 import enStartup from "../locales/en/startup.json";
 import enSync from "../locales/en/sync.json";
@@ -14,6 +15,7 @@ import koChanges from "../locales/ko/changes.json";
 import koCommon from "../locales/ko/common.json";
 import koCredentials from "../locales/ko/credentials.json";
 import koErrors from "../locales/ko/errors.json";
+import koHistory from "../locales/ko/history.json";
 import koRepos from "../locales/ko/repos.json";
 import koStartup from "../locales/ko/startup.json";
 import koSync from "../locales/ko/sync.json";
@@ -25,6 +27,7 @@ export const resources = {
     common: enCommon,
     credentials: enCredentials,
     errors: enErrors,
+    history: enHistory,
     repos: enRepos,
     startup: enStartup,
     sync: enSync,
@@ -35,6 +38,7 @@ export const resources = {
     common: koCommon,
     credentials: koCredentials,
     errors: koErrors,
+    history: koHistory,
     repos: koRepos,
     startup: koStartup,
     sync: koSync,
@@ -85,7 +89,17 @@ void i18n.use(initReactI18next).init({
   lng: detectLanguage(),
   fallbackLng: "en",
   defaultNS: "common",
-  ns: ["branches", "changes", "common", "credentials", "errors", "repos", "startup", "sync"],
+  ns: [
+    "branches",
+    "changes",
+    "common",
+    "credentials",
+    "errors",
+    "history",
+    "repos",
+    "startup",
+    "sync",
+  ],
   interpolation: { escapeValue: false },
   contextSeparator: "#",
   returnNull: false,

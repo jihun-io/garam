@@ -29,6 +29,7 @@
     "title": "Create a branch",
     "name": "Name",
     "from": "Starts from {{branch}}. Your uncommitted changes come along.",
+    "fromCommit": "Starts from commit {{hash}} ({{summary}}). Uncommitted changes come along too.",
     "willBe": "Will be created as {{name}}",
     "submit": "Create branch"
   },

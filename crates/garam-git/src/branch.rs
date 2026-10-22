@@ -127,6 +127,10 @@ pub fn create(git: &Git, repo: &Path, name: &str, start: Option<&str>) -> Result
         .cwd(repo)
         .args(["switch", "--no-guess", "-c", name]);
     if let Some(start) = start {
+        // A start point is a revision, never an option.
+        if start.starts_with('-') {
+            return Err(GitError::Parse(format!("not a revision: {start:?}")));
+        }
         command = command.arg(start);
     }
     command.run()?;

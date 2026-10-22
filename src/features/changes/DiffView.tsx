@@ -98,7 +98,7 @@ function refOfKey(key: LineKey): LineRef {
  * Text diff. When `onStageLines` is given, changed lines get a selection
  * margin: click or drag to choose which lines are in the commit.
  */
-function TextDiff({
+export function TextDiff({
   hunks,
   onStageLines,
 }: {

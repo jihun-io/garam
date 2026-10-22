@@ -336,3 +336,23 @@ fn switches_to_a_remote_branch_by_tracking_it() {
         .head;
     assert_eq!(head.as_deref(), Some("main"));
 }
+
+#[test]
+fn creates_a_branch_from_an_older_commit() {
+    let repo = repo_with_commit();
+    let first = repo
+        .git(["rev-parse", "HEAD"])
+        .stdout_str()
+        .trim()
+        .to_owned();
+    repo.write("file.txt", "second\n");
+    repo.commit_all("second");
+
+    branch::create(repo.git_handle(), repo.path(), "from-first", Some(&first)).unwrap();
+    assert_eq!(current(&repo).as_deref(), Some("from-first"));
+    assert_eq!(
+        fs::read_to_string(repo.path().join("file.txt")).unwrap(),
+        "base\n"
+    );
+    assert!(branch::create(repo.git_handle(), repo.path(), "x", Some("--orphan")).is_err());
+}

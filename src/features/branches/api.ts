@@ -40,7 +40,8 @@ export function useBranchActions(repo: string) {
 
   return {
     create: useMutation({
-      mutationFn: (name: string) => unwrap(commands.branchCreate(repo, name)),
+      mutationFn: ({ name, start = null }: { name: string; start?: string | null }) =>
+        unwrap(commands.branchCreate(repo, name, start)),
       onSettled,
       scope,
     }),

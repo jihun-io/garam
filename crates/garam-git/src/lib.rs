@@ -15,6 +15,7 @@ mod error;
 mod git;
 pub mod identity;
 pub mod index;
+pub mod log;
 pub mod patch;
 mod progress;
 pub mod remote;

@@ -24,6 +24,7 @@
   "merge_conflict": "The merge stopped because of conflicts. Resolve the conflicted files, then commit.",
   "unrelated_histories": "These branches don't share any history, so Git won't merge them.",
   "rebase_conflict": "The rebase stopped because of conflicts. Resolve the conflicted files to continue.",
+  "revert_conflict": "The revert stopped because of conflicts. Resolve the conflicted files, then commit.",
   "non_fast_forward": "The remote has commits you don't have yet. Pull first, then push again.",
   "push_rejected": "The remote refused the push. The branch may be protected, or a server hook declined it.",
   "cannot_fast_forward": "Your branch and its upstream have both changed, and Git is set to only fast-forward when pulling.",

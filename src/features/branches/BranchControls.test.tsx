@@ -140,7 +140,7 @@ describe("BranchControls", () => {
     await user.type(within(dialog).getByLabelText("Name"), "로그인 화면 개선");
     expect(within(dialog).getByText("Will be created as 로그인-화면-개선")).toBeVisible();
     await user.click(within(dialog).getByRole("button", { name: "Create branch" }));
-    expect(commands.branchCreate).toHaveBeenCalledWith("/repo", "로그인-화면-개선");
+    expect(commands.branchCreate).toHaveBeenCalledWith("/repo", "로그인-화면-개선", null);
   });
 
   it("asks again before force-deleting an unmerged branch", async () => {

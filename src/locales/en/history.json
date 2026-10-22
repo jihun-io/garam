@@ -1,0 +1,28 @@
+{
+  "tabs": {
+    "label": "Repository views",
+    "changes": "Changes",
+    "history": "History"
+  },
+  "list": {
+    "label": "Commits",
+    "empty": "No commits yet.",
+    "loading": "Loading more commits…"
+  },
+  "menu": {
+    "copyHash": "Copy commit hash",
+    "copied": "Copied {{hash}}.",
+    "createBranch": "Create branch from commit…",
+    "revert": "Revert this commit"
+  },
+  "detail": {
+    "select": "Select a commit to see its changes.",
+    "committedBy": "Committed by {{name}}",
+    "merge": "Merge commit",
+    "copyHash": "Copy commit hash {{hash}}",
+    "files_one": "{{count}} changed file",
+    "files_other": "{{count}} changed files",
+    "noFiles": "This commit doesn't change any files."
+  },
+  "reverted": "Reverted “{{summary}}” with a new commit."
+}

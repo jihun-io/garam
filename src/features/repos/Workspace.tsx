@@ -2,13 +2,13 @@ import { Fragment } from "react";
 
 import type { RepositoryEntry } from "../../ipc";
 import { BranchControls } from "../branches/BranchControls";
-import { ChangesView } from "../changes/ChangesView";
 import { useRepoWatcher } from "../changes/useRepoWatcher";
 import { LanguageSelect } from "../settings/LanguageSelect";
 import { SyncButton } from "../sync/SyncButton";
 import { OpenInMenu } from "./OpenInMenu";
 import { RepoPicker } from "./RepoPicker";
 import { RepositoryOverview } from "./RepositoryOverview";
+import { RepoTabs } from "./RepoTabs";
 import styles from "./Workspace.module.css";
 
 /** Main window once at least one repository exists. */
@@ -42,7 +42,7 @@ export function Workspace({
           (selected.missing ? (
             <RepositoryOverview key={selected.path} repository={selected} />
           ) : (
-            <ChangesView key={selected.path} repo={selected.path} />
+            <RepoTabs key={selected.path} repo={selected.path} />
           ))}
       </main>
     </div>

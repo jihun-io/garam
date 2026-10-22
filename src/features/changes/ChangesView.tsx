@@ -1,5 +1,5 @@
 import { DropdownMenu } from "radix-ui";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
@@ -16,8 +16,11 @@ import { DiscardDialog } from "./DiscardDialog";
 import { FileList } from "./FileList";
 import { checkState, combinedCheckState } from "./fileState";
 
-/** Changed files, the selected file's diff, and the commit form. */
-export function ChangesView({ repo }: { repo: string }) {
+/**
+ * Changed files, the selected file's diff, and the commit form. `tabs` is
+ * shown at the top of the sidebar.
+ */
+export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) {
   const { t } = useTranslation("changes");
   const status = useStatus(repo);
   const { stage, unstage } = useChangeActions(repo);
@@ -48,6 +51,7 @@ export function ChangesView({ repo }: { repo: string }) {
   return (
     <div className={styles.root}>
       <aside className={styles.sidebar}>
+        {tabs}
         <AutoStashBanner repo={repo} branch={branch.head} />
         <div className={styles.listHeader}>
           <Checkbox

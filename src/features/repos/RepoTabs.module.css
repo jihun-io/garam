@@ -1,0 +1,33 @@
+.root,
+.content {
+  height: 100%;
+  min-height: 0;
+}
+
+.list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.tab {
+  min-height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-ink-muted);
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: var(--color-hover);
+}
+
+.tab[data-state="active"] {
+  border-color: var(--color-line);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}

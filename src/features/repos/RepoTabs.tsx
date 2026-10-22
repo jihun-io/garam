@@ -1,0 +1,42 @@
+import { Tabs } from "radix-ui";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+
+import { ChangesView } from "../changes/ChangesView";
+import { HistoryView } from "../history/HistoryView";
+import styles from "./RepoTabs.module.css";
+
+type View = "changes" | "history";
+
+/** Switches the repository area between local changes and history. */
+export function RepoTabs({ repo }: { repo: string }) {
+  const { t } = useTranslation("history");
+  const [view, setView] = useState<View>("changes");
+
+  const list = (
+    <Tabs.List className={styles.list} aria-label={t("tabs.label")}>
+      <Tabs.Trigger value="changes" className={styles.tab}>
+        {t("tabs.changes")}
+      </Tabs.Trigger>
+      <Tabs.Trigger value="history" className={styles.tab}>
+        {t("tabs.history")}
+      </Tabs.Trigger>
+    </Tabs.List>
+  );
+
+  return (
+    <Tabs.Root
+      value={view}
+      onValueChange={(v) => setView(v as View)}
+      className={styles.root}
+      activationMode="manual"
+    >
+      <Tabs.Content value="changes" className={styles.content}>
+        <ChangesView repo={repo} tabs={list} />
+      </Tabs.Content>
+      <Tabs.Content value="history" className={styles.content}>
+        <HistoryView repo={repo} tabs={list} />
+      </Tabs.Content>
+    </Tabs.Root>
+  );
+}

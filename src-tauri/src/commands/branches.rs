@@ -11,16 +11,16 @@ pub async fn branch_list(repo: String) -> AppResult<Vec<Branch>> {
     blocking(move || Ok(branch::list(&Git::locate()?, Path::new(&repo))?)).await
 }
 
-/// Creates a branch from HEAD and switches to it.
+/// Creates a branch at `start` (default: HEAD) and switches to it.
 #[tauri::command]
 #[specta::specta]
-pub async fn branch_create(repo: String, name: String) -> AppResult<()> {
+pub async fn branch_create(repo: String, name: String, start: Option<String>) -> AppResult<()> {
     blocking(move || {
         Ok(branch::create(
             &Git::locate()?,
             Path::new(&repo),
             &name,
-            None,
+            start.as_deref(),
         )?)
     })
     .await
