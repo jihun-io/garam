@@ -382,6 +382,12 @@
   user-select: text;
 }
 
+/* The field draws the focus ring; keep the global text-field ring off the
+   bare input inside it. */
+.searchField .searchInput:focus-visible {
+  box-shadow: none;
+}
+
 /* The filter is in effect: what the user chose, so the accent. */
 .filterOn,
 .filterOn:hover:not(:disabled) {
