@@ -57,11 +57,13 @@
 
 ## M5. 원격 동기화
 
-- [ ] fetch/pull/push + 진행률
-- [ ] ahead/behind 표시, publish
-- [ ] askpass 헬퍼 + 앱 내 자격 증명 프롬프트 (HTTPS, SSH 암호)
-- [ ] 백그라운드 fetch
-- [ ] non-fast-forward, 인증 실패 등 오류 안내
+- [x] fetch/pull/push + 진행률 (pull은 fetch 단계만 취소 가능, 리베이스·ff-only 설정 존중)
+- [x] ahead/behind 표시, publish (업스트림이 원격에서 삭제된 브랜치 포함)
+- [x] askpass 헬퍼 + 앱 내 자격 증명 프롬프트 (HTTPS, SSH 암호, SSH 호스트 키 확인)
+- [x] 백그라운드 fetch (5분, 프롬프트 없음 — 주기 설정은 M8)
+- [x] non-fast-forward, 인증 실패 등 오류 안내
+
+**남은 확인**: 실제 HTTPS 원격(개인 액세스 토큰)과 암호가 걸린 SSH 키로 앱 안에서 직접 로그인해 봐야 한다. askpass 중계는 실제 git + 앱 실행 파일 + Basic 인증 로컬 서버로 확인했고, 대화상자는 IPC 목으로 확인했다. Windows에서 GUI 서브시스템 실행 파일이 askpass로 stdout을 제대로 넘기는지도 확인이 필요하다.
 
 ## M6. 히스토리
 

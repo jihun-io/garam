@@ -1,10 +1,12 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use garam_git::{Git, GitError, Progress, repo};
+use garam_git::{Git, GitError, repo};
 use tauri::State;
 use tauri::ipc::Channel;
 
+use crate::askpass::Askpass;
+use crate::commands::remote::{NetworkContext, RemoteEvent};
 use crate::error::{AppError, AppErrorKind, AppResult, blocking};
 use crate::operations::Operations;
 use crate::repositories::{RepositoryEntry, RepositoryList, RepositoryStore};
@@ -65,36 +67,40 @@ pub async fn repo_create(
     .await
 }
 
-/// Clones `url` into `parent/name`, streaming progress to `on_progress`.
-/// Cancel with [`operation_cancel`] using the same `operation_id`.
+/// Clones `url` into `parent/name`, streaming progress and credential
+/// prompts to `on_event`. Cancel with [`operation_cancel`] using the same
+/// `operation_id`.
 #[tauri::command]
 #[specta::specta]
+#[allow(clippy::too_many_arguments)]
 pub async fn repo_clone(
     store: Store<'_>,
     operations: State<'_, Arc<Operations>>,
+    askpass: State<'_, Arc<Askpass>>,
     operation_id: String,
     url: String,
     parent: String,
     name: String,
-    on_progress: Channel<Progress>,
+    on_event: Channel<RemoteEvent>,
 ) -> AppResult<RepositoryEntry> {
     let store = Arc::clone(&store);
-    let operations = Arc::clone(&operations);
-    blocking(move || {
-        let dest = destination(&parent, &name)?;
-        let guard = operations.start(operation_id);
-        let info = repo::clone(&Git::locate()?, url.trim(), &dest, &guard.token, |p| {
-            let _ = on_progress.send(p);
-        })?;
-        store.add(info)
-    })
-    .await
+    let dest = destination(&parent, &name)?;
+    let info = NetworkContext::new(&operations, &askpass, operation_id, true, on_event)
+        .run(move |git, cancel, progress| repo::clone(git, url.trim(), &dest, cancel, progress))
+        .await?;
+    blocking(move || store.add(info)).await
 }
 
+/// Cancels a running operation, declining any credential prompt it shows.
 #[tauri::command]
 #[specta::specta]
-pub fn operation_cancel(operations: State<'_, Arc<Operations>>, operation_id: String) {
+pub fn operation_cancel(
+    operations: State<'_, Arc<Operations>>,
+    askpass: State<'_, Arc<Askpass>>,
+    operation_id: String,
+) {
     operations.cancel(&operation_id);
+    askpass.decline_all(&operation_id);
 }
 
 /// Removes a repository from Garam's list. Files on disk are untouched.

@@ -70,6 +70,7 @@
       "compressing": "개체 압축하는 중",
       "receiving": "개체 받는 중",
       "resolving": "델타 처리하는 중",
+      "writing": "개체 보내는 중",
       "checking_out": "파일 꺼내는 중"
     }
   },

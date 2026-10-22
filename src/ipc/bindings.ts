@@ -19,13 +19,15 @@ export const commands = {
 	/**  Creates `parent/name` and initializes a repository in it. */
 	repoCreate: (parent: string, name: string) => typedError<RepositoryEntry, AppError>(__TAURI_INVOKE("repo_create", { parent, name })),
 	/**
-	 *  Clones `url` into `parent/name`, streaming progress to `on_progress`.
-	 *  Cancel with [`operation_cancel`] using the same `operation_id`.
+	 *  Clones `url` into `parent/name`, streaming progress and credential
+	 *  prompts to `on_event`. Cancel with [`operation_cancel`] using the same
+	 *  `operation_id`.
 	 */
-	repoClone: (operationId: string, url: string, parent: string, name: string, onProgress: Channel<Progress>) => typedError<RepositoryEntry, AppError>(__TAURI_INVOKE("repo_clone", { operationId, url, parent, name, onProgress })),
+	repoClone: (operationId: string, url: string, parent: string, name: string, onEvent: Channel<RemoteEvent>) => typedError<RepositoryEntry, AppError>(__TAURI_INVOKE("repo_clone", { operationId, url, parent, name, onEvent })),
 	/**  Removes a repository from Garam's list. Files on disk are untouched. */
 	repoRemove: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("repo_remove", { path })),
 	repoSelect: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("repo_select", { path })),
+	/**  Cancels a running operation, declining any credential prompt it shows. */
 	operationCancel: (operationId: string) => __TAURI_INVOKE<void>("operation_cancel", { operationId }),
 	/**
 	 *  Starts watching `path` for changes (or stops with `None`). The frontend
@@ -71,6 +73,21 @@ export const commands = {
 } | null, AppError>(__TAURI_INVOKE("stash_find_auto", { repo, branch })),
 	stashPop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_pop", { repo, oid })),
 	stashDrop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_drop", { repo, oid })),
+	remoteInfo: (repo: string) => typedError<RemoteInfo, AppError>(__TAURI_INVOKE("remote_info", { repo })),
+	/**
+	 *  Fetches `remote`. With `interactive: false` (background fetch), nothing
+	 *  asks the user for credentials.
+	 */
+	remoteFetch: (operationId: string, repo: string, remote: string, interactive: boolean, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_fetch", { operationId, repo, remote, interactive, onEvent })),
+	remotePull: (operationId: string, repo: string, onEvent: Channel<RemoteEvent>) => typedError<PullOutcome, AppError>(__TAURI_INVOKE("remote_pull", { operationId, repo, onEvent })),
+	remotePush: (operationId: string, repo: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_push", { operationId, repo, onEvent })),
+	/**  Pushes the current branch to `remote` and sets it as the upstream. */
+	remotePublish: (operationId: string, repo: string, remote: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_publish", { operationId, repo, remote, onEvent })),
+	/**
+	 *  Answers a credential prompt; `None` declines it and cancels the
+	 *  operation that asked.
+	 */
+	credentialRespond: (requestId: string, answer: string | null) => __TAURI_INVOKE<void>("credential_respond", { requestId, answer }),
 	externalEditors: () => typedError<ExternalEditor[], AppError>(__TAURI_INVOKE("external_editors")),
 	externalOpenEditor: (editorId: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_editor", { editorId, path })),
 	externalOpenTerminal: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_terminal", { path })),
@@ -141,6 +158,22 @@ export type CoAuthor = {
 	email: string,
 };
 
+export type CredentialPrompt = {
+	kind: PromptKind,
+	/**  What the prompt is for: a URL, a key file, `user@host` or a host. */
+	target: string | null,
+	/**  For [`PromptKind::HostKey`], e.g. `ED25519 SHA256:abc...`. */
+	fingerprint: string | null,
+	/**  The prompt as git or ssh wrote it. */
+	text: string,
+};
+
+/**  A prompt waiting for the user, as sent to the frontend. */
+export type CredentialRequest = {
+	requestId: string,
+	prompt: CredentialPrompt,
+};
+
 export type DiffLine = {
 	kind: LineKind,
 	text: string,
@@ -165,7 +198,15 @@ export type ErrorCode = ErrorKind | AppErrorKind;
  *  `errors:<kind>` i18n key, so adding a variant requires adding that key to
  *  every locale.
  */
-export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "invalid_branch_name" | "branch_exists" | "branch_not_merged" | "local_changes_would_be_overwritten" | "merge_conflict" | "unrelated_histories" | "identity_missing" | "cancelled" | "unknown";
+export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "bare_repository" | "path_not_found" | "destination_not_empty" | "remote_not_found" | "authentication_failed" | "network_error" | "nothing_to_commit" | "invalid_branch_name" | "branch_exists" | "branch_not_merged" | "local_changes_would_be_overwritten" | "merge_conflict" | "rebase_conflict" | "unrelated_histories" | 
+/**  The remote has commits the local branch doesn't; pull first. */
+"non_fast_forward" | 
+/**  The server refused the push (protected branch, hook, ...). */
+"push_rejected" | 
+/**  The branch was configured to only fast-forward, but it diverged. */
+"cannot_fast_forward" | "no_upstream" | 
+/**  The upstream branch no longer exists on the remote. */
+"remote_branch_not_found" | "no_remote" | "detached_head" | "identity_missing" | "cancelled" | "unknown";
 
 export type ExternalEditor = {
 	id: string,
@@ -244,7 +285,51 @@ export type Progress = {
 };
 
 /**  Stages of a transfer, in the order git reports them. */
-export type ProgressPhase = "counting" | "compressing" | "receiving" | "resolving" | "checking_out";
+export type ProgressPhase = "counting" | "compressing" | "receiving" | "resolving" | 
+/**  Uploading objects during a push. */
+"writing" | "checking_out";
+
+export type PromptKind = 
+/**  HTTPS username. */
+"username" | 
+/**  HTTPS password or token. */
+"password" | 
+/**  Passphrase of an SSH private key. */
+"ssh_passphrase" | 
+/**  Password for an SSH login. */
+"ssh_password" | 
+/**
+ *  ssh doesn't know the server's host key yet; the answer is "yes" or
+ *  nothing.
+ */
+"host_key" | "other";
+
+export type PullOutcome = "up_to_date" | "updated";
+
+export type Remote = {
+	name: string,
+	url: string,
+};
+
+/**  Streamed to the frontend while a network operation runs. */
+export type RemoteEvent = {
+	type: "progress",
+} & Progress | 
+/**  git or ssh needs an answer; reply with [`credential_respond`]. */
+{
+	type: "credential",
+} & CredentialRequest;
+
+export type RemoteInfo = {
+	remotes: Remote[],
+	/**
+	 *  Remote used by fetch and publish: the current branch's upstream
+	 *  remote, else `origin`, else the first one.
+	 */
+	defaultRemote: string | null,
+	/**  Seconds since the Unix epoch of the last fetch, if any. */
+	lastFetchedAt: number | null,
+};
 
 export type RepoStatus = {
 	branch: BranchStatus,

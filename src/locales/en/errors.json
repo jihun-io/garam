@@ -23,5 +23,13 @@
   "local_changes_would_be_overwritten": "Your uncommitted changes would be overwritten. Commit them, or choose to leave them on the current branch.",
   "merge_conflict": "The merge stopped because of conflicts. Resolve the conflicted files, then commit.",
   "unrelated_histories": "These branches don't share any history, so Git won't merge them.",
+  "rebase_conflict": "The rebase stopped because of conflicts. Resolve the conflicted files to continue.",
+  "non_fast_forward": "The remote has commits you don't have yet. Pull first, then push again.",
+  "push_rejected": "The remote refused the push. The branch may be protected, or a server hook declined it.",
+  "cannot_fast_forward": "Your branch and its upstream have both changed, and Git is set to only fast-forward when pulling.",
+  "no_upstream": "This branch isn't connected to a remote branch yet. Publish it first.",
+  "remote_branch_not_found": "The remote branch this branch tracks no longer exists. Publish the branch to create it again.",
+  "no_remote": "That remote doesn't exist in this repository.",
+  "detached_head": "You aren't on a branch. Switch to a branch first.",
   "unknown": "Something went wrong while running Git."
 }

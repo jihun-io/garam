@@ -70,6 +70,7 @@
       "compressing": "Compressing objects",
       "receiving": "Receiving objects",
       "resolving": "Resolving deltas",
+      "writing": "Writing objects",
       "checking_out": "Checking out files"
     }
   },

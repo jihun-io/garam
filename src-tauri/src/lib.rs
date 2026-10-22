@@ -1,3 +1,4 @@
+mod askpass;
 mod commands;
 mod error;
 mod external;
@@ -16,7 +17,7 @@ use crate::repositories::RepositoryStore;
 /// Single source of truth for the IPC surface. Also used by the
 /// `export_bindings` test to regenerate `src/ipc/bindings.ts`.
 pub fn specta_builder() -> Builder<tauri::Wry> {
-    use commands::{branches, changes, external, git, repo};
+    use commands::{branches, changes, external, git, remote, repo};
     Builder::<tauri::Wry>::new().commands(collect_commands![
         git::git_info,
         repo::repo_list,
@@ -49,6 +50,12 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         branches::stash_find_auto,
         branches::stash_pop,
         branches::stash_drop,
+        remote::remote_info,
+        remote::remote_fetch,
+        remote::remote_pull,
+        remote::remote_push,
+        remote::remote_publish,
+        remote::credential_respond,
         external::external_editors,
         external::external_open_editor,
         external::external_open_terminal,
@@ -62,6 +69,12 @@ pub fn export_bindings(builder: &Builder<tauri::Wry>) {
     builder
         .export(specta_typescript::Typescript::default(), BINDINGS_PATH)
         .expect("failed to export TypeScript bindings");
+}
+
+/// When git or ssh started this process as its askpass program, answers
+/// the prompt and returns the exit code instead of starting the app.
+pub fn run_askpass_helper() -> Option<i32> {
+    askpass::run_helper_if_requested()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -82,6 +95,7 @@ pub fn run() {
                 data_dir.join("repositories.json"),
             )));
             app.manage(Arc::new(Operations::default()));
+            app.manage(Arc::new(askpass::Askpass::start()));
             app.manage(watcher::RepoWatcher::default());
             Ok(())
         })

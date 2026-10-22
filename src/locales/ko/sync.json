@@ -1,0 +1,35 @@
+{
+  "action": {
+    "fetch": "{{remote}}에서 가져오기",
+    "pull": "{{remote}}에서 풀",
+    "push": "{{remote}}에 푸시",
+    "publish": "브랜치 게시"
+  },
+  "running": {
+    "fetch": "가져오는 중…",
+    "pull": "풀 하는 중…",
+    "push": "푸시하는 중…",
+    "publish": "게시하는 중…"
+  },
+  "lastFetched": "마지막 가져오기: {{time}}",
+  "neverFetched": "아직 가져오지 않음",
+  "publishHint": "이 브랜치를 {{remote}}에 처음으로 푸시합니다",
+  "unbornHint": "게시하려면 먼저 커밋하세요",
+  "ahead_one": "보낼 커밋 {{count}}개",
+  "ahead_other": "보낼 커밋 {{count}}개",
+  "behind_one": "받을 커밋 {{count}}개",
+  "behind_other": "받을 커밋 {{count}}개",
+  "cancel": "취소",
+  "more": "다른 동기화 작업",
+  "menu": {
+    "fetch": "가져오기",
+    "pull": "풀",
+    "push": "푸시"
+  },
+  "done": {
+    "pulled": "{{upstream}}에서 풀 했습니다.",
+    "upToDate": "{{branch}} 브랜치는 이미 최신 상태입니다.",
+    "pushed": "{{upstream}}에 푸시했습니다.",
+    "published": "{{branch}} 브랜치를 {{remote}}에 게시했습니다."
+  }
+}

@@ -54,6 +54,24 @@ impl Git {
         self
     }
 
+    /// Routes credential questions from git (HTTPS) and ssh (passphrases,
+    /// host keys) to `program`, which receives the prompt as its argument
+    /// and prints the answer, or exits non-zero to decline.
+    pub fn with_askpass(self, program: impl Into<OsString>) -> Self {
+        let program = program.into();
+        let git = self
+            .with_env("GIT_ASKPASS", program.clone())
+            .with_env("SSH_ASKPASS", program)
+            // Use askpass even when a terminal is attached (OpenSSH 8.4+).
+            .with_env("SSH_ASKPASS_REQUIRE", "force");
+        // Older ssh only uses SSH_ASKPASS when DISPLAY is set.
+        if env::var_os("DISPLAY").is_none() {
+            git.with_env("DISPLAY", ":0")
+        } else {
+            git
+        }
+    }
+
     pub fn path(&self) -> &Path {
         &self.path
     }

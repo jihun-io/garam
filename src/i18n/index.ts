@@ -4,32 +4,40 @@ import { initReactI18next } from "react-i18next";
 import enBranches from "../locales/en/branches.json";
 import enChanges from "../locales/en/changes.json";
 import enCommon from "../locales/en/common.json";
+import enCredentials from "../locales/en/credentials.json";
 import enErrors from "../locales/en/errors.json";
 import enRepos from "../locales/en/repos.json";
 import enStartup from "../locales/en/startup.json";
+import enSync from "../locales/en/sync.json";
 import koBranches from "../locales/ko/branches.json";
 import koChanges from "../locales/ko/changes.json";
 import koCommon from "../locales/ko/common.json";
+import koCredentials from "../locales/ko/credentials.json";
 import koErrors from "../locales/ko/errors.json";
 import koRepos from "../locales/ko/repos.json";
 import koStartup from "../locales/ko/startup.json";
+import koSync from "../locales/ko/sync.json";
 
 export const resources = {
   en: {
     branches: enBranches,
     changes: enChanges,
     common: enCommon,
+    credentials: enCredentials,
     errors: enErrors,
     repos: enRepos,
     startup: enStartup,
+    sync: enSync,
   },
   ko: {
     branches: koBranches,
     changes: koChanges,
     common: koCommon,
+    credentials: koCredentials,
     errors: koErrors,
     repos: koRepos,
     startup: koStartup,
+    sync: koSync,
   },
 } as const;
 
@@ -77,7 +85,7 @@ void i18n.use(initReactI18next).init({
   lng: detectLanguage(),
   fallbackLng: "en",
   defaultNS: "common",
-  ns: ["branches", "changes", "common", "errors", "repos", "startup"],
+  ns: ["branches", "changes", "common", "credentials", "errors", "repos", "startup", "sync"],
   interpolation: { escapeValue: false },
   contextSeparator: "#",
   returnNull: false,

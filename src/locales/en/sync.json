@@ -1,0 +1,35 @@
+{
+  "action": {
+    "fetch": "Fetch {{remote}}",
+    "pull": "Pull {{remote}}",
+    "push": "Push {{remote}}",
+    "publish": "Publish branch"
+  },
+  "running": {
+    "fetch": "Fetching…",
+    "pull": "Pulling…",
+    "push": "Pushing…",
+    "publish": "Publishing…"
+  },
+  "lastFetched": "Last fetched {{time}}",
+  "neverFetched": "Never fetched",
+  "publishHint": "Push this branch to {{remote}} for the first time",
+  "unbornHint": "Make a commit before publishing",
+  "ahead_one": "{{count}} commit to push",
+  "ahead_other": "{{count}} commits to push",
+  "behind_one": "{{count}} commit to pull",
+  "behind_other": "{{count}} commits to pull",
+  "cancel": "Cancel",
+  "more": "More sync actions",
+  "menu": {
+    "fetch": "Fetch",
+    "pull": "Pull",
+    "push": "Push"
+  },
+  "done": {
+    "pulled": "Pulled from {{upstream}}.",
+    "upToDate": "{{branch}} is already up to date.",
+    "pushed": "Pushed to {{upstream}}.",
+    "published": "Published {{branch}} to {{remote}}."
+  }
+}

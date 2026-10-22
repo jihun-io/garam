@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Channel } from "@tauri-apps/api/core";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -9,6 +8,7 @@ import { FormDialog } from "../../../components/ui/Dialog";
 import { Field } from "../../../components/ui/Field";
 import { commands, toAppError, unwrap, type AppError, type Progress } from "../../../ipc";
 import { joinPath, repoNameFromUrl } from "../../../lib/paths";
+import { networkChannel } from "../../sync/networkChannel";
 import { rememberParentDir } from "../defaultParent";
 import { BrowseButton } from "./BrowseButton";
 import styles from "./dialogs.module.css";
@@ -38,10 +38,9 @@ export function CloneRepositoryDialog({ onClose }: { onClose: () => void }) {
     setError(undefined);
     setState({ status: "cloning", progress: null });
 
-    const channel = new Channel<Progress>();
-    channel.onmessage = (progress) => {
+    const channel = networkChannel((progress) => {
       if (operationId.current === id) setState({ status: "cloning", progress });
-    };
+    });
     try {
       await unwrap(commands.repoClone(id, url.trim(), parent, name.trim(), channel));
       rememberParentDir(parent);

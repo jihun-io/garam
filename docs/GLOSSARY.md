@@ -56,3 +56,8 @@ UI 문자열을 번역할 때 이 표를 따른다. 새 용어가 생기면 먼�
 | author                           | 작성자                 |                                       |
 | co-author                        | 공동 작성자            |                                       |
 | credential                       | 자격 증명              |                                       |
+| credential helper                | 자격 증명 도우미       |                                       |
+| personal access token            | 개인 액세스 토큰       |                                       |
+| passphrase (SSH key)             | 암호                   | "패스프레이즈"는 쓰지 않는다          |
+| host key fingerprint             | 지문                   |                                       |
+| fast-forward                     | 빨리 감기              |                                       |

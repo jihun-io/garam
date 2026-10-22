@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+import { CredentialDialog } from "../features/credentials/CredentialDialog";
 import { Notifications } from "../features/notify/Notifications";
 import { StartupGate } from "../features/startup/StartupGate";
 
@@ -14,6 +15,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <StartupGate />
       <Notifications />
+      <CredentialDialog />
     </QueryClientProvider>
   );
 }

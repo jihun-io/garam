@@ -64,7 +64,7 @@ libgit2나 gitoxide 대신 **시스템 `git` 바이너리를 실행하고 출력
 | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | `LC_ALL=C`, `LANGUAGE=C`                                                            | 출력·오류 문자열을 영어로 고정해서 파싱과 오류 분류를 안정적으로 한다. 번역은 앱이 한다 |
 | `GIT_TERMINAL_PROMPT=0`                                                             | 터미널 프롬프트에서 멈추는 것을 막는다                                                  |
-| `GIT_ASKPASS` / `SSH_ASKPASS` → 앱의 askpass 헬퍼                                   | 자격 증명 입력을 앱 UI로 받는다 (M5)                                                    |
+| 네트워크 작업은 `GIT_ASKPASS` / `SSH_ASKPASS` → 앱의 askpass 헬퍼 (2.7)             | 자격 증명 입력을 앱 UI로 받는다                                                         |
 | `-c core.quotePath=false` + 가능한 곳은 `-z`                                        | 한글 등 비ASCII 경로를 이스케이프 없이 정확히 받는다                                    |
 | 읽기 전용 명령에 `--no-optional-locks`                                              | 사용자가 터미널에서 git을 함께 쓸 때 index.lock 충돌을 줄인다                           |
 | 기계 판독용 포맷 사용 (`status --porcelain=v2 -z`, `log --format=` + NUL 구분자 등) | 사람용 출력은 버전마다 바뀔 수 있다                                                     |
@@ -85,7 +85,8 @@ garam-git/src/
 ├── patch.rs       # 선택한 줄로 부분 패치 생성 (줄 단위 스테이징)
 ├── commit.rs      # commit/amend
 ├── branch.rs      # 브랜치 목록·생성·전환·삭제·병합
-├── remote.rs      # fetch/pull/push, ahead/behind, 진행률 파싱
+├── remote.rs      # fetch/pull/push/publish, 원격 저장소 정보
+├── credential.rs  # askpass로 들어온 git·ssh 프롬프트 분류
 ├── log.rs         # 히스토리 페이지 단위 조회
 ├── stash.rs
 └── conflict.rs    # 충돌 상태 감지, ours/theirs 해결
@@ -120,11 +121,45 @@ garam-git/src/
 - 전환이 실패하면 **이번에 만든 stash만** 되돌린다. 보관할 변경이 없으면 git이 stash를 만들지 않으므로, 전후 `refs/stash`를 비교해 새로 생겼는지 확인한다.
 - 원격 브랜치를 고르면 같은 이름의 로컬 브랜치가 있을 때는 그쪽으로, 없으면 `git switch --track`으로 추적 브랜치를 만들어 전환한다.
 
+### 2.7 원격 동기화와 자격 증명
+
+- **fetch**: `git fetch --progress --prune -- <원격>`. 기본 원격은 현재 브랜치의 업스트림 원격, 없으면 `origin`, 그것도 없으면 첫 번째 원격이다. 마지막 fetch 시각은 `FETCH_HEAD`의 수정 시각으로 보여준다.
+- **pull**: `git pull` 한 번 대신 **업스트림 원격 fetch(취소 가능) → 로컬 통합** 두 단계로 나눈다. 네트워크 단계만 취소할 수 있고, 병합·리베이스 도중에 프로세스를 죽여 저장소를 망가뜨리는 일이 없다. 통합은 `branch.<이름>.rebase` → `pull.rebase` 순서로 설정을 따라 `git rebase`(merges면 `--rebase-merges`) 또는 `git merge --no-edit @{upstream}`(`pull.ff`가 only/false면 `--ff-only`/`--no-ff`)를 실행한다. 아무 설정이 없으면 병합한다. 그래서 git 2.27+의 "갈라진 브랜치를 어떻게 합칠지" 질문에서 멈추지 않는다.
+- **push**: `git push --progress -- <업스트림 원격> refs/heads/<브랜치>:<branch.<이름>.merge>`로 refspec을 명시한다. `push.default` 설정과 무관하게 항상 업스트림으로 간다. 강제 푸시는 MVP에 없다.
+- **publish**: `git push --set-upstream -- <원격> refs/heads/<브랜치>:refs/heads/<브랜치>`. 업스트림이 없거나 원격에서 삭제된(`gone`) 브랜치에 쓴다.
+- 진행률 가중치는 작업마다 다르다(`TransferKind`). push는 `Writing objects` 단계를 쓴다.
+
+**askpass 중계**
+
+```
+git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드)
+                                        │ 127.0.0.1 TCP, 토큰 확인
+                                        ▼
+                         앱의 Askpass 서버 ──operationId──▶ 해당 작업의 Channel
+                                                              │ RemoteEvent::Credential
+                                                              ▼
+                                               프론트 자격 증명 대화상자 → credential_respond
+```
+
+- 별도 헬퍼 바이너리를 배포하지 않고 **앱 실행 파일 자신**을 askpass로 쓴다. `main()`이 맨 먼저 `GARAM_ASKPASS_PORT` 환경 변수를 확인하고, 있으면 창을 열지 않고 프롬프트(argv[1])를 앱으로 보낸 뒤 답을 stdout에 쓰고 끝난다. 답이 없으면 종료 코드 1로 거절한다.
+- 앱은 시작할 때 `127.0.0.1`의 임의 포트에 소켓을 열고 128비트 무작위 토큰을 만든다. 헬퍼 환경 변수로 포트·토큰·작업 ID를 넘긴다. 토큰이 틀린 요청에는 답하지 않는다.
+- 프롬프트는 그 작업의 진행률 Channel로 함께 보낸다. 핸들러가 등록되지 않은 작업(백그라운드 fetch)은 즉시 거절되므로 아무도 보지 못하는 질문에서 git이 멈추지 않는다.
+- 사용자가 프롬프트를 취소하면 그 작업을 취소한다. 작업이 끝나거나 취소되면 대기 중인 프롬프트도 모두 거절한다. 답을 기다리는 시간은 최대 10분이다.
+- `SSH_ASKPASS_REQUIRE=force`로 터미널이 있어도 askpass를 쓰게 하고, 오래된 ssh를 위해 `DISPLAY`가 없으면 채운다.
+- 프롬프트 문장(`LC_ALL=C`라 영어)은 `credential.rs`가 종류(사용자 이름, 암호, SSH 키 암호, SSH 암호, 호스트 키 확인, 기타)와 대상으로 나눈다. 문장은 프론트가 번역한다.
+- 자격 증명은 앱이 저장하지 않는다. 인증에 성공하면 git이 설정된 credential helper(OS 키체인 등)에 저장한다.
+
+**프론트**
+
+- 툴바의 동기화 버튼 하나가 상황에 따라 바뀐다: 분리된 HEAD·동기화됨 → 가져오기, 받을 커밋 있음 → 풀, 보낼 커밋만 있음 → 푸시, 업스트림 없음·삭제됨 → 브랜치 게시. 옆 메뉴에서 다른 작업을 직접 고를 수 있다.
+- 저장소마다 네트워크 작업은 한 번에 하나다(`syncStore`). pull은 index를 바꾸므로 커밋·스테이지와 같은 mutation scope에 들어간다.
+- 백그라운드 fetch: 1분마다 확인해서 마지막 fetch(또는 시도)가 5분보다 오래됐으면 프롬프트 없이 fetch한다. 실패는 조용히 무시한다. 주기 설정은 M8.
+
 ## 3. IPC 설계
 
 - 프론트↔Rust 통신은 **Tauri 명령(`invoke`)** 으로 한다. 명령 이름은 `도메인_동작`(예: `status_get`, `branch_create`).
 - **타입 공유**: `tauri-specta`로 Rust 타입에서 TypeScript 바인딩을 자동 생성한다. 생성 파일은 `src/ipc/bindings.ts`이며 직접 수정하지 않는다. 디버그 실행 시와 `pnpm bindings`(= `export_bindings` 테스트)에서 다시 만들어지고, CI는 커밋된 파일이 최신인지 검사한다. 프론트는 `src/ipc/index.ts`의 `unwrap()`으로 결과를 값 또는 `CommandError`로 바꿔 TanStack Query에 넘긴다.
-- **장시간 작업**(clone, fetch, push): 진행률은 `tauri::ipc::Channel`로 스트리밍하고, 작업 ID를 반환해 취소할 수 있게 한다.
+- **장시간 작업**(clone, fetch, pull, push): 진행률과 자격 증명 프롬프트를 `tauri::ipc::Channel<RemoteEvent>`로 스트리밍하고, 프론트가 만든 작업 ID로 취소할 수 있게 한다.
 - **저장소 변경 감지**: Rust에서 `notify`로 작업 트리와 `.git`을 감시하고, 디바운스(약 200ms)한 뒤 `repo-changed` 이벤트를 보낸다. 프론트는 해당 쿼리를 invalidate한다.
 - **취소**: 장시간 작업은 프론트가 만든 `operationId`로 `Operations` 레지스트리에 `CancelToken`을 등록하고, `operation_cancel`로 취소한다. `GitCommand::run_streaming`이 토큰을 확인해 git 프로세스를 종료한다.
 - **앱 상태 저장**: 저장소 목록은 앱 데이터 폴더의 `repositories.json`에 저장한다(`src-tauri/src/repositories.rs`). 임시 파일에 쓴 뒤 이름을 바꾸는 방식으로 원자적으로 저장하고, 손상된 파일은 덮어쓰지 않고 `.corrupt-<시각>.json`으로 옮겨 둔다.
