@@ -21,6 +21,7 @@ import { lineSegments } from "./syntax/segments";
 import styles from "./DiffView.module.css";
 import { useNotify } from "../notify/notifyStore";
 import { Icon } from "../../components/Icon";
+import checkbox from "../../components/ui/Checkbox.module.css";
 import { Tooltip } from "../../components/ui/Tooltip";
 
 type Row = { type: "hunk"; hunk: Hunk } | { type: "line"; line: DiffLine };
@@ -429,7 +430,7 @@ function Line({
           // Mouse clicks are handled on mousedown; this is for the keyboard.
           onClick={(e) => e.detail === 0 && selection.onKeyboardToggle()}
         >
-          <span className={styles.selectBox} />
+          <span className={checkbox.checkbox} data-state={included ? "checked" : "unchecked"} />
         </button>
       )}
       <span className={styles.gutter}>{line.oldLine ?? ""}</span>

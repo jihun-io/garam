@@ -224,18 +224,6 @@
   outline-offset: -2px;
 }
 
-.selectBox {
-  width: 10px;
-  height: 10px;
-  border: 1.5px solid var(--color-ink-faint);
-  border-radius: 2px;
-}
-
-.select[aria-checked="true"] .selectBox {
-  border-color: var(--color-river);
-  background: var(--color-river);
-}
-
 /* Changed lines left out of the commit keep their color but lose the
    strong margin, so included lines stand out. */
 .excluded {
