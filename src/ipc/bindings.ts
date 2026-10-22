@@ -118,7 +118,10 @@ export const commands = {
 
 /* Types */
 export type Accent = "garam" | "blue" | "purple" | "pink" | "orange" | 
-/**  The operating system's accent color, where it can be read. */
+/**
+ *  The operating system's accent color, where it can be read (Garam
+ *  green where it can't).
+ */
 "system";
 
 /**
@@ -148,6 +151,8 @@ export type AppSettings = {
 	terminal: string | null,
 	/**  Minutes between background fetches; 0 turns them off. */
 	fetchIntervalMinutes: number,
+	/**  Width of the changes/history sidebar in CSS pixels. */
+	sidebarWidth: number,
 };
 
 export type AutoStash = {

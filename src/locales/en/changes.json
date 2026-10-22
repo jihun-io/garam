@@ -50,7 +50,7 @@
     "coAuthors": "Co-authors",
     "coAuthorsPlaceholder": "Name <email@example.com>, one per line",
     "coAuthorsInvalid": "Write each co-author as Name <email@example.com>.",
-    "submit": "Commit to {{branch}}",
+    "submit": "Commit to <branch>{{branch}}</branch>",
     "submitDetached": "Commit",
     "submitAmend": "Amend last commit",
     "nothingStaged": "Select files to include in the commit.",

@@ -1,0 +1,74 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 240px;
+  min-height: 28px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  text-align: start;
+}
+
+.trigger:hover {
+  border-color: var(--color-ink-faint);
+}
+
+.trigger[data-state="open"] {
+  border-color: var(--color-focus);
+}
+
+/* Like text fields: recolor the border instead of stacking an outline. */
+.trigger:focus-visible {
+  outline: none;
+  border-color: var(--color-focus);
+  box-shadow: inset 0 0 0 1px var(--color-focus);
+}
+
+.caret {
+  display: grid;
+  color: var(--color-ink-muted);
+}
+
+.content {
+  z-index: 50;
+  min-width: var(--radix-select-trigger-width);
+  max-height: var(--radix-select-content-available-height);
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
+}
+
+.viewport {
+  padding: var(--space-1);
+}
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 var(--space-3) 0 26px;
+  border-radius: var(--radius-sm);
+  outline: none;
+  user-select: none;
+}
+
+.item[data-highlighted] {
+  background: var(--color-river);
+  color: var(--color-on-accent);
+}
+
+.item[data-disabled] {
+  color: var(--color-ink-faint);
+}
+
+.check {
+  position: absolute;
+  left: 6px;
+  display: grid;
+}

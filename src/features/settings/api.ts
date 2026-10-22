@@ -14,11 +14,12 @@ export const settingsKeys = {
 export const DEFAULT_SETTINGS: AppSettings = {
   language: null,
   theme: "system",
-  accent: "garam",
+  accent: "system",
   diffFontSize: "medium",
   editor: null,
   terminal: null,
   fetchIntervalMinutes: 5,
+  sidebarWidth: 320,
 };
 
 export function useSettings(): AppSettings {

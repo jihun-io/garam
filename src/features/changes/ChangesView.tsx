@@ -10,6 +10,7 @@ import { AutoStashBanner } from "../branches/AutoStashBanner";
 import { useConflicts } from "../conflicts/api";
 import { ConflictBanner, ConflictPanel } from "../conflicts/ConflictPanel";
 import { useNotify } from "../notify/notifyStore";
+import { SidebarSplitter } from "../settings/SidebarSplitter";
 import { useChangeActions, useStatus } from "./api";
 import styles from "./ChangesView.module.css";
 import { CommitForm } from "./CommitForm";
@@ -101,6 +102,7 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
         ) : (
           <div className={styles.listEmpty} />
         )}
+        <SidebarSplitter />
         {operation && conflicts.data ? (
           <ConflictPanel repo={repo} state={conflicts.data} />
         ) : (

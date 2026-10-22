@@ -23,13 +23,14 @@ pub enum Theme {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum Accent {
-    #[default]
     Garam,
     Blue,
     Purple,
     Pink,
     Orange,
-    /// The operating system's accent color, where it can be read.
+    /// The operating system's accent color, where it can be read (Garam
+    /// green where it can't).
+    #[default]
     System,
 }
 
@@ -56,6 +57,8 @@ pub struct AppSettings {
     pub terminal: Option<String>,
     /// Minutes between background fetches; 0 turns them off.
     pub fetch_interval_minutes: u32,
+    /// Width of the changes/history sidebar in CSS pixels.
+    pub sidebar_width: u32,
 }
 
 impl Default for AppSettings {
@@ -68,6 +71,7 @@ impl Default for AppSettings {
             editor: None,
             terminal: None,
             fetch_interval_minutes: 5,
+            sidebar_width: 320,
         }
     }
 }
@@ -127,8 +131,9 @@ mod tests {
         let changed = AppSettings {
             language: Some("ko".into()),
             theme: Theme::Dark,
-            accent: Accent::System,
+            accent: Accent::Purple,
             fetch_interval_minutes: 0,
+            sidebar_width: 400,
             ..AppSettings::default()
         };
         store.set(changed.clone()).unwrap();

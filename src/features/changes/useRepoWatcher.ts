@@ -18,18 +18,18 @@ export function useRepoWatcher(repo: string | null) {
     if (!repo) return;
     let unlisten: (() => void) | undefined;
     let disposed = false;
-    try {
-      void listen<{ path: string }>("repo-changed", ({ payload }) => {
-        if (payload.path === repo) {
-          void client.invalidateQueries({ queryKey: changesKeys.all(repo) });
-        }
-      }).then((fn) => {
+    listen<{ path: string }>("repo-changed", ({ payload }) => {
+      if (payload.path === repo) {
+        void client.invalidateQueries({ queryKey: changesKeys.all(repo) });
+      }
+    })
+      .then((fn) => {
         if (disposed) fn();
         else unlisten = fn;
+      })
+      .catch(() => {
+        // Not running inside Tauri: status still refreshes on window focus.
       });
-    } catch {
-      // Not running inside Tauri.
-    }
     return () => {
       disposed = true;
       unlisten?.();

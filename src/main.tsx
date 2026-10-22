@@ -7,6 +7,7 @@ import { App, queryClient } from "./app/App";
 import { commands, unwrap } from "./ipc";
 import { preloadSettings, settingsKeys } from "./features/settings/api";
 import { resolveAccent } from "./features/settings/SettingsEffects";
+import { setSidebarWidth } from "./lib/layout";
 import { initTheme, setAppearance } from "./lib/theme";
 import { initWindowChrome } from "./lib/windowChrome";
 
@@ -33,6 +34,7 @@ async function start() {
     accent: resolveAccent(settings.accent, systemAccent),
     diffFontSize: settings.diffFontSize,
   });
+  setSidebarWidth(settings.sidebarWidth);
   await i18n.changeLanguage(resolveLanguage(settings.language));
 
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

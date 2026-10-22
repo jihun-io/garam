@@ -10,5 +10,8 @@
   },
   "notify": {
     "dismiss": "Dismiss"
+  },
+  "layout": {
+    "resizeSidebar": "Resize sidebar"
   }
 }

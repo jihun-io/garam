@@ -53,6 +53,12 @@
   --radius-sm: 4px;
   --radius-md: 6px;
 
+  /* Saved sidebar width (set from settings), and the width actually used:
+     never so wide that the diff gets squeezed. The toolbar's first button
+     follows it too. Limits match lib/layout.ts. */
+  --sidebar-width: 320px;
+  --sidebar-actual: clamp(240px, var(--sidebar-width), max(240px, min(560px, 100vw - 480px)));
+
   /* Space the macOS window buttons take inside the toolbar. */
   --titlebar-inset: 0px;
 }

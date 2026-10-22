@@ -71,6 +71,7 @@ export function RepoPicker({
       <Popover.Trigger asChild>
         <ToolbarButton
           icon="repository"
+          className={styles.trigger}
           caption={t("picker.caption")}
           value={selected?.name ?? t("picker.placeholder")}
           trailing={<Icon name="dropdown" size={12} />}

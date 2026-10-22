@@ -1,6 +1,7 @@
 import { Dialog as RadixDialog } from "radix-ui";
 import type { FormEvent, ReactNode } from "react";
 
+import { keepOpenWhenDraggingWindow, WindowDragArea } from "../WindowDragArea";
 import styles from "./Dialog.module.css";
 
 /**
@@ -32,17 +33,22 @@ export function FormDialog({
   const block = (e: Event) => {
     if (!dismissible) e.preventDefault();
   };
+  const outside = (e: Event) => {
+    block(e);
+    keepOpenWhenDraggingWindow(e);
+  };
 
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className={styles.overlay} />
+        <WindowDragArea overDialog />
         <RadixDialog.Content
           className={styles.content}
           aria-describedby={undefined}
           onEscapeKeyDown={block}
-          onPointerDownOutside={block}
-          onInteractOutside={block}
+          onPointerDownOutside={outside}
+          onInteractOutside={outside}
         >
           <form onSubmit={handleSubmit} className={styles.form}>
             <RadixDialog.Title className={styles.title}>{title}</RadixDialog.Title>

@@ -1,5 +1,8 @@
 .form {
   display: grid;
+  /* Long content (a branch name in the button) must not widen the form
+     past the sidebar. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
   padding: var(--space-3);
   border-top: 1px solid var(--color-line);
@@ -60,10 +63,20 @@
 
 .submit {
   width: 100%;
+  min-width: 0;
   min-height: 32px;
 }
 
-.submit span {
+/* A row so the branch part can shrink; `pre` keeps the spaces around it,
+   which flex layout would otherwise drop. */
+.label {
+  display: flex;
+  min-width: 0;
+  white-space: pre;
+}
+
+.branch {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }

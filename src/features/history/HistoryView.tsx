@@ -8,6 +8,7 @@ import { useBranchDialog } from "../branches/branchDialogStore";
 import { useStatus } from "../changes/api";
 import changesStyles from "../changes/ChangesView.module.css";
 import { useNotify } from "../notify/notifyStore";
+import { SidebarSplitter } from "../settings/SidebarSplitter";
 import { useHistory, useRevert } from "./api";
 import { CommitDetailView } from "./CommitDetailView";
 import { CommitList } from "./CommitList";
@@ -75,6 +76,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
           loadMore={loadMore}
           actions={actions}
         />
+        <SidebarSplitter />
       </aside>
       <div className={changesStyles.main}>{main}</div>
     </div>

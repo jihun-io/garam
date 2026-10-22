@@ -1,0 +1,32 @@
+/* Sits on the panel's right border; wider than it looks so it's easy to
+   grab. */
+.splitter {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  z-index: 2;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.splitter::after {
+  position: absolute;
+  inset: 0 3px;
+  content: "";
+  transition: background-color 120ms ease-out;
+}
+
+.splitter:hover::after,
+.splitter[data-dragging]::after {
+  background: var(--color-focus);
+}
+
+.splitter:focus-visible {
+  outline: none;
+}
+
+.splitter:focus-visible::after {
+  background: var(--color-focus);
+}

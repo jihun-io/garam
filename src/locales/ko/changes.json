@@ -50,7 +50,7 @@
     "coAuthors": "공동 작성자",
     "coAuthorsPlaceholder": "이름 <email@example.com>, 한 줄에 한 명씩",
     "coAuthorsInvalid": "공동 작성자는 이름 <email@example.com> 형식으로 쓰세요.",
-    "submit": "{{branch}}에 커밋",
+    "submit": "<branch>{{branch}}</branch>에 커밋",
     "submitDetached": "커밋",
     "submitAmend": "마지막 커밋 수정",
     "nothingStaged": "커밋에 포함할 파일을 선택하세요.",

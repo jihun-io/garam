@@ -1,10 +1,13 @@
 import { useTranslation } from "react-i18next";
 
+import { Select } from "../../components/ui/Select";
+
 import { useEditors } from "../repos/api";
 import { useSettings, useTerminals, useUpdateSettings } from "./api";
-import { SelectControl, Setting } from "./controls";
+import { Setting } from "./controls";
 
-const AUTO = "";
+// Radix Select can't use "" as a value; no app id looks like this.
+const AUTO = "first-found";
 
 /** Default editor and terminal; "first found" stays unset in settings. */
 export function AppsSettings() {
@@ -26,21 +29,21 @@ export function AppsSettings() {
     <>
       <Setting label={t("apps.editor")}>
         {(id) => (
-          <SelectControl
+          <Select
             id={id}
             value={settings.editor ?? AUTO}
             options={choices(editors)}
-            onChange={(editor) => update({ editor: editor || null })}
+            onChange={(editor) => update({ editor: editor === AUTO ? null : editor })}
           />
         )}
       </Setting>
       <Setting label={t("apps.terminal")}>
         {(id) => (
-          <SelectControl
+          <Select
             id={id}
             value={settings.terminal ?? AUTO}
             options={choices(terminals)}
-            onChange={(terminal) => update({ terminal: terminal || null })}
+            onChange={(terminal) => update({ terminal: terminal === AUTO ? null : terminal })}
           />
         )}
       </Setting>
@@ -57,7 +60,7 @@ export function SyncSettings() {
   return (
     <Setting label={t("sync.fetchInterval")} hint={t("sync.hint")}>
       {(id) => (
-        <SelectControl
+        <Select
           id={id}
           value={String(settings.fetchIntervalMinutes)}
           options={INTERVALS.map((minutes) => ({

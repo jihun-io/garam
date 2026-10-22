@@ -1,11 +1,13 @@
 import { RadioGroup } from "radix-ui";
 import { useTranslation } from "react-i18next";
 
+import { Select } from "../../components/ui/Select";
+
 import { Icon } from "../../components/Icon";
 import type { Accent, Theme } from "../../ipc";
 import { ACCENT_PRESETS, accentPairFrom } from "../../lib/accent";
 import { useSettings, useSystemAccent, useUpdateSettings } from "./api";
-import { SelectControl, Setting } from "./controls";
+import { Setting } from "./controls";
 import styles from "./SettingsDialog.module.css";
 
 const THEMES: { value: Theme; icon: "themeSystem" | "themeLight" | "themeDark" }[] = [
@@ -87,7 +89,7 @@ export function AppearanceSettings() {
 
       <Setting label={t("appearance.diffFontSize")}>
         {(id) => (
-          <SelectControl
+          <Select
             id={id}
             value={settings.diffFontSize}
             onChange={(diffFontSize) => update({ diffFontSize })}

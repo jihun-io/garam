@@ -10,5 +10,8 @@
   },
   "notify": {
     "dismiss": "닫기"
+  },
+  "layout": {
+    "resizeSidebar": "사이드바 크기 조절"
   }
 }

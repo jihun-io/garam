@@ -12,6 +12,8 @@
   height: 52px;
   /* Room for the macOS window buttons (see lib/windowChrome.ts). */
   padding-left: var(--titlebar-inset);
+  /* Never make the window scroll sideways, even in a very narrow window. */
+  overflow: hidden;
   border-bottom: 1px solid var(--color-line);
   background: var(--color-surface);
 }

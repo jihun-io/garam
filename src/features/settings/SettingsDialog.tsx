@@ -2,6 +2,7 @@ import { Dialog, Tabs } from "radix-ui";
 import { useTranslation } from "react-i18next";
 
 import { IconButton } from "../../components/ui/IconButton";
+import { keepOpenWhenDraggingWindow, WindowDragArea } from "../../components/WindowDragArea";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { AppsSettings, SyncSettings } from "./AppsAndSyncSettings";
 import { GitSettings } from "./GitSettings";
@@ -26,7 +27,13 @@ export function SettingsDialog() {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Portal>
         <Dialog.Overlay className={styles.overlay} />
-        <Dialog.Content className={styles.content} aria-describedby={undefined}>
+        <WindowDragArea overDialog />
+        <Dialog.Content
+          className={styles.content}
+          aria-describedby={undefined}
+          onPointerDownOutside={keepOpenWhenDraggingWindow}
+          onInteractOutside={keepOpenWhenDraggingWindow}
+        >
           <header className={styles.header}>
             <Dialog.Title className={styles.title}>{t("title")}</Dialog.Title>
             <Dialog.Close asChild>

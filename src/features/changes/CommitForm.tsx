@@ -1,9 +1,10 @@
 import { useId, useState, type KeyboardEvent } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
 import { Checkbox } from "../../components/ui/Checkbox";
+import { Tooltip } from "../../components/ui/Tooltip";
 import { toAppError, type AppError, type BranchStatus } from "../../ipc";
 import { currentPlatform } from "../../lib/platform";
 import { useChangeActions, useHeadCommit, useIdentity } from "./api";
@@ -107,11 +108,20 @@ export function CommitForm({
     }
   };
 
-  const label = amend
-    ? t("commit.submitAmend")
-    : branch.head
-      ? t("commit.submit", { branch: branch.head })
-      : t("commit.submitDetached");
+  // Only the branch name shrinks (with an ellipsis), so "Commit to" stays.
+  const label = amend ? (
+    t("commit.submitAmend")
+  ) : branch.head ? (
+    <Trans
+      t={t}
+      i18nKey="commit.submit"
+      values={{ branch: branch.head }}
+      components={{ branch: <span className={styles.branch} /> }}
+    />
+  ) : (
+    t("commit.submitDetached")
+  );
+  const shortcut = t("commit.shortcut", { key: currentPlatform() === "macos" ? "⌘" : "Ctrl" });
 
   return (
     <form
@@ -191,15 +201,20 @@ export function CommitForm({
       </div>
 
       {error && <ErrorMessage error={error} />}
-      <Button
-        type="submit"
-        variant="primary"
-        className={styles.submit}
-        disabled={!ready}
-        title={t("commit.shortcut", { key: currentPlatform() === "macos" ? "⌘" : "Ctrl" })}
+      <Tooltip
+        content={
+          <>
+            {label}
+            <br />
+            {shortcut}
+          </>
+        }
+        side="top"
       >
-        {label}
-      </Button>
+        <Button type="submit" variant="primary" className={styles.submit} disabled={!ready}>
+          <span className={styles.label}>{label}</span>
+        </Button>
+      </Tooltip>
       {stagedCount === 0 && !amend && <p className={styles.hint}>{t("commit.nothingStaged")}</p>}
 
       {askIdentity && (

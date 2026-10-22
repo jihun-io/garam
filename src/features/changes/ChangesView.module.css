@@ -1,11 +1,12 @@
 .root {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) 1fr;
+  grid-template-columns: var(--sidebar-actual) 1fr;
   height: 100%;
   min-height: 0;
 }
 
 .sidebar {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;

@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Select } from "../../components/ui/Select";
 import { LANGUAGES } from "../../i18n";
 import { useSettings, useUpdateSettings } from "./api";
 import styles from "./LanguageSelect.module.css";
@@ -15,19 +16,15 @@ export function LanguageSelect() {
   return (
     <div className={styles.root}>
       <label htmlFor={id}>{t("language.label")}</label>
-      <select
+      <Select
         id={id}
-        className={styles.select}
         value={settings.language ?? "system"}
-        onChange={(e) => update({ language: e.target.value === "system" ? null : e.target.value })}
-      >
-        <option value="system">{t("language.system")}</option>
-        {LANGUAGES.map(({ code, label }) => (
-          <option key={code} value={code} lang={code}>
-            {label}
-          </option>
-        ))}
-      </select>
+        onChange={(value) => update({ language: value === "system" ? null : value })}
+        options={[
+          { value: "system", label: t("language.system") },
+          ...LANGUAGES.map(({ code, label }) => ({ value: code, label, lang: code })),
+        ]}
+      />
     </div>
   );
 }

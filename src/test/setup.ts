@@ -17,6 +17,13 @@ class ResizeObserverStub {
   disconnect() {}
 }
 globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
+
+// Radix Select and the splitter use pointer capture, and Select scrolls the
+// chosen item into view; jsdom implements neither.
+Element.prototype.hasPointerCapture ??= () => false;
+Element.prototype.setPointerCapture ??= () => {};
+Element.prototype.releasePointerCapture ??= () => {};
+Element.prototype.scrollIntoView ??= () => {};
 Object.defineProperties(HTMLElement.prototype, {
   clientHeight: { configurable: true, get: () => 600 },
   clientWidth: { configurable: true, get: () => 800 },
