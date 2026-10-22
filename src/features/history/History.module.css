@@ -603,3 +603,25 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Squash dialog */
+
+.squashDescription {
+  min-height: 6rem;
+  padding-block: var(--space-2);
+  font: inherit;
+  resize: vertical;
+}
+
+.dialogNote {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+/* Several selected commits */
+
+.multiActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

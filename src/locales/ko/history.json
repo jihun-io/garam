@@ -22,7 +22,16 @@
     "copyPatch": "패치로 복사",
     "savePatch": "패치로 저장…",
     "openOnRemote": "GitHub에서 열기",
-    "compare": "선택한 커밋과 비교"
+    "compare": "선택한 커밋과 비교",
+    "cherryPickMany_one": "현재 브랜치에 커밋 {{count}}개 체리픽",
+    "cherryPickMany_other": "현재 브랜치에 커밋 {{count}}개 체리픽",
+    "revertMany_one": "커밋 {{count}}개 되돌리기",
+    "revertMany_other": "커밋 {{count}}개 되돌리기",
+    "squash_one": "커밋 {{count}}개 스쿼시…",
+    "squash_other": "커밋 {{count}}개 스쿼시…",
+    "cherryPickOnto": "다른 브랜치로 체리픽…",
+    "cherryPickOntoMany_one": "커밋 {{count}}개를 다른 브랜치로 체리픽…",
+    "cherryPickOntoMany_other": "커밋 {{count}}개를 다른 브랜치로 체리픽…"
   },
   "detail": {
     "select": "커밋을 선택하면 변경 내용을 볼 수 있습니다.",
@@ -90,7 +99,17 @@
     "checkedOut": "“{{summary}}” 커밋으로 전환했습니다. 지금은 분리된 HEAD 상태입니다.",
     "tagged": "{{name}} 태그를 만들었습니다.",
     "patchCopied": "“{{summary}}” 커밋을 패치로 복사했습니다.",
-    "patchSaved": "패치를 저장했습니다."
+    "patchSaved": "패치를 저장했습니다.",
+    "cherryPickedMany_one": "커밋 {{count}}개를 체리픽했습니다.",
+    "cherryPickedMany_other": "커밋 {{count}}개를 체리픽했습니다.",
+    "skipped_one": "이미 들어 있던 {{count}}개는 건너뛰었습니다.",
+    "skipped_other": "이미 들어 있던 {{count}}개는 건너뛰었습니다.",
+    "revertedMany_one": "커밋 {{count}}개를 되돌리는 새 커밋을 만들었습니다.",
+    "revertedMany_other": "커밋 {{count}}개를 되돌리는 새 커밋을 만들었습니다.",
+    "squashed_one": "커밋 {{count}}개를 하나로 합쳤습니다.",
+    "squashed_other": "커밋 {{count}}개를 하나로 합쳤습니다.",
+    "cherryPickedOnto_one": "{{branch}}로 전환해서 커밋 {{count}}개를 체리픽했습니다.",
+    "cherryPickedOnto_other": "{{branch}}로 전환해서 커밋 {{count}}개를 체리픽했습니다."
   },
   "reset": {
     "title": "이 커밋으로 리셋",
@@ -187,5 +206,35 @@
     "note": "어느 브랜치에도 없는 커밋입니다. 되살리려면 브랜치를 만드세요.",
     "createBranch": "브랜치 만들기…",
     "close": "닫기"
+  },
+  "multi": {
+    "title_one": "커밋 {{count}}개 선택됨",
+    "title_other": "커밋 {{count}}개 선택됨",
+    "body": "가장 오래된 커밋 바로 전부터 가장 최근 커밋까지 바뀐 내용입니다.",
+    "cherryPick": "체리픽",
+    "revert": "되돌리기",
+    "squash": "스쿼시…",
+    "clear": "선택 해제",
+    "cherryPickOnto": "다른 브랜치로 체리픽…"
+  },
+  "squash": {
+    "title_one": "커밋 {{count}}개 스쿼시",
+    "title_other": "커밋 {{count}}개 스쿼시",
+    "body": "선택한 커밋을 커밋 하나로 합칩니다. 작성자는 가장 오래된 커밋의 작성자로 남고, 뒤에 이어진 커밋은 새 커밋 위에 다시 쌓입니다.",
+    "summary": "요약",
+    "description": "설명",
+    "pushed": "이미 푸시한 커밋이 들어 있습니다. 합친 뒤에는 강제 푸시해야 하고, 같은 브랜치를 쓰는 사람에게 영향을 줍니다.",
+    "recover": "잘못 합쳤다면 저장소 메뉴의 \"잃어버린 커밋 복구…\"에서 되살릴 수 있습니다.",
+    "cancel": "취소",
+    "submit": "스쿼시"
+  },
+  "cherryPickOnto": {
+    "title_one": "커밋 {{count}}개를 다른 브랜치로 체리픽",
+    "title_other": "커밋 {{count}}개를 다른 브랜치로 체리픽",
+    "body": "고른 브랜치로 전환한 뒤 커밋을 적용합니다. 끝나면 그 브랜치에 남아 있어서 바로 푸시할 수 있습니다.",
+    "branch": "대상 브랜치",
+    "none": "체리픽할 다른 로컬 브랜치가 없습니다.",
+    "cancel": "취소",
+    "submit": "체리픽"
   }
 }

@@ -182,3 +182,160 @@ fn creates_plain_and_annotated_tags() {
         assert_eq!(err.kind(), ErrorKind::InvalidTagName, "{bad:?}");
     }
 }
+
+/// main: base → one → two → three, each adding a file.
+fn linear() -> TestRepo {
+    let repo = TestRepo::new();
+    repo.write("base.txt", "base\n");
+    repo.commit_all("base");
+    for name in ["one", "two", "three"] {
+        repo.write(format!("{name}.txt"), format!("{name}\n"));
+        repo.commit_all(name);
+    }
+    repo
+}
+
+fn subjects(repo: &TestRepo) -> Vec<String> {
+    repo.git(["log", "--format=%s"])
+        .stdout_str()
+        .lines()
+        .map(str::to_owned)
+        .collect()
+}
+
+#[test]
+fn cherry_picks_several_skipping_changes_already_there() {
+    let repo = branched_repo();
+    repo.git(["switch", "--quiet", "feature"]);
+    repo.write("g.txt", "g\n");
+    repo.commit_all("more feature");
+    repo.git(["switch", "--quiet", "main"]);
+    let main_work = rev(&repo, "main");
+    let picks = [rev(&repo, "feature~1"), rev(&repo, "feature"), main_work];
+
+    let outcome = log::cherry_pick_many(repo.git_handle(), repo.path(), &picks).unwrap();
+    assert_eq!((outcome.picked, outcome.skipped), (2, 1));
+    assert_eq!(
+        subjects(&repo)[..3],
+        ["more feature", "feature work", "main work"]
+    );
+    let state = conflict::state(repo.git_handle(), repo.path()).unwrap();
+    assert_eq!(state.operation, None);
+}
+
+#[test]
+fn reverts_several_newest_first() {
+    let repo = linear();
+    let oids = [rev(&repo, "HEAD"), rev(&repo, "HEAD~1")];
+    log::revert_many(repo.git_handle(), repo.path(), &oids).unwrap();
+    assert_eq!(subjects(&repo)[..2], ["Revert \"two\"", "Revert \"three\""]);
+    assert!(!repo.path().join("two.txt").exists());
+    assert!(repo.path().join("one.txt").exists());
+}
+
+#[test]
+fn squashes_the_latest_commits_into_one() {
+    let repo = linear();
+    let oids = [rev(&repo, "HEAD"), rev(&repo, "HEAD~1")];
+    let tree = rev(&repo, "HEAD^{tree}");
+    let new = log::squash(
+        repo.git_handle(),
+        repo.path(),
+        &oids,
+        "two and three\n\nBoth.",
+    )
+    .unwrap();
+    assert_eq!(rev(&repo, "HEAD"), new);
+    assert_eq!(subjects(&repo), ["two and three", "one", "base"]);
+    assert_eq!(rev(&repo, "HEAD^{tree}"), tree, "same files");
+    let body = repo
+        .git(["log", "-1", "--format=%b"])
+        .stdout_str()
+        .trim()
+        .to_owned();
+    assert_eq!(body, "Both.");
+}
+
+#[test]
+fn squashes_earlier_commits_and_replays_the_rest() {
+    let repo = linear();
+    let oids = [rev(&repo, "HEAD~2"), rev(&repo, "HEAD~1")];
+    log::squash(repo.git_handle(), repo.path(), &oids, "one and two").unwrap();
+    assert_eq!(subjects(&repo), ["three", "one and two", "base"]);
+    for name in ["one", "two", "three"] {
+        assert!(repo.path().join(format!("{name}.txt")).exists());
+    }
+}
+
+#[test]
+fn refuses_squashes_that_would_need_more_than_a_replay() {
+    let repo = linear();
+    let git = repo.git_handle();
+    let err = |oids: &[String]| log::squash(git, repo.path(), oids, "x").unwrap_err().kind();
+
+    // Not next to each other.
+    assert_eq!(
+        err(&[rev(&repo, "HEAD"), rev(&repo, "HEAD~2")]),
+        ErrorKind::CannotSquash
+    );
+    // Just one.
+    assert_eq!(err(&[rev(&repo, "HEAD")]), ErrorKind::CannotSquash);
+    // Later commits to replay over uncommitted changes.
+    repo.write("three.txt", "changed\n");
+    assert_eq!(
+        err(&[rev(&repo, "HEAD~2"), rev(&repo, "HEAD~1")]),
+        ErrorKind::UncommittedChanges
+    );
+    repo.git(["checkout", "--quiet", "--", "three.txt"]);
+
+    // A merge after the range.
+    repo.git(["switch", "--quiet", "-c", "side", "HEAD~1"]);
+    repo.write("s.txt", "s\n");
+    repo.commit_all("side");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["merge", "--quiet", "--no-ff", "-m", "merge", "side"]);
+    assert_eq!(
+        err(&[rev(&repo, "HEAD~2"), rev(&repo, "HEAD~3")]),
+        ErrorKind::CannotSquash
+    );
+    assert_eq!(subjects(&repo)[0], "merge", "nothing changed");
+}
+
+#[test]
+fn cherry_picks_from_here_onto_another_branch() {
+    let repo = branched_repo();
+    let main_work = rev(&repo, "main");
+    let git = repo.git_handle();
+
+    let outcome = log::cherry_pick_onto(git, repo.path(), "feature", &[main_work]).unwrap();
+    assert_eq!(outcome.picked, 1);
+    let status = status::status(git, repo.path()).unwrap();
+    assert_eq!(
+        status.branch.head.as_deref(),
+        Some("feature"),
+        "stays on the target"
+    );
+    assert_eq!(subjects(&repo)[..2], ["main work", "feature work"]);
+}
+
+#[test]
+fn cherry_picking_onto_another_branch_needs_a_clean_tree() {
+    let repo = branched_repo();
+    let main_work = rev(&repo, "main");
+    let git = repo.git_handle();
+    repo.write("a.txt", "dirty\n");
+
+    let err = log::cherry_pick_onto(
+        git,
+        repo.path(),
+        "feature",
+        std::slice::from_ref(&main_work),
+    )
+    .unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::UncommittedChanges);
+    let status = status::status(git, repo.path()).unwrap();
+    assert_eq!(status.branch.head.as_deref(), Some("main"), "didn't switch");
+
+    let err = log::cherry_pick_onto(git, repo.path(), "--detach", &[main_work]).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InvalidBranchName);
+}

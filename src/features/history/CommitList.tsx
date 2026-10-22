@@ -17,6 +17,8 @@ import { RefBadges, SyncMark } from "./RefBadges";
 import type { HistoryMarks } from "./refs";
 import { stashTitle, type HistoryRow } from "./rows";
 
+export type SelectHow = "single" | "toggle" | "range";
+
 const ROW_HEIGHT = 48;
 /** Start loading the next page this many rows before the end. */
 const PREFETCH_ROWS = 20;
@@ -29,6 +31,7 @@ export type CommitActions = {
   createTag: Action;
   checkout: Action;
   cherryPick: Action;
+  cherryPickOnto: Action;
   revert: Action;
   undo: Action;
   reset: Action;
@@ -36,6 +39,18 @@ export type CommitActions = {
   savePatch: Action;
   openOnRemote: Action;
   compare: Action;
+  /** Actions on several selected commits, given newest first. */
+  many: {
+    cherryPick: (commits: CommitSummary[]) => void;
+    cherryPickOnto: (commits: CommitSummary[]) => void;
+    revert: (commits: CommitSummary[]) => void;
+    squash: (commits: CommitSummary[]) => void;
+    available: (commits: CommitSummary[]) => {
+      cherryPick: boolean;
+      revert: boolean;
+      squash: boolean;
+    };
+  };
   /** Which actions make sense for this commit right now. */
   available: (commit: CommitSummary) => {
     cherryPick: boolean;
@@ -51,9 +66,9 @@ export function CommitList({
   graph,
   head,
   marks,
-  selectedId,
+  selectedIds,
+  focusId,
   onSelect,
-  onCompare,
   hasMore,
   loadMore,
   actions,
@@ -63,10 +78,11 @@ export function CommitList({
   graph: Graph | null;
   head: string | null;
   marks: HistoryMarks;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  /** Cmd/Ctrl-click: compare this row with the selected one. */
-  onCompare: (id: string) => void;
+  selectedIds: ReadonlySet<string>;
+  /** The row the keyboard is on (the last one picked). */
+  focusId: string | null;
+  /** `toggle`: Cmd/Ctrl-click; `range`: Shift-click or Shift+arrow. */
+  onSelect: (id: string, how: SelectHow) => void;
   hasMore: boolean;
   loadMore: () => void;
   actions: CommitActions;
@@ -81,7 +97,11 @@ export function CommitList({
   });
   const items = virtualizer.getVirtualItems();
   const lastIndex = items[items.length - 1]?.index ?? 0;
-  const selectedIndex = rows.findIndex((r) => r.id === selectedId);
+  const selectedIndex = rows.findIndex((r) => r.id === focusId);
+  // Several selected commits, newest first, for the menu on any of them.
+  const selection = rows.flatMap((r) =>
+    selectedIds.has(r.id) && r.kind === "commit" ? [r.commit] : [],
+  );
 
   useEffect(() => {
     if (hasMore && lastIndex >= rows.length - PREFETCH_ROWS) loadMore();
@@ -95,7 +115,8 @@ export function CommitList({
     if (rows.length === 0 || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
     e.preventDefault();
     const delta = e.key === "ArrowDown" ? 1 : -1;
-    onSelect(rows[Math.max(0, Math.min(rows.length - 1, selectedIndex + delta))].id);
+    const next = rows[Math.max(0, Math.min(rows.length - 1, selectedIndex + delta))];
+    onSelect(next.id, e.shiftKey ? "range" : "single");
   };
 
   return (
@@ -104,6 +125,7 @@ export function CommitList({
       className={styles.scroll}
       role="listbox"
       aria-label={t("list.label")}
+      aria-multiselectable
       aria-activedescendant={selectedIndex >= 0 ? `commit-${selectedIndex}` : undefined}
       tabIndex={0}
       onKeyDown={onKeyDown}
@@ -125,19 +147,19 @@ export function CommitList({
             <div
               id={`commit-${item.index}`}
               role="option"
-              aria-selected={row.id === selectedId}
+              aria-selected={selectedIds.has(row.id)}
               className={styles.row}
               data-kind={row.kind}
               data-sync={marks.sync.get(row.id)}
               style={style}
               onMouseDown={(e) => {
                 // A right click opens the menu and keeps the selection, so
-                // "compare with selected" can refer to it.
+                // the menu can act on it.
                 if (e.button !== 0) return;
                 // On macOS, Ctrl-click is a right click.
-                const compare = currentPlatform() === "macos" ? e.metaKey : e.ctrlKey;
-                if (compare && row.kind !== "wip") onCompare(row.id);
-                else onSelect(row.id);
+                const toggle = currentPlatform() === "macos" ? e.metaKey : e.ctrlKey;
+                if (e.shiftKey) e.preventDefault();
+                onSelect(row.id, e.shiftKey ? "range" : toggle ? "toggle" : "single");
               }}
             >
               {graph && <GraphCell row={graph.rows[item.index]} height={item.size} shape={shape} />}
@@ -149,7 +171,11 @@ export function CommitList({
             <ContextMenu.Root key={row.id}>
               <ContextMenu.Trigger asChild>{option}</ContextMenu.Trigger>
               <ContextMenu.Portal>
-                <CommitMenu commit={row.commit} actions={actions} />
+                {selection.length > 1 && selectedIds.has(row.id) ? (
+                  <ManyMenu commits={selection} actions={actions} />
+                ) : (
+                  <CommitMenu commit={row.commit} actions={actions} />
+                )}
               </ContextMenu.Portal>
             </ContextMenu.Root>
           );
@@ -216,9 +242,39 @@ function CommitMenu({ commit, actions }: { commit: CommitSummary; actions: Commi
       {item(t("menu.checkout"), actions.checkout)}
       <ContextMenu.Separator className={menu.separator} />
       {can.cherryPick && item(t("menu.cherryPick"), actions.cherryPick)}
+      {item(t("menu.cherryPickOnto"), actions.cherryPickOnto)}
       {can.revert && item(t("menu.revert"), actions.revert)}
       {can.undo && item(t("menu.undo"), actions.undo)}
       {item(t("menu.reset"), actions.reset)}
+    </ContextMenu.Content>
+  );
+}
+
+/** The menu on one of several selected commits: acts on all of them. */
+function ManyMenu({ commits, actions }: { commits: CommitSummary[]; actions: CommitActions }) {
+  const { t } = useTranslation("history");
+  const can = actions.many.available(commits);
+  const count = commits.length;
+  return (
+    <ContextMenu.Content className={menu.content}>
+      {can.cherryPick && (
+        <ContextMenu.Item className={menu.item} onSelect={() => actions.many.cherryPick(commits)}>
+          {t("menu.cherryPickMany", { count })}
+        </ContextMenu.Item>
+      )}
+      <ContextMenu.Item className={menu.item} onSelect={() => actions.many.cherryPickOnto(commits)}>
+        {t("menu.cherryPickOntoMany", { count })}
+      </ContextMenu.Item>
+      {can.revert && (
+        <ContextMenu.Item className={menu.item} onSelect={() => actions.many.revert(commits)}>
+          {t("menu.revertMany", { count })}
+        </ContextMenu.Item>
+      )}
+      {can.squash && (
+        <ContextMenu.Item className={menu.item} onSelect={() => actions.many.squash(commits)}>
+          {t("menu.squash", { count })}
+        </ContextMenu.Item>
+      )}
     </ContextMenu.Content>
   );
 }

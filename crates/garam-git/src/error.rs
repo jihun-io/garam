@@ -37,6 +37,11 @@ pub enum ErrorKind {
     TagExists,
     /// HEAD moved since the screen was drawn (e.g. a commit from a terminal).
     HeadMoved,
+    /// The commits aren't consecutive on the current branch, or a merge
+    /// is among or after them.
+    CannotSquash,
+    /// Commit or stash changes to tracked files first.
+    UncommittedChanges,
     UnrelatedHistories,
     /// The remote has commits the local branch doesn't; pull first.
     NonFastForward,
@@ -102,6 +107,12 @@ pub enum GitError {
     #[error("HEAD is no longer the expected commit")]
     HeadMoved,
 
+    #[error("these commits can't be squashed")]
+    CannotSquash,
+
+    #[error("tracked files have uncommitted changes")]
+    UncommittedChanges,
+
     #[error("HEAD is detached")]
     DetachedHead,
 
@@ -147,6 +158,8 @@ impl GitError {
             Self::InvalidBranchName(_) => ErrorKind::InvalidBranchName,
             Self::InvalidTagName(_) => ErrorKind::InvalidTagName,
             Self::HeadMoved => ErrorKind::HeadMoved,
+            Self::CannotSquash => ErrorKind::CannotSquash,
+            Self::UncommittedChanges => ErrorKind::UncommittedChanges,
             Self::DetachedHead => ErrorKind::DetachedHead,
             Self::NoUpstream => ErrorKind::NoUpstream,
             Self::RemoteBranchNotFound => ErrorKind::RemoteBranchNotFound,
@@ -164,6 +177,8 @@ impl GitError {
             | Self::Cancelled
             | Self::DetachedHead
             | Self::HeadMoved
+            | Self::CannotSquash
+            | Self::UncommittedChanges
             | Self::NoUpstream
             | Self::RemoteBranchNotFound
             | Self::NoRemote

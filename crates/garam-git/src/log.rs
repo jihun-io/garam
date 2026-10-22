@@ -576,52 +576,232 @@ pub(crate) fn diff_between(
 /// relative to their first parent. Conflicts leave the revert in progress
 /// and return [`crate::ErrorKind::RevertConflict`].
 pub fn revert(git: &Git, repo: &Path, oid: &str) -> Result<(), GitError> {
-    let summary = detail(git, repo, oid)?.commit;
-    let mut command = git.command().cwd(repo).args(["revert", "--no-edit"]);
-    if summary.parents.len() > 1 {
-        command = command.args(["--mainline", "1"]);
+    revert_many(git, repo, &[oid.to_owned()])
+}
+
+/// Reverts each of `oids` in the given order (newest first undoes them
+/// cleanly), one new commit each. Merges are reverted against their first
+/// parent. A conflict stops the sequence, which the conflict banner then
+/// continues or aborts.
+pub fn revert_many(git: &Git, repo: &Path, oids: &[String]) -> Result<(), GitError> {
+    for oid in oids {
+        check_oid(oid)?;
     }
-    command.arg(&summary.oid).run()?;
+    git.command()
+        .cwd(repo)
+        .args(["revert", "--no-edit", "--mainline", "1"])
+        .args(oids)
+        .run()?;
     Ok(())
 }
 
 /// Applies `oid`'s changes as a new commit on HEAD. Merge commits are
 /// picked relative to their first parent. Conflicts leave the cherry-pick
 /// in progress and return [`crate::ErrorKind::CherryPickConflict`]; a pick
-/// that would change nothing is undone and returns
-/// [`crate::ErrorKind::CherryPickEmpty`].
+/// that would change nothing returns [`crate::ErrorKind::CherryPickEmpty`]
+/// and leaves nothing behind.
 pub fn cherry_pick(git: &Git, repo: &Path, oid: &str) -> Result<(), GitError> {
-    let summary = detail(git, repo, oid)?.commit;
-    let mut command = git.command().cwd(repo).arg("cherry-pick");
-    if summary.parents.len() > 1 {
-        command = command.args(["--mainline", "1"]);
-    }
-    match command.arg(&summary.oid).run() {
-        Ok(_) => Ok(()),
-        Err(err) => Err(classify_cherry_pick(git, repo, err)?),
-    }
+    cherry_pick_many(git, repo, &[oid.to_owned()]).map(|_| ())
 }
 
-/// Tells a stopped cherry-pick's conflicts from an empty pick, which git
-/// also leaves in progress.
-fn classify_cherry_pick(git: &Git, repo: &Path, err: GitError) -> Result<GitError, GitError> {
-    let GitError::Failed { code, stderr, .. } = err else {
-        return Ok(err);
-    };
-    let state = crate::conflict::state(git, repo)?;
-    if state.operation != Some(crate::conflict::Operation::CherryPick) {
-        return Ok(GitError::failed(code, stderr));
+/// How a cherry-pick of several commits went.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct CherryPickOutcome {
+    pub picked: u32,
+    /// Commits whose changes HEAD already had.
+    pub skipped: u32,
+}
+
+/// Applies `oids` to HEAD in the given order (oldest first), one new
+/// commit each. Commits that would change nothing are skipped; if all of
+/// them would, that is [`crate::ErrorKind::CherryPickEmpty`]. A conflict
+/// stops the sequence as [`crate::ErrorKind::CherryPickConflict`].
+pub fn cherry_pick_many(
+    git: &Git,
+    repo: &Path,
+    oids: &[String],
+) -> Result<CherryPickOutcome, GitError> {
+    for oid in oids {
+        check_oid(oid)?;
     }
-    let kind = if state.files.is_empty() {
+    let before = crate::commit::head_oid(git, repo)?;
+    let mut skipped = 0;
+    let mut result = git
+        .command()
+        .cwd(repo)
+        .args(["cherry-pick", "--mainline", "1"])
+        .args(oids)
+        .run();
+    while let Err(err) = result {
+        let GitError::Failed { code, stderr, .. } = err else {
+            return Err(err);
+        };
+        let state = crate::conflict::state(git, repo)?;
+        if state.operation != Some(crate::conflict::Operation::CherryPick) {
+            return Err(GitError::failed(code, stderr));
+        }
+        if !state.files.is_empty() {
+            return Err(GitError::Failed {
+                kind: crate::ErrorKind::CherryPickConflict,
+                code,
+                stderr,
+            });
+        }
+        // git stops at a pick that would change nothing; skip it and go on.
+        skipped += 1;
+        result = git
+            .command()
+            .cwd(repo)
+            .args(["cherry-pick", "--skip"])
+            .run();
+    }
+    let range = match &before {
+        Some(before) => format!("{before}..HEAD"),
+        None => "HEAD".to_owned(),
+    };
+    let picked = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["rev-list", "--count", &range, "--"])
+        .run()?
+        .stdout_str()
+        .trim()
+        .parse()
+        .unwrap_or(0);
+    if picked == 0 {
+        return Err(GitError::Failed {
+            kind: crate::ErrorKind::CherryPickEmpty,
+            code: None,
+            stderr: String::new(),
+        });
+    }
+    Ok(CherryPickOutcome { picked, skipped })
+}
+
+/// Switches to the local branch `branch` and cherry-picks `oids` (oldest
+/// first) onto it, for taking commits from here to another branch. Stays
+/// there afterwards, also when a conflict stops the picks. Needs a clean
+/// working tree, so no uncommitted change travels along by surprise.
+pub fn cherry_pick_onto(
+    git: &Git,
+    repo: &Path,
+    branch: &str,
+    oids: &[String],
+) -> Result<CherryPickOutcome, GitError> {
+    crate::branch::validate_name(git, branch)?;
+    for oid in oids {
+        check_oid(oid)?;
+    }
+    if has_tracked_changes(git, repo)? {
+        return Err(GitError::UncommittedChanges);
+    }
+    git.command()
+        .cwd(repo)
+        .args(["switch", "--quiet", "--no-guess", branch])
+        .run()?;
+    cherry_pick_many(git, repo, oids)
+}
+
+/// How far back along HEAD's first parents squash looks for its commits.
+const SQUASH_SEARCH: u32 = 5000;
+
+/// Combines `oids` into one commit with `message`. They must be
+/// consecutive commits on HEAD's first-parent line, with no merge commit
+/// among them or after them, so the result is plain to replay. The new
+/// commit keeps the oldest one's author. Commits after them are rebased
+/// onto it, which needs a clean working tree. Returns the new commit id.
+pub fn squash(git: &Git, repo: &Path, oids: &[String], message: &str) -> Result<String, GitError> {
+    let message = message.trim();
+    if oids.len() < 2 || message.is_empty() {
+        return Err(GitError::CannotSquash);
+    }
+    for oid in oids {
+        check_oid(oid)?;
+    }
+    if crate::commit::head_oid(git, repo)?.is_none() {
+        return Err(GitError::CannotSquash);
+    }
+    let line = log_records(
+        git,
+        repo,
+        &["--first-parent".into(), "HEAD".into()],
+        &[],
+        0,
+        SQUASH_SEARCH,
+    )?;
+    let mut positions = oids
+        .iter()
+        .map(|oid| line.iter().position(|c| c.oid.starts_with(oid.as_str())))
+        .collect::<Option<Vec<_>>>()
+        .ok_or(GitError::CannotSquash)?;
+    positions.sort_unstable();
+    positions.dedup();
+    let (newest, oldest) = (positions[0], positions[positions.len() - 1]);
+    if oldest - newest + 1 != positions.len() || positions.len() != oids.len() {
+        return Err(GitError::CannotSquash);
+    }
+    if line[..=oldest].iter().any(|c| c.parents.len() > 1) {
+        return Err(GitError::CannotSquash);
+    }
+    if newest > 0 && has_tracked_changes(git, repo)? {
+        return Err(GitError::UncommittedChanges);
+    }
+
+    let (newest, oldest) = (&line[newest], &line[oldest]);
+    let author = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args([
+            "log",
+            "-1",
+            "--date=raw",
+            "--format=%an%x1f%ae%x1f%ad",
+            &oldest.oid,
+            "--",
+        ])
+        .run()?;
+    let author = author.stdout_str();
+    let mut author = author.trim().splitn(3, '\x1f');
+    let mut command = git
+        .command()
+        .cwd(repo)
+        .env("GIT_AUTHOR_NAME", author.next().unwrap_or_default())
+        .env("GIT_AUTHOR_EMAIL", author.next().unwrap_or_default())
+        .env("GIT_AUTHOR_DATE", author.next().unwrap_or_default())
+        .arg("commit-tree")
+        .arg(format!("{}^{{tree}}", newest.oid));
+    if let Some(parent) = oldest.parents.first() {
+        command = command.args(["-p", parent]);
+    }
+    let squashed = command
+        .args(["-F", "-"])
+        .stdin(format!("{message}\n").into_bytes())
+        .run()?;
+    let squashed = squashed.stdout_str().trim().to_owned();
+
+    if line[0].oid == newest.oid {
+        // Same tree as HEAD, so the index and working tree stay as they are.
+        reset(git, repo, &squashed, ResetMode::Soft)?;
+    } else {
         git.command()
             .cwd(repo)
-            .args(["cherry-pick", "--abort"])
+            .args(["rebase", "--onto", &squashed, &newest.oid])
             .run()?;
-        crate::ErrorKind::CherryPickEmpty
-    } else {
-        crate::ErrorKind::CherryPickConflict
-    };
-    Ok(GitError::Failed { kind, code, stderr })
+    }
+    Ok(squashed)
+}
+
+fn has_tracked_changes(git: &Git, repo: &Path) -> Result<bool, GitError> {
+    let output = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["status", "--porcelain=v1", "--untracked-files=no", "-z"])
+        .run()?;
+    Ok(!output.stdout.is_empty())
 }
 
 /// What `reset` keeps.

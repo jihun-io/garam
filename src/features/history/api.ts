@@ -162,11 +162,11 @@ export function useRemoteWebUrl(repo: string): string | null {
   return remote ? githubWebUrl(remote.url) : null;
 }
 
-/** Revert writes a commit, so it queues with other index writes. */
+/** Revert writes commits (newest first), so it queues with other index writes. */
 export function useRevert(repo: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (oid: string) => unwrap(commands.commitRevert(repo, oid)),
+    mutationFn: (oids: string[]) => unwrap(commands.commitRevert(repo, oids)),
     onSettled: () => client.invalidateQueries({ queryKey: changesKeys.all(repo) }),
     scope: indexScope(repo),
   });
@@ -181,8 +181,22 @@ export function useCommitActions(repo: string) {
   const onSettled = () => client.invalidateQueries({ queryKey: changesKeys.all(repo) });
   const scope = indexScope(repo);
   return {
+    /** Oldest first. */
     cherryPick: useMutation({
-      mutationFn: (oid: string) => unwrap(commands.commitCherryPick(repo, oid)),
+      mutationFn: (oids: string[]) => unwrap(commands.commitCherryPick(repo, oids)),
+      onSettled,
+      scope,
+    }),
+    /** Switches to `branch` first; oldest first. */
+    cherryPickOnto: useMutation({
+      mutationFn: ({ branch, oids }: { branch: string; oids: string[] }) =>
+        unwrap(commands.commitCherryPickOnto(repo, branch, oids)),
+      onSettled,
+      scope,
+    }),
+    squash: useMutation({
+      mutationFn: ({ oids, message }: { oids: string[]; message: string }) =>
+        unwrap(commands.commitSquash(repo, oids, message)),
       onSettled,
       scope,
     }),

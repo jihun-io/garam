@@ -23,6 +23,7 @@ UI 문자열을 번역할 때 이 표를 따른다. 새 용어가 생기면 먼�
 | merge                            | 병합                   |                                       |
 | rebase                           | 리베이스               |                                       |
 | cherry-pick                      | 체리픽                 |                                       |
+| squash                           | 스쿼시                 | 설명: "커밋 여러 개를 하나로 합치기"  |
 | revert                           | 커밋 되돌리기          | reset과 구분할 것                     |
 | reset                            | 리셋                   |                                       |
 | undo last commit                 | 마지막 커밋 취소       | 푸시 전에만. 변경 사항은 남는다       |

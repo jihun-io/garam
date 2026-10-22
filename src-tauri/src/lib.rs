@@ -75,6 +75,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         history::commit_patch_save,
         history::commit_revert,
         history::commit_cherry_pick,
+        history::commit_squash,
+        history::commit_cherry_pick_onto,
         history::commit_reset,
         history::commit_undo,
         history::commit_checkout,

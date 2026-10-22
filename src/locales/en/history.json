@@ -22,7 +22,16 @@
     "copyPatch": "Copy as Patch",
     "savePatch": "Save as Patch…",
     "openOnRemote": "Open on GitHub",
-    "compare": "Compare with Selected Commit"
+    "compare": "Compare with Selected Commit",
+    "cherryPickMany_one": "Cherry-pick {{count}} Commit onto Current Branch",
+    "cherryPickMany_other": "Cherry-pick {{count}} Commits onto Current Branch",
+    "revertMany_one": "Revert {{count}} Commit",
+    "revertMany_other": "Revert {{count}} Commits",
+    "squash_one": "Squash {{count}} Commit…",
+    "squash_other": "Squash {{count}} Commits…",
+    "cherryPickOnto": "Cherry-pick onto Another Branch…",
+    "cherryPickOntoMany_one": "Cherry-pick {{count}} Commit onto Another Branch…",
+    "cherryPickOntoMany_other": "Cherry-pick {{count}} Commits onto Another Branch…"
   },
   "detail": {
     "select": "Select a commit to see its changes.",
@@ -90,7 +99,17 @@
     "checkedOut": "Checked out “{{summary}}”. HEAD is now detached.",
     "tagged": "Created tag {{name}}.",
     "patchCopied": "Copied “{{summary}}” as a patch.",
-    "patchSaved": "Saved the patch."
+    "patchSaved": "Saved the patch.",
+    "cherryPickedMany_one": "Cherry-picked {{count}} commit.",
+    "cherryPickedMany_other": "Cherry-picked {{count}} commits.",
+    "skipped_one": "Skipped {{count}} already here.",
+    "skipped_other": "Skipped {{count}} already here.",
+    "revertedMany_one": "Reverted {{count}} commit with new commits.",
+    "revertedMany_other": "Reverted {{count}} commits with new commits.",
+    "squashed_one": "Squashed {{count}} commit into one.",
+    "squashed_other": "Squashed {{count}} commits into one.",
+    "cherryPickedOnto_one": "Switched to {{branch}} and cherry-picked {{count}} commit.",
+    "cherryPickedOnto_other": "Switched to {{branch}} and cherry-picked {{count}} commits."
   },
   "reset": {
     "title": "Reset to This Commit",
@@ -187,5 +206,35 @@
     "note": "No branch holds this commit. Create a branch to keep it.",
     "createBranch": "Create Branch…",
     "close": "Close"
+  },
+  "multi": {
+    "title_one": "{{count}} commit selected",
+    "title_other": "{{count}} commits selected",
+    "body": "What changed from just before the oldest commit to the newest.",
+    "cherryPick": "Cherry-pick",
+    "revert": "Revert",
+    "squash": "Squash…",
+    "clear": "Clear selection",
+    "cherryPickOnto": "Cherry-pick onto Another Branch…"
+  },
+  "squash": {
+    "title_one": "Squash {{count}} Commit",
+    "title_other": "Squash {{count}} Commits",
+    "body": "Combines the selected commits into one. The oldest commit's author stays, and commits after them are replayed on top.",
+    "summary": "Summary",
+    "description": "Description",
+    "pushed": "Some of these commits are pushed. Afterwards you'll need to force push, which affects others using this branch.",
+    "recover": "If it goes wrong, Recover Lost Commits… in the Repository menu brings them back.",
+    "cancel": "Cancel",
+    "submit": "Squash"
+  },
+  "cherryPickOnto": {
+    "title_one": "Cherry-pick {{count}} Commit onto Another Branch",
+    "title_other": "Cherry-pick {{count}} Commits onto Another Branch",
+    "body": "Switches to the chosen branch and applies the commits there. You stay on that branch afterwards, ready to push.",
+    "branch": "Target branch",
+    "none": "There's no other local branch to cherry-pick onto.",
+    "cancel": "Cancel",
+    "submit": "Cherry-pick"
   }
 }

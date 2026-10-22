@@ -19,16 +19,18 @@ import { SidebarSplitter } from "../settings/SidebarSplitter";
 import { useCommitActions, useHistory, useHistoryMarkers, useRemoteWebUrl, useRevert } from "./api";
 import { CommitDetailView } from "./CommitDetailView";
 import { CompareView } from "./CompareView";
-import { CommitList, type CommitActions } from "./CommitList";
+import { CommitList, type CommitActions, type SelectHow } from "./CommitList";
 import { isUnfiltered, useHistoryFilter, useHistoryFilters, useSettledFilter } from "./filterStore";
 import { HistoryDialogs } from "./HistoryDialogs";
 import { useHistoryDialog } from "./historyDialogStore";
 import { useHistoryPane } from "./historyPaneStore";
 import styles from "./History.module.css";
 import { HistorySearch } from "./HistorySearch";
+import { MultiSelectionView } from "./MultiSelectionView";
 import { buildGraph } from "./graph";
 import { toMarks } from "./refs";
 import { buildRows, graphNodes } from "./rows";
+import { NO_SELECTION, only, pick, type Selection } from "./selection";
 
 /** Commit list on the left, the selected commit on the right. */
 export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
@@ -51,15 +53,10 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
   const openDialog = useHistoryDialog((s) => s.open);
   const setDraft = useCommitDrafts((s) => s.set);
   const { showError, showInfo } = useNotify();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<Selection>(NO_SELECTION);
   const pane = useHistoryPane((s) => s.panes[repo]);
   const showPane = useHistoryPane((s) => s.show);
   const closePane = useHistoryPane((s) => s.close);
-  // Picking a row goes back from a comparison to that row.
-  const select = (id: string) => {
-    setSelectedId(id);
-    closePane(repo);
-  };
   const head = status.data?.branch.oid ?? null;
 
   // Uncommitted changes, commits waiting to be pulled and stashes join the
@@ -85,11 +82,21 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
     [graphed, rows, head, filter.firstParent],
   );
   // Until something is picked: HEAD's commit, or the first a search found.
-  const selected =
-    rows.find((r) => r.id === selectedId) ??
+  const fallback =
     rows.find((r) => r.id === head) ??
     rows.find((r) => r.kind === "commit" && marks.sync.get(r.id) !== "incoming") ??
     null;
+  const picked = rows.filter((r) => selection.ids.includes(r.id));
+  const current: Selection =
+    picked.length > 0 ? selection : fallback ? only(fallback.id) : NO_SELECTION;
+  const selectedRows = picked.length > 0 ? picked : fallback ? [fallback] : [];
+  const selected = selectedRows.length === 1 ? selectedRows[0] : null;
+  const selectedCommits = selectedRows.flatMap((r) => (r.kind === "commit" ? [r.commit] : []));
+  // Picking a row goes back from a comparison to the list.
+  const select = (id: string, how: SelectHow = "single") => {
+    setSelection(pick(rows, current, id, how));
+    closePane(repo);
+  };
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = history;
   const loadMore = useCallback(() => {
     if (!isFetchingNextPage) void fetchNextPage();
@@ -111,12 +118,13 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
     checkout: (commit) => openDialog({ kind: "checkout", commit }),
     reset: (commit) => openDialog({ kind: "reset", commit }),
     cherryPick: (commit) =>
-      commitActions.cherryPick.mutate(commit.oid, {
+      commitActions.cherryPick.mutate([commit.oid], {
         onSuccess: () => showInfo(t("done.cherryPicked", { summary: commit.summary })),
         onError: showError,
       }),
+    cherryPickOnto: (commit) => openDialog({ kind: "cherryPickOnto", commits: [commit] }),
     revert: (commit) =>
-      revert.mutate(commit.oid, {
+      revert.mutate([commit.oid], {
         onSuccess: () => showInfo(t("reverted", { summary: commit.summary })),
         onError: showError,
       }),
@@ -148,6 +156,54 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
         .catch(showError),
     openOnRemote: (commit) => void openUrl(`${webUrl}/commit/${commit.oid}`).catch(showError),
     compare: (commit) => compareWithSelected(commit.oid),
+    many: {
+      cherryPick: (commits) =>
+        commitActions.cherryPick.mutate(commits.map((c) => c.oid).reverse(), {
+          onSuccess: ({ picked, skipped }) =>
+            showInfo(
+              [
+                t("done.cherryPickedMany", { count: picked }),
+                skipped > 0 ? t("done.skipped", { count: skipped }) : "",
+              ].join(" "),
+            ),
+          onError: showError,
+        }),
+      revert: (commits) =>
+        revert.mutate(
+          commits.map((c) => c.oid),
+          {
+            onSuccess: () => showInfo(t("done.revertedMany", { count: commits.length })),
+            onError: showError,
+          },
+        ),
+      cherryPickOnto: (commits) => openDialog({ kind: "cherryPickOnto", commits }),
+      squash: (commits) => openDialog({ kind: "squash", commits }),
+      available: (commits) => {
+        const syncs = commits.map((c) => marks.sync.get(c.oid));
+        const onHead = filter.scope.kind === "head" && !syncs.includes("incoming");
+        // Squash needs commits one after another on this branch; git checks
+        // the rest (first parents, no merges after them).
+        const line = rows.filter((r) => r.kind === "commit" && marks.sync.get(r.id) !== "incoming");
+        const positions = commits.map((c) => line.findIndex((r) => r.id === c.oid));
+        const consecutive =
+          !positions.includes(-1) &&
+          Math.max(...positions) - Math.min(...positions) + 1 === commits.length;
+        return {
+          // Only commits HEAD doesn't have yet.
+          cherryPick:
+            head !== null &&
+            (filter.scope.kind !== "head" || syncs.every((sync) => sync === "incoming")),
+          revert: !syncs.includes("incoming"),
+          // A search or path filter leaves gaps the list doesn't show.
+          squash:
+            onHead &&
+            graphed &&
+            consecutive &&
+            commits.length > 1 &&
+            commits.every((c) => c.parents.length <= 1),
+        };
+      },
+    },
     available: (commit) => {
       const sync = marks.sync.get(commit.oid);
       // Listed from HEAD, so already on it (except commits not pulled yet).
@@ -184,7 +240,17 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
   }
 
   let main;
-  if (pane?.kind === "compare") {
+  if (!pane && selectedCommits.length > 1) {
+    main = (
+      <MultiSelectionView
+        key={selectedCommits.map((c) => c.oid).join()}
+        repo={repo}
+        commits={selectedCommits}
+        actions={actions.many}
+        onClear={() => setSelection(NO_SELECTION)}
+      />
+    );
+  } else if (pane?.kind === "compare") {
     main = <CompareView repo={repo} pane={pane} onClose={() => closePane(repo)} />;
   } else if (pane?.kind === "commit") {
     main = (
@@ -270,9 +336,9 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
           graph={graph}
           head={head}
           marks={marks}
-          selectedId={selected?.id ?? null}
+          selectedIds={new Set(selectedRows.map((r) => r.id))}
+          focusId={current.focus}
           onSelect={select}
-          onCompare={compareWithSelected}
           hasMore={hasNextPage}
           loadMore={loadMore}
           actions={actions}

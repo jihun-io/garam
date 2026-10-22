@@ -4,8 +4,8 @@ use garam_git::commit::HeadCommit;
 use garam_git::compare::{self, CompareMode, Comparison, LostCommit};
 use garam_git::diff::FileDiff;
 use garam_git::log::{
-    self, CommitDetail, CommitFile, CommitSummary, HistoryFilter, HistoryMarkers, ResetMode,
-    Signature,
+    self, CherryPickOutcome, CommitDetail, CommitFile, CommitSummary, HistoryFilter,
+    HistoryMarkers, ResetMode, Signature,
 };
 use garam_git::{ChangeKind, Git, blob, tag};
 
@@ -147,18 +147,59 @@ pub async fn commit_patch_save(repo: String, oid: String, path: String) -> AppRe
     .await
 }
 
-/// Adds a commit that undoes `oid`.
+/// Adds commits that undo `oids`, in the given order (newest first).
 #[tauri::command]
 #[specta::specta]
-pub async fn commit_revert(repo: String, oid: String) -> AppResult<()> {
-    blocking(move || Ok(log::revert(&Git::locate()?, Path::new(&repo), &oid)?)).await
+pub async fn commit_revert(repo: String, oids: Vec<String>) -> AppResult<()> {
+    blocking(move || Ok(log::revert_many(&Git::locate()?, Path::new(&repo), &oids)?)).await
 }
 
-/// Applies `oid`'s changes as a new commit on HEAD.
+/// Applies `oids` (oldest first) as new commits on HEAD.
 #[tauri::command]
 #[specta::specta]
-pub async fn commit_cherry_pick(repo: String, oid: String) -> AppResult<()> {
-    blocking(move || Ok(log::cherry_pick(&Git::locate()?, Path::new(&repo), &oid)?)).await
+pub async fn commit_cherry_pick(repo: String, oids: Vec<String>) -> AppResult<CherryPickOutcome> {
+    blocking(move || {
+        Ok(log::cherry_pick_many(
+            &Git::locate()?,
+            Path::new(&repo),
+            &oids,
+        )?)
+    })
+    .await
+}
+
+/// Switches to `branch` and applies `oids` (oldest first) there.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_cherry_pick_onto(
+    repo: String,
+    branch: String,
+    oids: Vec<String>,
+) -> AppResult<CherryPickOutcome> {
+    blocking(move || {
+        Ok(log::cherry_pick_onto(
+            &Git::locate()?,
+            Path::new(&repo),
+            &branch,
+            &oids,
+        )?)
+    })
+    .await
+}
+
+/// Combines consecutive commits on HEAD into one; returns its id.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_squash(repo: String, oids: Vec<String>, message: String) -> AppResult<String> {
+    blocking(move || {
+        Ok(log::squash(
+            &Git::locate()?,
+            Path::new(&repo),
+            &oids,
+            &message,
+        )?)
+    })
+    .await
 }
 
 /// Moves the current branch to `oid`.

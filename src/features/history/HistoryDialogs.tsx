@@ -5,6 +5,7 @@ import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
 import { FormDialog } from "../../components/ui/Dialog";
 import { Field } from "../../components/ui/Field";
+import fieldStyles from "../../components/ui/Field.module.css";
 import { Loading } from "../../components/ui/Loading";
 import { Select, type SelectOption } from "../../components/ui/Select";
 import {
@@ -21,7 +22,7 @@ import branchStyles from "../branches/branches.module.css";
 import { useBranchDialog } from "../branches/branchDialogStore";
 import { useStatus } from "../changes/api";
 import { useNotify } from "../notify/notifyStore";
-import { useCommitActions, useLostCommits } from "./api";
+import { useCommitActions, useHistoryMarkers, useLostCommits } from "./api";
 import { CommitTitle } from "./CommitTitle";
 import styles from "./History.module.css";
 import { useHistoryDialog } from "./historyDialogStore";
@@ -38,6 +39,10 @@ export function HistoryDialogs({ repo }: { repo: string }) {
       return <CheckoutDialog repo={repo} commit={dialog.commit} onClose={close} />;
     case "tag":
       return <TagDialog repo={repo} commit={dialog.commit} onClose={close} />;
+    case "cherryPickOnto":
+      return <CherryPickOntoDialog repo={repo} commits={dialog.commits} onClose={close} />;
+    case "squash":
+      return <SquashDialog repo={repo} commits={dialog.commits} onClose={close} />;
     case "compareBranch":
       return <CompareBranchDialog repo={repo} onClose={close} />;
     case "recover":
@@ -349,6 +354,165 @@ function RecoverDialog({ repo, onClose }: { repo: string; onClose: () => void })
     >
       <p>{t("recover.body")}</p>
       {body}
+    </FormDialog>
+  );
+}
+
+/** Asks for the combined commit's message before squashing. */
+function SquashDialog({
+  repo,
+  commits,
+  onClose,
+}: {
+  repo: string;
+  /** Newest first. */
+  commits: CommitSummary[];
+  onClose: () => void;
+}) {
+  const { t } = useTranslation("history");
+  const ids = { summary: useId(), description: useId() };
+  const { squash } = useCommitActions(repo);
+  const markers = useHistoryMarkers(repo);
+  const showInfo = useNotify((s) => s.showInfo);
+  const oldestFirst = [...commits].reverse();
+  const [summary, setSummary] = useState(oldestFirst[0].summary);
+  const [description, setDescription] = useState(
+    oldestFirst
+      .slice(1)
+      .map((c) => `- ${c.summary}`)
+      .join("\n"),
+  );
+  const unpushed = new Set(markers.data?.unpushed ?? []);
+  const hasRemote = markers.data?.refs.some((r) => r.kind === "remote") ?? false;
+  const pushed = hasRemote && commits.some((c) => !unpushed.has(c.oid));
+  const count = commits.length;
+  const { busy, error, submit } = useSubmit(
+    () =>
+      squash.mutateAsync({
+        oids: commits.map((c) => c.oid),
+        message: description.trim() ? `${summary.trim()}\n\n${description.trim()}` : summary,
+      }),
+    () => {
+      showInfo(t("done.squashed", { count }));
+      onClose();
+    },
+  );
+
+  return (
+    <FormDialog
+      open
+      onOpenChange={(open) => !open && !busy && onClose()}
+      title={t("squash.title", { count })}
+      onSubmit={() => summary.trim() && submit()}
+      dismissible={!busy}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={busy}>
+            {t("squash.cancel")}
+          </Button>
+          <Button
+            type="submit"
+            variant={pushed ? "danger" : "primary"}
+            disabled={busy || !summary.trim()}
+          >
+            {t("squash.submit")}
+          </Button>
+        </>
+      }
+    >
+      <p>{t("squash.body")}</p>
+      <Field
+        label={t("squash.summary")}
+        value={summary}
+        onChange={(e) => setSummary(e.target.value)}
+        autoFocus
+      />
+      <div className={fieldStyles.field}>
+        <label htmlFor={ids.description} className={fieldStyles.label}>
+          {t("squash.description")}
+        </label>
+        <textarea
+          id={ids.description}
+          className={`${fieldStyles.input} ${styles.squashDescription}`}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={5}
+        />
+      </div>
+      {pushed && <p>{t("squash.pushed")}</p>}
+      <p className={styles.dialogNote}>{t("squash.recover")}</p>
+      {error && <ErrorMessage error={error} />}
+    </FormDialog>
+  );
+}
+
+/** Picks a local branch to switch to and apply the commits on. */
+function CherryPickOntoDialog({
+  repo,
+  commits,
+  onClose,
+}: {
+  repo: string;
+  /** Newest first. */
+  commits: CommitSummary[];
+  onClose: () => void;
+}) {
+  const { t } = useTranslation("history");
+  const id = useId();
+  const status = useStatus(repo);
+  const branches = useBranches(repo);
+  const { cherryPickOnto } = useCommitActions(repo);
+  const showInfo = useNotify((s) => s.showInfo);
+  const current = status.data?.branch.head ?? null;
+  const options: SelectOption<string>[] = (branches.data ?? [])
+    .filter((b) => b.kind === "local" && b.name !== current)
+    .map((b) => ({ value: b.name, label: b.name }));
+  const [choice, setChoice] = useState<string | null>(null);
+  const branch = choice ?? options[0]?.value ?? null;
+  const count = commits.length;
+  const { busy, error, submit } = useSubmit(async () => {
+    const oids = commits.map((c) => c.oid).reverse();
+    const { picked, skipped } = await cherryPickOnto.mutateAsync({ branch: branch!, oids });
+    showInfo(
+      [
+        t("done.cherryPickedOnto", { count: picked, branch: branch! }),
+        skipped > 0 ? t("done.skipped", { count: skipped }) : "",
+      ].join(" "),
+    );
+  }, onClose);
+
+  return (
+    <FormDialog
+      open
+      onOpenChange={(open) => !open && !busy && onClose()}
+      title={t("cherryPickOnto.title", { count })}
+      onSubmit={() => branch && submit()}
+      dismissible={!busy}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={busy}>
+            {t("cherryPickOnto.cancel")}
+          </Button>
+          <Button type="submit" variant="primary" disabled={busy || !branch}>
+            {t("cherryPickOnto.submit")}
+          </Button>
+        </>
+      }
+    >
+      <p>{t("cherryPickOnto.body")}</p>
+      {branches.data && !branch ? (
+        <p>{t("cherryPickOnto.none")}</p>
+      ) : (
+        branch && (
+          <div className={styles.filterRow}>
+            <label className={styles.filterLabel} htmlFor={id}>
+              {t("cherryPickOnto.branch")}
+            </label>
+            <Select id={id} value={branch} options={options} onChange={setChoice} />
+          </div>
+        )
+      )}
+      {error && <ErrorMessage error={error} />}
     </FormDialog>
   );
 }

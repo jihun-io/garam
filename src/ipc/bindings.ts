@@ -106,10 +106,14 @@ export const commands = {
 	commitPatch: (repo: string, oid: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_patch", { repo, oid })),
 	/**  Writes `oid`'s patch to `path`, a file the user picked in a save dialog. */
 	commitPatchSave: (repo: string, oid: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_patch_save", { repo, oid, path })),
-	/**  Adds a commit that undoes `oid`. */
-	commitRevert: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_revert", { repo, oid })),
-	/**  Applies `oid`'s changes as a new commit on HEAD. */
-	commitCherryPick: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_cherry_pick", { repo, oid })),
+	/**  Adds commits that undo `oids`, in the given order (newest first). */
+	commitRevert: (repo: string, oids: string[]) => typedError<null, AppError>(__TAURI_INVOKE("commit_revert", { repo, oids })),
+	/**  Applies `oids` (oldest first) as new commits on HEAD. */
+	commitCherryPick: (repo: string, oids: string[]) => typedError<CherryPickOutcome, AppError>(__TAURI_INVOKE("commit_cherry_pick", { repo, oids })),
+	/**  Combines consecutive commits on HEAD into one; returns its id. */
+	commitSquash: (repo: string, oids: string[], message: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_squash", { repo, oids, message })),
+	/**  Switches to `branch` and applies `oids` (oldest first) there. */
+	commitCherryPickOnto: (repo: string, branch: string, oids: string[]) => typedError<CherryPickOutcome, AppError>(__TAURI_INVOKE("commit_cherry_pick_onto", { repo, branch, oids })),
 	/**  Moves the current branch to `oid`. */
 	commitReset: (repo: string, oid: string, mode: ResetMode) => typedError<null, AppError>(__TAURI_INVOKE("commit_reset", { repo, oid, mode })),
 	/**  Undoes the last commit (`oid`), returning its message. */
@@ -282,6 +286,13 @@ export type BranchStatus = {
 /**  How a file differs on one side (index or working tree). */
 export type ChangeKind = "added" | "modified" | "deleted" | "renamed" | "copied" | "type_changed" | "untracked" | "conflicted";
 
+/**  How a cherry-pick of several commits went. */
+export type CherryPickOutcome = {
+	picked: number,
+	/**  Commits whose changes HEAD already had. */
+	skipped: number,
+};
+
 export type CoAuthor = {
 	name: string,
 	email: string,
@@ -404,7 +415,14 @@ export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "
 /**  The branch already has the commit's changes; nothing was picked. */
 "cherry_pick_empty" | "invalid_tag_name" | "tag_exists" | 
 /**  HEAD moved since the screen was drawn (e.g. a commit from a terminal). */
-"head_moved" | "unrelated_histories" | 
+"head_moved" | 
+/**
+ *  The commits aren't consecutive on the current branch, or a merge
+ *  is among or after them.
+ */
+"cannot_squash" | 
+/**  Commit or stash changes to tracked files first. */
+"uncommitted_changes" | "unrelated_histories" | 
 /**  The remote has commits the local branch doesn't; pull first. */
 "non_fast_forward" | 
 /**  The server refused the push (protected branch, hook, ...). */

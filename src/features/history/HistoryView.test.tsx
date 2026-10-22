@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -36,6 +36,8 @@ vi.mock("../../ipc/bindings", () => ({
     commitFileDiff: vi.fn(),
     commitRevert: vi.fn(),
     commitCherryPick: vi.fn(),
+    commitSquash: vi.fn(),
+    commitCherryPickOnto: vi.fn(),
     commitReset: vi.fn(),
     commitUndo: vi.fn(),
     commitCheckout: vi.fn(),
@@ -298,7 +300,7 @@ describe("HistoryView", () => {
       target: await screen.findByText("Commit number 2"),
     });
     await user.click(await screen.findByRole("menuitem", { name: "Revert this commit" }));
-    expect(commands.commitRevert).toHaveBeenCalledWith("/repo", commits[1].oid);
+    expect(commands.commitRevert).toHaveBeenCalledWith("/repo", [commits[1].oid]);
     expect(await screen.findByText("Reverted “Commit number 2” with a new commit.")).toBeVisible();
   });
 
@@ -417,7 +419,9 @@ describe("HistoryView", () => {
 
     let menu = await openMenu(user, "Add login screen");
     expect(within(menu).getByRole("menuitem", { name: "Undo Last Commit" })).toBeVisible();
-    expect(within(menu).queryByRole("menuitem", { name: /Cherry-pick/ })).toBeNull();
+    expect(
+      within(menu).queryByRole("menuitem", { name: "Cherry-pick onto Current Branch" }),
+    ).toBeNull();
     await user.keyboard("{Escape}");
 
     menu = await openMenu(user, "Commit number 2");
@@ -452,7 +456,7 @@ describe("HistoryView", () => {
   it("cherry-picks and explains an empty pick", async () => {
     const user = userEvent.setup();
     vi.mocked(commands.commitCherryPick)
-      .mockResolvedValueOnce(ok(null))
+      .mockResolvedValueOnce(ok({ picked: 1, skipped: 0 }))
       .mockResolvedValueOnce({
         status: "error",
         error: { kind: "cherry_pick_empty", params: {}, detail: null },
@@ -460,12 +464,16 @@ describe("HistoryView", () => {
     setup({ ...markers, incoming: [commit(9, { summary: "Teammate's fix" })] });
 
     let menu = await openMenu(user, "Teammate's fix");
-    await user.click(within(menu).getByRole("menuitem", { name: /Cherry-pick/ }));
-    expect(commands.commitCherryPick).toHaveBeenCalledWith("/repo", commit(9).oid);
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "Cherry-pick onto Current Branch" }),
+    );
+    expect(commands.commitCherryPick).toHaveBeenCalledWith("/repo", [commit(9).oid]);
     expect(await screen.findByText("Cherry-picked “Teammate's fix”.")).toBeVisible();
 
     menu = await openMenu(user, "Teammate's fix");
-    await user.click(within(menu).getByRole("menuitem", { name: /Cherry-pick/ }));
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "Cherry-pick onto Current Branch" }),
+    );
     expect(
       await screen.findByText(
         "This branch already has these changes, so there was nothing to cherry-pick.",
@@ -714,7 +722,63 @@ describe("HistoryView", () => {
     files: [{ path: "src/login.tsx", origPath: null, kind: "added" as const }],
   };
 
-  it("compares two commits picked with Cmd-click, older first", async () => {
+  const withParents = [
+    commit(1, { summary: "Add login screen", parents: ["2".repeat(40)] }),
+    commit(2, { parents: ["3".repeat(40)] }),
+    commit(3, { parents: ["0".repeat(40)] }),
+  ];
+
+  it("selects several commits with Cmd-click and Shift-click", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.compareGet).mockResolvedValue(ok(comparison));
+    vi.mocked(commands.compareFileDiff).mockResolvedValue(
+      ok({ type: "text", selectable: false, hunks: [] }),
+    );
+    setup();
+    vi.mocked(commands.historyList).mockResolvedValue(ok(withParents));
+    useHistoryFilters.getState().update("/repo", { firstParent: true });
+    await screen.findByRole("heading", { name: "Add login screen" });
+    const list = screen.getByRole("listbox", { name: "Commits" });
+    expect(list).toHaveAttribute("aria-multiselectable", "true");
+
+    const modifier = currentPlatform() === "macos" ? "Meta" : "Control";
+    await user.keyboard(`{${modifier}>}`);
+    await user.click(within(list).getByText("Commit number 3"));
+    await user.keyboard(`{/${modifier}}`);
+    expect(await screen.findByRole("heading", { name: "2 commits selected" })).toBeVisible();
+    const selected = () =>
+      within(list)
+        .getAllByRole("option")
+        .filter((o) => o.getAttribute("aria-selected") === "true").length;
+    expect(selected()).toBe(2);
+    // Their changes together: from before the oldest to the newest.
+    expect(commands.compareGet).toHaveBeenCalledWith(
+      "/repo",
+      "0".repeat(40),
+      withParents[0].oid,
+      "two_dot",
+    );
+    expect(screen.getByRole("button", { name: /src\/login\.tsx/ })).toBeVisible();
+
+    await user.keyboard("{Shift>}");
+    await user.click(within(list).getByText("Commit number 2"));
+    await user.keyboard("{/Shift}");
+    expect(await screen.findByRole("heading", { name: "2 commits selected" })).toBeVisible();
+
+    // A plain click goes back to one commit.
+    await user.click(within(list).getByText("Commit number 2"));
+    expect(await screen.findByRole("heading", { name: "Commit number 2" })).toBeVisible();
+    expect(selected()).toBe(1);
+
+    // Shift+arrow extends from the keyboard.
+    list.focus();
+    await user.keyboard("{Shift>}{ArrowDown}{/Shift}");
+    expect(await screen.findByRole("heading", { name: "2 commits selected" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Clear selection" }));
+    expect(await screen.findByRole("heading", { name: "Add login screen" })).toBeVisible();
+  });
+
+  it("still compares one commit with another from the menu", async () => {
     const user = userEvent.setup();
     vi.mocked(commands.compareGet).mockResolvedValue(ok(comparison));
     vi.mocked(commands.compareFileDiff).mockResolvedValue(
@@ -722,36 +786,85 @@ describe("HistoryView", () => {
     );
     setup();
     await screen.findByRole("heading", { name: "Add login screen" });
-    const list = screen.getByRole("listbox", { name: "Commits" });
-
-    const modifier = currentPlatform() === "macos" ? "Meta" : "Control";
-    await user.keyboard(`{${modifier}>}`);
-    await user.click(within(list).getByText("Commit number 3"));
-    await user.keyboard(`{/${modifier}}`);
-    expect(commands.compareGet).toHaveBeenCalledWith(
+    const menu = await openMenu(user, "Commit number 3");
+    await user.click(within(menu).getByRole("menuitem", { name: "Compare with Selected Commit" }));
+    expect(commands.compareGet).toHaveBeenLastCalledWith(
       "/repo",
       commits[2].oid,
       commits[0].oid,
       "two_dot",
     );
     expect(await screen.findByRole("heading", { name: "3333333 ↔ 1111111" })).toBeVisible();
-    expect(screen.getByText("2 commits only on 1111111")).toBeVisible();
-    expect(screen.getByRole("button", { name: /src\/login\.tsx/ })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Close comparison" }));
+    expect(await screen.findByRole("heading", { name: "Add login screen" })).toBeVisible();
+  });
 
-    // Picking a row leaves the comparison.
-    await user.click(within(list).getByText("Commit number 2"));
-    expect(await screen.findByRole("heading", { name: "Commit number 2" })).toBeVisible();
-
-    const menu = await openMenu(user, "Commit number 3");
-    await user.click(within(menu).getByRole("menuitem", { name: "Compare with Selected Commit" }));
-    expect(commands.compareGet).toHaveBeenLastCalledWith(
-      "/repo",
-      commits[2].oid,
-      commits[1].oid,
-      "two_dot",
+  it("reverts and squashes several commits, and cherry-picks incoming ones", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.compareGet).mockResolvedValue(ok(comparison));
+    vi.mocked(commands.compareFileDiff).mockResolvedValue(
+      ok({ type: "text", selectable: false, hunks: [] }),
     );
-    await user.click(await screen.findByRole("button", { name: "Close comparison" }));
-    expect(await screen.findByRole("heading", { name: "Commit number 2" })).toBeVisible();
+    vi.mocked(commands.commitRevert).mockResolvedValue(ok(null));
+    vi.mocked(commands.commitSquash).mockResolvedValue(ok("9".repeat(40)));
+    vi.mocked(commands.commitCherryPick).mockResolvedValue(ok({ picked: 1, skipped: 1 }));
+    const incoming = [
+      commit(8, { summary: "Teammate's second", parents: ["7".repeat(40)] }),
+      commit(7, { summary: "Teammate's first" }),
+    ];
+    // Commit 1 is pushed here, so squashing it warns.
+    setup({ ...markers, incoming, unpushed: [] });
+    vi.mocked(commands.historyList).mockResolvedValue(ok(withParents));
+    useHistoryFilters.getState().update("/repo", { firstParent: true });
+    await screen.findByRole("heading", { name: "Add login screen" });
+    const list = screen.getByRole("listbox", { name: "Commits" });
+
+    await user.keyboard("{Shift>}");
+    await user.click(within(list).getByText("Commit number 2"));
+    await user.keyboard("{/Shift}");
+    let menu = await openMenu(user, "Commit number 2");
+    expect(within(menu).queryByRole("menuitem", { name: /onto Current Branch/ })).toBeNull();
+    await user.click(within(menu).getByRole("menuitem", { name: "Revert 2 Commits" }));
+    expect(commands.commitRevert).toHaveBeenCalledWith("/repo", [
+      withParents[0].oid,
+      withParents[1].oid,
+    ]);
+    expect(await screen.findByText("Reverted 2 commits with new commits.")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Squash…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Squash 2 Commits" });
+    expect(within(dialog).getByRole("textbox", { name: "Summary" })).toHaveValue("Commit number 2");
+    expect(within(dialog).getByRole("textbox", { name: "Description" })).toHaveValue(
+      "- Add login screen",
+    );
+    expect(within(dialog).getByText(/you'll need to force push/)).toBeVisible();
+    expect(await axeViolations(dialog)).toEqual([]);
+    await user.click(within(dialog).getByRole("button", { name: "Squash" }));
+    expect(commands.commitSquash).toHaveBeenCalledWith(
+      "/repo",
+      [withParents[0].oid, withParents[1].oid],
+      "Commit number 2\n\n- Add login screen",
+    );
+    expect(await screen.findByText("Squashed 2 commits into one.")).toBeVisible();
+
+    // Incoming commits (listed without a filter) are applied oldest first.
+    act(() => useHistoryFilters.getState().reset("/repo"));
+    await user.click(await within(list).findByText("Teammate's second"));
+    await user.keyboard("{Shift>}");
+    await user.click(within(list).getByText("Teammate's first"));
+    await user.keyboard("{/Shift}");
+    menu = await openMenu(user, "Teammate's first");
+    expect(within(menu).queryByRole("menuitem", { name: /Squash/ })).toBeNull();
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "Cherry-pick 2 Commits onto Current Branch" }),
+    );
+    expect(commands.commitCherryPick).toHaveBeenCalledWith("/repo", [
+      incoming[1].oid,
+      incoming[0].oid,
+    ]);
+    expect(
+      await screen.findByText("Cherry-picked 1 commit. Skipped 1 already here."),
+    ).toBeVisible();
   });
 
   it("compares a branch with the current one since they split", async () => {
@@ -816,6 +929,67 @@ describe("HistoryView", () => {
     await screen.findByRole("heading", { name: "Add login screen" });
     useHistoryDialog.setState({ dialog: { kind: "recover" } });
     expect(await screen.findByText("No lost commits.")).toBeVisible();
+  });
+
+  it("cherry-picks commits from here onto another branch", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.commitCherryPickOnto).mockResolvedValue(ok({ picked: 2, skipped: 0 }));
+    setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+    vi.mocked(commands.branchList).mockResolvedValue(
+      ok([
+        {
+          name: "main",
+          kind: "local",
+          remote: null,
+          oid: commits[0].oid,
+          isHead: true,
+          upstream: null,
+          upstreamGone: false,
+          ahead: 0,
+          behind: 0,
+          committedAt: now,
+          subject: "",
+        },
+        {
+          name: "release",
+          kind: "local",
+          remote: null,
+          oid: commits[2].oid,
+          isHead: false,
+          upstream: null,
+          upstreamGone: false,
+          ahead: 0,
+          behind: 0,
+          committedAt: now,
+          subject: "",
+        },
+      ]),
+    );
+    const list = screen.getByRole("listbox", { name: "Commits" });
+    await user.keyboard("{Shift>}");
+    await user.click(within(list).getByText("Commit number 2"));
+    await user.keyboard("{/Shift}");
+    const menu = await openMenu(user, "Add login screen");
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "Cherry-pick 2 Commits onto Another Branch…" }),
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Cherry-pick 2 Commits onto Another Branch",
+    });
+    expect(
+      await within(dialog).findByRole("combobox", { name: "Target branch" }),
+    ).toHaveTextContent("release");
+    await user.click(within(dialog).getByRole("button", { name: "Cherry-pick" }));
+    expect(commands.commitCherryPickOnto).toHaveBeenCalledWith("/repo", "release", [
+      commits[1].oid,
+      commits[0].oid,
+    ]);
+    expect(
+      await screen.findByText("Switched to release and cherry-picked 2 commits."),
+    ).toBeVisible();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("explains an empty history", async () => {

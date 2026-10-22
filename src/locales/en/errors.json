@@ -46,5 +46,7 @@
   "cherry_pick_empty": "This branch already has these changes, so there was nothing to cherry-pick.",
   "invalid_tag_name": "That isn't a valid tag name. Avoid spaces and characters like ~ ^ : ? * [ \\.",
   "tag_exists": "A tag with this name already exists.",
-  "head_moved": "The last commit changed in the meantime. Check the history and try again."
+  "head_moved": "The last commit changed in the meantime. Check the history and try again.",
+  "cannot_squash": "These commits can't be squashed. They must follow one another on the current branch, with no merge commit among or after them.",
+  "uncommitted_changes": "There are uncommitted changes. Commit or stash them first."
 }
