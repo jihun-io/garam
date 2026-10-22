@@ -70,6 +70,7 @@
 - macOS가 직접 넣는 메뉴 항목(글쓰기 도구, 자동 완성, 받아쓰기, 이모지 및 기호 등)은 앱이 지원하는 언어(`src-tauri/Info.plist`의 `CFBundleLocalizations`)와 앱의 `AppleLanguages` 설정을 따른다. AppKit은 이것을 시작할 때만 읽으므로, 가람은 시작 직전과 언어를 바꿀 때 `AppleLanguages`를 언어 설정에 맞추고(`src-tauri/src/locale.rs`), 설정 화면에서 다시 시작을 권한다.
 - 앱 안 버튼과 메뉴 항목이 같은 동작이면 같은 이름과 같은 단축키를 쓴다.
 - 모달 대화상자가 열려 있어도 창을 옮길 수 있어야 한다. macOS에서는 대화상자 배경 위에 툴바 높이만큼 끌기 영역을 두고, 그곳을 누르는 것은 대화상자 바깥 클릭으로 치지 않는다(`WindowDragArea overDialog`, `keepOpenWhenDraggingWindow`).
+- 모달 대화상자는 창 가운데(가로·세로)에 둔다. `transform`으로 옮기면 글자가 반 픽셀에 걸려 흐려질 수 있으므로 `inset: 0`과 `margin: auto`로 가운데 맞춘다.
 
 ### 4.4 포커스, 툴팁, 상태 표현
 
