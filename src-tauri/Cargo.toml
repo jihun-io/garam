@@ -27,7 +27,7 @@ tauri-build = { version = "2", features = [] }
 base64 = "0.22"
 garam-git = { workspace = true, features = ["specta"] }
 garam-github.workspace = true
-getrandom = "0.3"
+getrandom = { version = "0.3", features = ["std"] }
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust", "vendored"] }
 notify-debouncer-full = "0.7"
 serde.workspace = true
