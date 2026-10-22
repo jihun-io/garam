@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { commands, unwrap, type RepositoryEntry } from "../../ipc";
 
-const REPOSITORIES = ["repositories"] as const;
+export const REPOSITORIES = ["repositories"] as const;
 
 const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
 
@@ -14,6 +14,8 @@ export function useRepositories() {
   return useQuery({
     queryKey: REPOSITORIES,
     queryFn: () => commands.repoList(),
+    // Another window may have added or removed one.
+    refetchOnWindowFocus: true,
     select: (list) => {
       const repositories = sortRepositories(list.repositories);
       const selected =

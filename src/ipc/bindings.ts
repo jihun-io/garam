@@ -11,6 +11,11 @@ export const commands = {
 	 *  `git_not_found` / `git_too_old` errors.
 	 */
 	gitInfo: () => typedError<GitInfo, AppError>(__TAURI_INVOKE("git_info")),
+	/**
+	 *  All repositories, with `selected` set to the one the calling window
+	 *  shows. A window that hasn't chosen one yet (the first window at launch)
+	 *  takes the repository open last, unless another window shows it.
+	 */
 	repoList: () => __TAURI_INVOKE<RepositoryList>("repo_list"),
 	/**  Adds an existing repository. `path` may be any folder inside it. */
 	repoAdd: (path: string) => typedError<RepositoryEntry, AppError>(__TAURI_INVOKE("repo_add", { path })),
@@ -26,6 +31,7 @@ export const commands = {
 	repoClone: (operationId: string, url: string, parent: string, name: string, onEvent: Channel<RemoteEvent>) => typedError<RepositoryEntry, AppError>(__TAURI_INVOKE("repo_clone", { operationId, url, parent, name, onEvent })),
 	/**  Removes a repository from Garam's list. Files on disk are untouched. */
 	repoRemove: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("repo_remove", { path })),
+	/**  Shows the repository at `path` in the calling window. */
 	repoSelect: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("repo_select", { path })),
 	/**
 	 *  Chooses the GitHub account git uses for the repository's HTTPS
@@ -35,10 +41,20 @@ export const commands = {
 	/**  Cancels a running operation, declining any credential prompt it shows. */
 	operationCancel: (operationId: string) => __TAURI_INVOKE<void>("operation_cancel", { operationId }),
 	/**
-	 *  Starts watching `path` for changes (or stops with `None`). The frontend
-	 *  receives `repo-changed` events and refreshes.
+	 *  Starts watching `path` for the calling window (or stops with `None`).
+	 *  The frontend receives `repo-changed` events and refreshes.
 	 */
 	repoWatch: (path: string | null) => typedError<null, AppError>(__TAURI_INVOKE("repo_watch", { path })),
+	/**
+	 *  Brings forward the window, other than the calling one, that shows
+	 *  `path`. Returns whether there was one.
+	 */
+	windowFocusRepo: (path: string) => __TAURI_INVOKE<boolean>("window_focus_repo", { path }),
+	/**
+	 *  Opens `path` in a new window, or brings forward the window already
+	 *  showing it.
+	 */
+	windowOpen: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("window_open", { path })),
 	statusGet: (repo: string) => typedError<RepoStatus, AppError>(__TAURI_INVOKE("status_get", { repo })),
 	diffGet: (repo: string, file: FileChange) => typedError<FileDiff, AppError>(__TAURI_INVOKE("diff_get", { repo, file })),
 	diffImages: (repo: string, file: FileChange) => typedError<ImageVersions, AppError>(__TAURI_INVOKE("diff_images", { repo, file })),
@@ -220,6 +236,8 @@ export type AppError = {
 
 /**  Errors that come from the app layer rather than from git. */
 export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "external_app_not_found" | "external_app_failed" | "trash_failed" | "watch_failed" | 
+/**  A new window couldn't be opened. */
+"window_failed" | 
 /**  A file the user chose to save couldn't be written. */
 "save_failed" | 
 /**  The OS keychain refused to store or read a token. */
@@ -243,6 +261,7 @@ export type AppSettings = {
 	fetchIntervalMinutes: number,
 	/**  Width of the changes/history sidebar in CSS pixels. */
 	sidebarWidth: number,
+	openRepositoryIn: OpenRepositoryIn,
 };
 
 export type AutoStash = {
@@ -584,6 +603,9 @@ export type LostCommit = {
 } & CommitSummary;
 
 export type MergeOutcome = "up_to_date" | "fast_forward" | "merged";
+
+/**  Where a repository chosen from another one's window opens. */
+export type OpenRepositoryIn = "ask" | "current_window" | "new_window";
 
 export type Operation = "merge" | "rebase" | "revert" | "cherry_pick";
 

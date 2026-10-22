@@ -9,6 +9,7 @@ import { displayPath } from "../../lib/paths";
 import { useNotify } from "../notify/notifyStore";
 import { useRepositoryActions } from "./api";
 import { useRepoDialog } from "./dialogStore";
+import { useOpenIn, useOpenRepository } from "./openRepository";
 import styles from "./RepoPicker.module.css";
 import { Icon } from "../../components/Icon";
 import { shortcutFor, useCommand } from "../../lib/commands";
@@ -27,7 +28,9 @@ export function RepoPicker({
   useCommand("view.repositories", () => setOpen(true));
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLUListElement>(null);
-  const { select, remove } = useRepositoryActions();
+  const { remove } = useRepositoryActions();
+  const openRepository = useOpenRepository();
+  const openIn = useOpenIn();
   const openDialog = useRepoDialog((s) => s.open);
   const showError = useNotify((s) => s.showError);
 
@@ -42,7 +45,7 @@ export function RepoPicker({
   const choose = (repo: RepositoryEntry) => {
     setOpen(false);
     setQuery("");
-    if (repo.path !== selected?.path) select.mutate(repo.path, { onError: showError });
+    if (repo.path !== selected?.path) void openRepository(repo.path);
   };
 
   const items = () =>
@@ -133,6 +136,17 @@ export function RepoPicker({
                     </ContextMenu.Trigger>
                     <ContextMenu.Portal>
                       <ContextMenu.Content className={menu.content}>
+                        <ContextMenu.Item
+                          className={menu.item}
+                          disabled={repo.path === selected?.path}
+                          onSelect={() => {
+                            setOpen(false);
+                            setQuery("");
+                            openIn(repo.path, "new_window").catch(showError);
+                          }}
+                        >
+                          {t("picker.openInNewWindow")}
+                        </ContextMenu.Item>
                         <ContextMenu.Item
                           className={menu.item}
                           onSelect={() => remove.mutate(repo.path, { onError: showError })}

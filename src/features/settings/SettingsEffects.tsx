@@ -1,3 +1,5 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,7 +9,7 @@ import { ACCENT_PRESETS, accentPairFrom, type AccentPair } from "../../lib/accen
 import { setSidebarWidth } from "../../lib/layout";
 import { setAppearance } from "../../lib/theme";
 import { resolveLanguage } from "../../i18n";
-import { useSettings, useSystemAccent } from "./api";
+import { settingsKeys, useSettings, useSystemAccent } from "./api";
 
 /** The accent colors to use, falling back to Garam green. */
 export function resolveAccent(
@@ -26,6 +28,27 @@ export function SettingsEffects() {
   const systemAccent = useSystemAccent(settings.accent === "system");
   const { i18n } = useTranslation();
   const language = resolveLanguage(settings.language);
+  const client = useQueryClient();
+
+  // A change saved in another window applies here too.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let disposed = false;
+    listen<AppSettings>("settings-changed", ({ payload }) => {
+      client.setQueryData(settingsKeys.app, payload);
+    })
+      .then((fn) => {
+        if (disposed) fn();
+        else unlisten = fn;
+      })
+      .catch(() => {
+        // Not running inside Tauri: there is only one window.
+      });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [client]);
 
   useEffect(() => {
     setAppearance({

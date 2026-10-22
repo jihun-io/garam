@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Fragment } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Fragment, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import { IconButton } from "../../components/ui/IconButton";
@@ -27,6 +28,7 @@ export function Workspace({
   const openSettings = useSettingsDialog((s) => s.setOpen);
   const active = selected && !selected.missing ? selected.path : null;
   useRepoWatcher(active);
+  useWindowTitle(selected?.name ?? null);
   const client = useQueryClient();
   useCommand(
     "view.refresh",
@@ -72,4 +74,17 @@ export function Workspace({
       </main>
     </div>
   );
+}
+
+/** Names the window after its repository, for the Window menu and Dock. */
+function useWindowTitle(name: string | null) {
+  useEffect(() => {
+    try {
+      void getCurrentWindow()
+        .setTitle(name ?? "Garam")
+        .catch(() => {});
+    } catch {
+      // Not running inside Tauri.
+    }
+  }, [name]);
 }

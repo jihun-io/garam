@@ -10,10 +10,11 @@ mod settings;
 mod storage;
 mod system;
 mod watcher;
+mod windows;
 
 use std::sync::Arc;
 
-use tauri::Manager;
+use tauri::{Manager, WindowEvent};
 use tauri_specta::{Builder, collect_commands};
 
 use crate::operations::Operations;
@@ -24,6 +25,7 @@ use crate::repositories::RepositoryStore;
 pub fn specta_builder() -> Builder<tauri::Wry> {
     use commands::{
         branches, changes, conflicts, external, git, github, history, remote, repo, settings,
+        window,
     };
     Builder::<tauri::Wry>::new().commands(collect_commands![
         git::git_info,
@@ -37,6 +39,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         repo::repo_set_account,
         repo::operation_cancel,
         repo::repo_watch,
+        window::window_focus_repo,
+        window::window_open,
         changes::status_get,
         changes::diff_get,
         changes::diff_images,
@@ -160,7 +164,16 @@ pub fn run() {
             app.manage(Arc::new(Operations::default()));
             app.manage(Arc::new(askpass::Askpass::start()));
             app.manage(watcher::RepoWatcher::default());
+            app.manage(Arc::new(windows::RepoWindows::default()));
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let WindowEvent::Destroyed = event {
+                let app = window.app_handle();
+                let label = window.label();
+                app.state::<Arc<windows::RepoWindows>>().remove(label);
+                let _ = app.state::<watcher::RepoWatcher>().watch(app, label, None);
+            }
         })
         .run(context)
         .expect("error while running tauri application");

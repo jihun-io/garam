@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   terminal: null,
   fetchIntervalMinutes: 5,
   sidebarWidth: 320,
+  openRepositoryIn: "ask",
 };
 
 export function useSettings(): AppSettings {

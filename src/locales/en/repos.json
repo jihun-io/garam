@@ -18,7 +18,8 @@
     "noMatches": "No repositories match “{{query}}”.",
     "missing": "Missing",
     "remove": "Remove from list",
-    "tooltip": "Switch repository"
+    "tooltip": "Switch repository",
+    "openInNewWindow": "Open in New Window"
   },
   "open": {
     "menu": "Open in",
@@ -77,5 +78,13 @@
   },
   "drop": {
     "overlay": "Drop to add this repository"
+  },
+  "openIn": {
+    "title": "Where should {{name}} open?",
+    "body": "A new window keeps this window's repository open.",
+    "currentWindow": "Open Here",
+    "newWindow": "Open in New Window",
+    "remember": "Don't ask again",
+    "rememberHint": "You can change this in Settings > General."
   }
 }

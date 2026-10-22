@@ -39,7 +39,11 @@ vi.mock("@tauri-apps/api/menu", () => {
     },
     Menu: {
       new: async (opts: { items: unknown[] }) => {
-        const menu = { ...opts, setAsAppMenu: vi.fn(() => built.installed) };
+        const menu = {
+          ...opts,
+          setAsAppMenu: vi.fn(() => built.installed),
+          setAsWindowMenu: vi.fn(() => built.installed),
+        };
         built.menu = menu;
         return menu;
       },
@@ -57,7 +61,8 @@ function menuNamed(text: string): FakeItem {
 }
 
 function itemWithId(menu: FakeItem, id: string): FakeItem {
-  const found = menu.items?.find((i) => i.id === id);
+  // Outside Tauri the window counts as "main".
+  const found = menu.items?.find((i) => i.id === `main/${id}`);
   if (!found) throw new Error(`no item ${id}`);
   return found;
 }

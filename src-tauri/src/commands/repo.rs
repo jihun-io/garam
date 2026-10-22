@@ -2,21 +2,43 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use garam_git::{Git, GitError, repo};
-use tauri::State;
 use tauri::ipc::Channel;
+use tauri::{State, WebviewWindow};
 
 use crate::askpass::Askpass;
 use crate::commands::remote::{NetworkContext, RemoteEvent};
 use crate::error::{AppError, AppErrorKind, AppResult, blocking};
 use crate::operations::Operations;
 use crate::repositories::{RepositoryEntry, RepositoryList, RepositoryStore};
+use crate::windows::RepoWindows;
 
 type Store<'a> = State<'a, Arc<RepositoryStore>>;
+type Windows<'a> = State<'a, Arc<RepoWindows>>;
 
+/// All repositories, with `selected` set to the one the calling window
+/// shows. A window that hasn't chosen one yet (the first window at launch)
+/// takes the repository open last, unless another window shows it.
 #[tauri::command]
 #[specta::specta]
-pub fn repo_list(store: Store<'_>) -> RepositoryList {
-    store.list()
+pub fn repo_list(window: WebviewWindow, store: Store<'_>, windows: Windows<'_>) -> RepositoryList {
+    let mut list = store.list();
+    let label = window.label();
+    let listed = |path: &String| list.repositories.iter().any(|r| &r.path == path);
+    let selected = match windows.get(label).filter(listed) {
+        Some(path) => Some(path),
+        None => {
+            let last = list
+                .selected
+                .take()
+                .filter(|path| windows.find(path, Some(label)).is_none());
+            if let Some(path) = &last {
+                windows.set(label, path.clone());
+            }
+            last
+        }
+    };
+    list.selected = selected;
+    list
 }
 
 /// Adds an existing repository. `path` may be any folder inside it.
@@ -111,9 +133,16 @@ pub async fn repo_remove(store: Store<'_>, path: String) -> AppResult<()> {
     blocking(move || store.remove(&path)).await
 }
 
+/// Shows the repository at `path` in the calling window.
 #[tauri::command]
 #[specta::specta]
-pub async fn repo_select(store: Store<'_>, path: String) -> AppResult<()> {
+pub async fn repo_select(
+    window: WebviewWindow,
+    store: Store<'_>,
+    windows: Windows<'_>,
+    path: String,
+) -> AppResult<()> {
+    windows.set(window.label(), path.clone());
     let store = Arc::clone(&store);
     blocking(move || store.select(&path)).await
 }
@@ -189,16 +218,17 @@ mod tests {
     }
 }
 
-/// Starts watching `path` for changes (or stops with `None`). The frontend
-/// receives `repo-changed` events and refreshes.
+/// Starts watching `path` for the calling window (or stops with `None`).
+/// The frontend receives `repo-changed` events and refreshes.
 #[tauri::command]
 #[specta::specta]
 pub fn repo_watch(
     app: tauri::AppHandle,
+    window: WebviewWindow,
     watcher: State<'_, crate::watcher::RepoWatcher>,
     path: Option<String>,
 ) -> AppResult<()> {
     watcher
-        .watch(&app, path)
+        .watch(&app, window.label(), path)
         .map_err(|e| AppError::app(AppErrorKind::WatchFailed, Some(e.to_string())))
 }

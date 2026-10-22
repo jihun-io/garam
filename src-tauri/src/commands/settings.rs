@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use garam_git::Git;
 use garam_git::config::{self, GlobalKey, GlobalSettings};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Emitter, State};
 
 use crate::error::{AppResult, blocking};
 use crate::settings::{AppSettings, SettingsStore};
@@ -24,6 +24,7 @@ pub async fn settings_set(
 ) -> AppResult<()> {
     let store = Arc::clone(&store);
     let identifier = app.config().identifier.clone();
+    let changed = settings.clone();
     blocking(move || {
         // macOS's own menu items take the language at the next launch.
         if store.get().language != settings.language {
@@ -31,8 +32,13 @@ pub async fn settings_set(
         }
         store.set(settings)
     })
-    .await
+    .await?;
+    // Other windows apply the change too.
+    let _ = app.emit(SETTINGS_CHANGED_EVENT, changed);
+    Ok(())
 }
+
+pub const SETTINGS_CHANGED_EVENT: &str = "settings-changed";
 
 /// Quits and starts the app again, e.g. so macOS's own menus pick up a new
 /// language.

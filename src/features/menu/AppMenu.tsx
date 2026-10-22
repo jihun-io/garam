@@ -1,5 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { Menu, MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu";
+import { getCurrentWindow, type Window } from "@tauri-apps/api/window";
 import type { TFunction } from "i18next";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -41,11 +42,16 @@ export function commandLabel(t: TFunction<["menu", "repos"]>, id: CommandId): st
  * Builds the native menu bar (docs/UI.md 6). Items run registered commands
  * and are enabled only while a screen offers them.
  */
-async function buildMenu(t: TFunction<["menu", "repos"]>, items: Map<CommandId, MenuItem>) {
+async function buildMenu(
+  t: TFunction<["menu", "repos"]>,
+  items: Map<CommandId, MenuItem>,
+  windowLabel: string,
+) {
   const mac = currentPlatform() === "macos";
   const command = async (id: CommandId) => {
     const item = await MenuItem.new({
-      id,
+      // Item ids are app-wide; each window builds its own menu.
+      id: `${windowLabel}/${id}`,
       text: commandLabel(t, id),
       accelerator: SHORTCUTS[id] ?? undefined,
       enabled: isCommandEnabled(id),
@@ -152,6 +158,31 @@ async function buildMenu(t: TFunction<["menu", "repos"]>, items: Map<CommandId, 
   return menu;
 }
 
+function currentWindow(): Window | null {
+  try {
+    return getCurrentWindow();
+  } catch {
+    return null; // Not running inside Tauri (tests).
+  }
+}
+
+/**
+ * Shows this window's menu. On macOS the menu bar belongs to the app, so
+ * the focused window puts its own up; elsewhere each window has one.
+ * Returns a function that stops following focus.
+ */
+async function install(menu: Menu, appWindow: Window | null): Promise<() => void> {
+  if (currentPlatform() !== "macos") {
+    await menu.setAsWindowMenu(appWindow ?? undefined);
+    return () => {};
+  }
+  if (!appWindow || (await appWindow.isFocused())) await menu.setAsAppMenu();
+  if (!appWindow) return () => {};
+  return appWindow.onFocusChanged(({ payload: focused }) => {
+    if (focused) void menu.setAsAppMenu().catch(() => {});
+  });
+}
+
 /** Installs the menu bar and keeps item availability up to date. */
 export function AppMenu() {
   const { t, i18n } = useTranslation(["menu", "repos"]);
@@ -160,6 +191,8 @@ export function AppMenu() {
     if (!isTauri()) return;
     let disposed = false;
     let unsubscribe: (() => void) | undefined;
+    let stopFollowingFocus: (() => void) | undefined;
+    const appWindow = currentWindow();
     const items = new Map<CommandId, MenuItem>();
     const shown = new Map<CommandId, boolean>();
     let pending = false;
@@ -178,10 +211,14 @@ export function AppMenu() {
       });
     };
 
-    buildMenu(t, items)
+    buildMenu(t, items, appWindow?.label ?? "main")
       .then(async (menu) => {
         if (disposed) return;
-        await menu.setAsAppMenu();
+        stopFollowingFocus = await install(menu, appWindow);
+        if (disposed) {
+          stopFollowingFocus();
+          return;
+        }
         // Screens may have offered commands while the items were being
         // made, so apply every item's current state once instead of
         // assuming it's what it was built with.
@@ -192,6 +229,7 @@ export function AppMenu() {
     return () => {
       disposed = true;
       unsubscribe?.();
+      stopFollowingFocus?.();
     };
   }, [t, i18n.language]);
 

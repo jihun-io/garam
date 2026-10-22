@@ -43,6 +43,16 @@ pub enum DiffFontSize {
     Large,
 }
 
+/// Where a repository chosen from another one's window opens.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum OpenRepositoryIn {
+    #[default]
+    Ask,
+    CurrentWindow,
+    NewWindow,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
@@ -59,6 +69,7 @@ pub struct AppSettings {
     pub fetch_interval_minutes: u32,
     /// Width of the changes/history sidebar in CSS pixels.
     pub sidebar_width: u32,
+    pub open_repository_in: OpenRepositoryIn,
 }
 
 impl Default for AppSettings {
@@ -72,6 +83,7 @@ impl Default for AppSettings {
             terminal: None,
             fetch_interval_minutes: 5,
             sidebar_width: 320,
+            open_repository_in: OpenRepositoryIn::default(),
         }
     }
 }
@@ -134,6 +146,7 @@ mod tests {
             accent: Accent::Purple,
             fetch_interval_minutes: 0,
             sidebar_width: 400,
+            open_repository_in: OpenRepositoryIn::NewWindow,
             ..AppSettings::default()
         };
         store.set(changed.clone()).unwrap();

@@ -6,7 +6,14 @@
   "general": {
     "title": "일반",
     "restartHint": "macOS가 직접 넣는 일부 메뉴 항목(글쓰기 도구, 이모지 및 기호 등)은 Garam을 다시 시작해야 언어가 바뀝니다.",
-    "restart": "지금 다시 시작"
+    "restart": "지금 다시 시작",
+    "openRepositoryIn": "다른 저장소를 열 때",
+    "openRepositoryInChoices": {
+      "ask": "매번 묻기",
+      "current_window": "이 창에서 열기",
+      "new_window": "새 창에서 열기"
+    },
+    "openRepositoryInHint": "이미 다른 창에 열려 있는 저장소는 그 창을 앞으로 가져옵니다."
   },
   "appearance": {
     "title": "모양",

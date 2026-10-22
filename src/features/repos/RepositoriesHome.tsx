@@ -3,6 +3,7 @@ import { useCommand } from "../../lib/commands";
 
 import { DropOverlay } from "./DropOverlay";
 import { EmptyState } from "./EmptyState";
+import { OpenRepositoryDialog } from "./dialogs/OpenRepositoryDialog";
 import { RepoDialogs } from "./dialogs/RepoDialogs";
 import { useRepositories } from "./api";
 import { useFolderDrop } from "./useFolderDrop";
@@ -30,6 +31,7 @@ export function RepositoriesHome({ gitVersion }: { gitVersion: string }) {
         <Workspace repositories={list} selected={selected} />
       )}
       <RepoDialogs />
+      <OpenRepositoryDialog />
       <DropOverlay visible={dragging} />
     </>
   );

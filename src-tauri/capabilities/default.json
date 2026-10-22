@@ -1,14 +1,15 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window",
-  "windows": ["main"],
+  "description": "Capability for every repository window",
+  "windows": ["main", "repo-*"],
   "permissions": [
     "core:default",
     "opener:default",
     "dialog:allow-open",
     "dialog:allow-save",
     "core:window:allow-start-dragging",
-    "core:window:allow-set-theme"
+    "core:window:allow-set-theme",
+    "core:window:allow-set-title"
   ]
 }

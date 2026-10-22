@@ -11,7 +11,7 @@ import styles from "./RepositoryOverview.module.css";
 /** The selected repository's home. M2 replaces the body with changes. */
 export function RepositoryOverview({ repository }: { repository: RepositoryEntry }) {
   const { t } = useTranslation("repos");
-  const { add, remove } = useRepositoryActions();
+  const { add, remove, select } = useRepositoryActions();
   const showError = useNotify((s) => s.showError);
   const [copied, setCopied] = useState(false);
 
@@ -31,6 +31,7 @@ export function RepositoryOverview({ repository }: { repository: RepositoryEntry
     if (!dir) return;
     add.mutate(dir, {
       onSuccess: (entry) => {
+        select.mutate(entry.path);
         if (entry.path !== repository.path) remove.mutate(repository.path);
       },
       onError: showError,

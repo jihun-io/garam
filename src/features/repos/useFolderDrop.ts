@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toAppError } from "../../ipc";
 import { useRepositoryActions } from "./api";
 import { useRepoDialog } from "./dialogStore";
+import { useOpenRepository } from "./openRepository";
 
 /**
  * Adds folders dropped onto the window as repositories. If a folder can't be
@@ -14,6 +15,7 @@ export function useFolderDrop() {
   const [dragging, setDragging] = useState(false);
   const { add } = useRepositoryActions();
   const openDialog = useRepoDialog((s) => s.open);
+  const openRepository = useOpenRepository();
   // Stable across renders (TanStack Query memoizes it).
   const addRepository = add.mutateAsync;
 
@@ -21,15 +23,18 @@ export function useFolderDrop() {
     let unlisten: (() => void) | undefined;
     let disposed = false;
 
+    // Adds them all, then opens the last one.
     const handleDrop = async (paths: string[]) => {
+      let last: string | null = null;
       for (const path of paths) {
         try {
-          await addRepository(path);
+          last = (await addRepository(path)).path;
         } catch (e) {
           openDialog({ kind: "add", path, error: toAppError(e) });
           return;
         }
       }
+      if (last) void openRepository(last);
     };
 
     try {
@@ -53,7 +58,7 @@ export function useFolderDrop() {
       disposed = true;
       unlisten?.();
     };
-  }, [addRepository, openDialog]);
+  }, [addRepository, openDialog, openRepository]);
 
   return dragging;
 }

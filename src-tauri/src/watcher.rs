@@ -1,6 +1,7 @@
-//! Watches the open repository and tells the frontend when it changed, so
-//! status and diffs refresh without polling.
+//! Watches each window's repository and tells the frontend when it
+//! changed, so status and diffs refresh without polling.
 
+use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -19,22 +20,25 @@ pub struct RepoChanged {
 
 type Watcher = Debouncer<RecommendedWatcher, RecommendedCache>;
 
+/// One watcher per window, keyed by window label.
 #[derive(Default)]
-pub struct RepoWatcher(Mutex<Option<(String, Watcher)>>);
+pub struct RepoWatcher(Mutex<HashMap<String, (String, Watcher)>>);
 
 impl RepoWatcher {
-    /// Watches `repo` instead of whatever was watched before; `None` stops.
+    /// Watches `repo` for window `window` instead of whatever it watched
+    /// before; `None` stops.
     pub fn watch(
         &self,
         app: &AppHandle,
+        window: &str,
         repo: Option<String>,
     ) -> notify_debouncer_full::notify::Result<()> {
-        let mut current = self.0.lock().unwrap_or_else(|e| e.into_inner());
-        if current.as_ref().map(|(p, _)| p) == repo.as_ref() {
+        let mut watchers = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        if watchers.get(window).map(|(p, _)| p) == repo.as_ref() {
             return Ok(());
         }
         // Dropping the old debouncer stops it.
-        *current = None;
+        watchers.remove(window);
         let Some(repo) = repo else {
             return Ok(());
         };
@@ -58,7 +62,7 @@ impl RepoWatcher {
             },
         )?;
         debouncer.watch(&root, RecursiveMode::Recursive)?;
-        *current = Some((repo, debouncer));
+        watchers.insert(window.to_owned(), (repo, debouncer));
         Ok(())
     }
 }

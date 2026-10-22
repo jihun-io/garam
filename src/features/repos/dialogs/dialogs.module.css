@@ -35,3 +35,20 @@
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
+
+.remember {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.rememberOption {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-self: start;
+}
+
+.rememberHint {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}

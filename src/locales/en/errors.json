@@ -50,5 +50,6 @@
   "head_moved": "The last commit changed in the meantime. Check the history and try again.",
   "cannot_squash": "These commits can't be squashed. They must follow one another on the current branch, with no merge commit among or after them.",
   "uncommitted_changes": "There are uncommitted changes. Commit or stash them first.",
-  "cannot_reorder": "These commits can't be reordered. They must be the latest on the current branch, with no merge commit among them."
+  "cannot_reorder": "These commits can't be reordered. They must be the latest on the current branch, with no merge commit among them.",
+  "window_failed": "Couldn't open a new window."
 }
