@@ -8,10 +8,14 @@
 
 html {
   font-size: 13px;
+  /* The window itself never scrolls, so a trackpad swipe should not
+     rubber-band the whole app. Scroll containers keep their own bounce. */
+  overscroll-behavior: none;
 }
 
 body {
   margin: 0;
+  overscroll-behavior: none;
   background: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-ui);
