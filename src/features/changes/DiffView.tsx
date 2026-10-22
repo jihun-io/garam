@@ -1,5 +1,5 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
@@ -15,6 +15,7 @@ import {
 import { ConflictActions } from "../conflicts/ConflictActions";
 import { useChangeActions, useDiff, useImages } from "./api";
 import { displayKind, isImage } from "./fileState";
+import { hunkWordChanges, type Range } from "./wordDiff";
 import styles from "./DiffView.module.css";
 import { useNotify } from "../notify/notifyStore";
 import { Icon } from "../../components/Icon";
@@ -141,6 +142,8 @@ export function TextDiff({
       ]),
     [hunks],
   );
+  // Which words changed in lines that replaced other lines.
+  const words = useMemo(() => hunkWordChanges(hunks), [hunks]);
   const staged = useMemo(() => {
     const keys = new Set<LineKey>();
     for (const line of hunks.flatMap((h) => h.lines)) {
@@ -295,6 +298,7 @@ export function TextDiff({
             content = (
               <Line
                 line={row.line}
+                words={words.get(row.line)}
                 selection={
                   selectable && key
                     ? {
@@ -375,7 +379,16 @@ type Selection = {
   onKeyboardToggle: () => void;
 };
 
-function Line({ line, selection }: { line: DiffLine; selection?: Selection | "spacer" }) {
+function Line({
+  line,
+  words,
+  selection,
+}: {
+  line: DiffLine;
+  /** Changed stretches of the text, marked more strongly than the line. */
+  words?: Range[];
+  selection?: Selection | "spacer";
+}) {
   const { t } = useTranslation("changes");
   const included = typeof selection === "object" && selection.included;
   const excluded = typeof selection === "object" && !selection.included;
@@ -414,7 +427,7 @@ function Line({ line, selection }: { line: DiffLine; selection?: Selection | "sp
         {MARKER[line.kind]}
       </span>
       <span className={styles.text}>
-        {line.text}
+        {words ? <MarkedText text={line.text} ranges={words} /> : line.text}
         {line.noNewline && (
           <span className={styles.noNewline}>
             <Icon name="noNewline" size={12} />
@@ -423,6 +436,23 @@ function Line({ line, selection }: { line: DiffLine; selection?: Selection | "sp
       </span>
     </div>
   );
+}
+
+/** `text` with `ranges` wrapped in highlight spans. */
+function MarkedText({ text, ranges }: { text: string; ranges: Range[] }) {
+  const parts: ReactNode[] = [];
+  let at = 0;
+  for (const [start, end] of ranges) {
+    if (start > at) parts.push(text.slice(at, start));
+    parts.push(
+      <span key={start} className={styles.word}>
+        {text.slice(start, end)}
+      </span>,
+    );
+    at = end;
+  }
+  if (at < text.length) parts.push(text.slice(at));
+  return <>{parts}</>;
 }
 
 function ImageDiff({ repo, file }: { repo: string; file: FileChange }) {

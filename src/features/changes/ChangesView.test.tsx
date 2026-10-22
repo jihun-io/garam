@@ -97,6 +97,10 @@ const change = (path: string, staged: FileChange["staged"], unstaged: FileChange
   isSubmodule: false,
 });
 
+/** A diff line's whole text, though changed words are wrapped on their own. */
+const lineText = (text: string) => (_: string, element: Element | null) =>
+  element?.tagName === "SPAN" && element.textContent === text;
+
 function setup(files: FileChange[]) {
   const status: RepoStatus = {
     branch: { head: "main", oid: "abc", upstream: null, ahead: 0, behind: 0 },
@@ -174,8 +178,11 @@ describe("ChangesView", () => {
       "aria-selected",
       "true",
     );
-    expect(await screen.findByText("new line")).toBeVisible();
-    expect(screen.getByText("old line")).toBeVisible();
+    expect(await screen.findByText(lineText("new line"))).toBeVisible();
+    expect(screen.getByText(lineText("old line"))).toBeVisible();
+    // The word that changed is marked on its own.
+    expect(screen.getByText("new")).not.toBe(screen.getByText(lineText("new line")));
+    expect(screen.getByText("old")).toBeVisible();
   });
 
   it("stages and unstages with the checkboxes", async () => {
@@ -383,7 +390,7 @@ describe("ChangesView", () => {
   it("stages single lines from the margin, keeping lines already staged", async () => {
     const user = userEvent.setup();
     setup([change("a.txt", "modified", "modified")]);
-    await screen.findByText("new line");
+    await screen.findByText(lineText("new line"));
     const boxes = screen.getAllByRole("checkbox", { name: LINE });
     expect(boxes.map((b) => b.getAttribute("aria-checked"))).toEqual(["false", "false", "true"]);
 
@@ -406,14 +413,14 @@ describe("ChangesView", () => {
       change("a.txt", null, "modified"),
       change("b.txt", "modified", null),
     ]);
-    await screen.findByText("new line");
+    await screen.findByText(lineText("new line"));
     expect(await axeViolations(container)).toEqual([]);
   });
 
   it("is one tab stop; arrow keys move between lines and Space includes one", async () => {
     const user = userEvent.setup();
     setup([change("a.txt", null, "modified")]);
-    await screen.findByText("new line");
+    await screen.findByText(lineText("new line"));
     const block = screen.getByRole("button", { name: "Include block" });
     const lines = screen.getAllByRole("checkbox", { name: LINE });
     expect([block, ...lines].filter((el) => el.tabIndex === 0)).toEqual([block]);
@@ -439,7 +446,7 @@ describe("ChangesView", () => {
   it("drags across the margin to include several lines at once", async () => {
     const user = userEvent.setup();
     setup([change("a.txt", null, "modified")]);
-    await screen.findByText("new line");
+    await screen.findByText(lineText("new line"));
     const [first, second] = screen.getAllByRole("checkbox", { name: LINE });
     await user.pointer([
       { keys: "[MouseLeft>]", target: first },

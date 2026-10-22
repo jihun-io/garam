@@ -276,3 +276,15 @@
 .hunkToggle:hover {
   border-color: var(--color-ink-faint);
 }
+
+/* Words that changed within a replaced line: the line's own color, but
+   as strong as its gutter. */
+.added .word {
+  border-radius: 2px;
+  background: var(--color-added-strong);
+}
+
+.deleted .word {
+  border-radius: 2px;
+  background: var(--color-deleted-strong);
+}
