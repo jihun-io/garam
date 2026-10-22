@@ -160,7 +160,7 @@
 
 .mergeItem[aria-selected="true"] {
   background: var(--color-river);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .preview {

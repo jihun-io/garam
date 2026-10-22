@@ -1,15 +1,14 @@
 //! The list of repositories the user has added, persisted as JSON in the
 //! app data directory.
 
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use garam_git::RepositoryInfo;
 use serde::{Deserialize, Serialize};
 
-use crate::error::{AppError, AppResult};
+use crate::error::AppResult;
+use crate::storage::{self, now_ms};
 
 const FILE_VERSION: u32 = 1;
 
@@ -66,22 +65,9 @@ pub struct RepositoryStore {
 }
 
 impl RepositoryStore {
-    /// Loads the store from `file`. A missing file means an empty list. A
-    /// corrupt file is moved aside (never silently overwritten) and the
-    /// store starts empty.
+    /// Loads the store from `file` (see [`storage::load`]).
     pub fn load(file: PathBuf) -> Self {
-        let data = match fs::read(&file) {
-            Ok(bytes) => serde_json::from_slice(&bytes).unwrap_or_else(|err| {
-                let backup = file.with_extension(format!("corrupt-{}.json", now_ms() as u64));
-                eprintln!(
-                    "repository list is unreadable ({err}); moved to {}",
-                    backup.display()
-                );
-                let _ = fs::rename(&file, &backup);
-                StoreFile::default()
-            }),
-            Err(_) => StoreFile::default(),
-        };
+        let data = storage::load(&file);
         Self {
             file,
             data: Mutex::new(data),
@@ -148,29 +134,16 @@ impl RepositoryStore {
         self.data.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// Writes atomically: to a temp file next to the target, then renames.
     fn save(&self, data: &mut StoreFile) -> AppResult<()> {
         data.version = FILE_VERSION;
-        if let Some(dir) = self.file.parent() {
-            fs::create_dir_all(dir).map_err(AppError::storage)?;
-        }
-        let json = serde_json::to_vec_pretty(&*data).map_err(AppError::storage)?;
-        let tmp = self.file.with_extension("json.tmp");
-        fs::write(&tmp, json).map_err(AppError::storage)?;
-        fs::rename(&tmp, &self.file).map_err(AppError::storage)
+        storage::save(&self.file, data)
     }
-}
-
-fn now_ms() -> f64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis() as f64)
-        .unwrap_or_default()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
 
     fn info(path: &Path) -> RepositoryInfo {
         RepositoryInfo {

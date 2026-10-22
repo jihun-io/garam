@@ -6,8 +6,9 @@ import { StartupGate } from "../features/startup/StartupGate";
 import { TooltipProvider } from "../components/ui/Tooltip";
 import { WindowDragArea } from "../components/WindowDragArea";
 import { SettingsDialog } from "../features/settings/SettingsDialog";
+import { SettingsEffects } from "../features/settings/SettingsEffects";
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: { refetchOnWindowFocus: false },
   },
@@ -17,6 +18,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <SettingsEffects />
         <WindowDragArea />
         <StartupGate />
         <Notifications />

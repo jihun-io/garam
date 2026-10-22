@@ -1,7 +1,8 @@
 {
   "appName": "Garam",
   "language": {
-    "label": "Language"
+    "label": "Language",
+    "system": "System language"
   },
   "error": {
     "showDetails": "Show details",

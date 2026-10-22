@@ -35,6 +35,12 @@ a[href] {
   overflow-wrap: anywhere;
 }
 
+/* Components set `display`, which would otherwise override `hidden`
+   (e.g. inactive tab panels). */
+[hidden] {
+  display: none !important;
+}
+
 h1,
 h2,
 p {

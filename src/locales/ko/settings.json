@@ -5,5 +5,55 @@
   "sections": "설정 항목",
   "general": {
     "title": "일반"
+  },
+  "appearance": {
+    "title": "모양",
+    "theme": "테마",
+    "themes": {
+      "system": "시스템",
+      "light": "라이트",
+      "dark": "다크"
+    },
+    "accent": "강조색",
+    "accents": {
+      "garam": "가람 초록",
+      "blue": "파랑",
+      "purple": "보라",
+      "pink": "분홍",
+      "orange": "주황",
+      "system": "시스템"
+    },
+    "accentSystemHint": "시스템 강조색을 쓰되, 글자가 잘 읽히도록 명도를 맞춥니다.",
+    "accentSystemUnavailable": "이 시스템에서는 강조색을 읽을 수 없어 가람 초록을 씁니다.",
+    "diffFontSize": "변경 내용 글자 크기",
+    "diffFontSizes": {
+      "small": "작게",
+      "medium": "보통",
+      "large": "크게"
+    }
+  },
+  "git": {
+    "title": "Git",
+    "hint": "Git 전역 설정에 저장되므로 명령줄에서도 똑같이 쓰입니다.",
+    "name": "이름",
+    "email": "이메일",
+    "defaultBranch": "새 저장소의 기본 브랜치",
+    "defaultBranchPlaceholder": "main",
+    "saved": "저장했습니다"
+  },
+  "apps": {
+    "title": "연동 앱",
+    "editor": "에디터",
+    "terminal": "터미널",
+    "firstFound": "처음 찾은 앱 ({{name}})",
+    "noneFound": "찾지 못함"
+  },
+  "sync": {
+    "title": "동기화",
+    "fetchInterval": "백그라운드 가져오기",
+    "off": "하지 않음",
+    "minutes_one": "{{count}}분마다",
+    "minutes_other": "{{count}}분마다",
+    "hint": "백그라운드 가져오기는 자격 증명을 묻지 않습니다. 로그인이 필요하면 툴바에서 가져오기를 누르세요."
   }
 }

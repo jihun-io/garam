@@ -7,15 +7,19 @@ import { ArrowSquareOut } from "@phosphor-icons/react/dist/csr/ArrowSquareOut";
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
 import { ArrowUp } from "@phosphor-icons/react/dist/csr/ArrowUp";
 import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
+import { Check } from "@phosphor-icons/react/dist/csr/Check";
 import { CloudArrowUp } from "@phosphor-icons/react/dist/csr/CloudArrowUp";
 import { DotsThree } from "@phosphor-icons/react/dist/csr/DotsThree";
 import { FolderSimple } from "@phosphor-icons/react/dist/csr/FolderSimple";
 import { GearSix } from "@phosphor-icons/react/dist/csr/GearSix";
 import { GitBranch } from "@phosphor-icons/react/dist/csr/GitBranch";
 import { MinusCircle } from "@phosphor-icons/react/dist/csr/MinusCircle";
+import { Monitor } from "@phosphor-icons/react/dist/csr/Monitor";
+import { Moon } from "@phosphor-icons/react/dist/csr/Moon";
 import { PlusCircle } from "@phosphor-icons/react/dist/csr/PlusCircle";
 import { Prohibit } from "@phosphor-icons/react/dist/csr/Prohibit";
 import { Record as RecordIcon } from "@phosphor-icons/react/dist/csr/Record";
+import { Sun } from "@phosphor-icons/react/dist/csr/Sun";
 import { WarningCircle } from "@phosphor-icons/react/dist/csr/WarningCircle";
 import { X } from "@phosphor-icons/react/dist/csr/X";
 
@@ -34,6 +38,12 @@ export const Icons = {
   dropdown: CaretDown,
   more: DotsThree,
   close: X,
+  check: Check,
+
+  // Appearance
+  themeSystem: Monitor,
+  themeLight: Sun,
+  themeDark: Moon,
 
   // File changes
   added: PlusCircle,

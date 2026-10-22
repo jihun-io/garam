@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { RepositoryEntry } from "../../ipc";
 import { renderWithQuery } from "../../test/renderWithQuery";
+import { DEFAULT_SETTINGS } from "../settings/api";
 import { SettingsDialog } from "../settings/SettingsDialog";
 import { Workspace } from "./Workspace";
 
@@ -25,7 +26,11 @@ const responses: Record<string, unknown> = {
 vi.mock("../../ipc/bindings", () => ({
   commands: new Proxy(
     {},
-    { get: (_, name: string) => async () => ({ status: "ok", data: responses[name] ?? null }) },
+    {
+      get: (_, name: string) => async () =>
+        // settingsGet can't fail, so it returns the value itself.
+        name === "settingsGet" ? DEFAULT_SETTINGS : { status: "ok", data: responses[name] ?? null },
+    },
   ),
 }));
 

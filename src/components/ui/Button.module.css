@@ -18,7 +18,7 @@
 .primary {
   border-color: var(--color-river-strong);
   background: var(--color-river);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .primary:hover:not(:disabled) {

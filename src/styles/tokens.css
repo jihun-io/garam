@@ -47,6 +47,9 @@
   --space-8: 32px;
   --space-12: 48px;
 
+  --color-on-accent: #ffffff;
+  --diff-font-size: 12px;
+
   --radius-sm: 4px;
   --radius-md: 6px;
 
@@ -85,6 +88,7 @@
   --color-modified-ink: #e2b25c;
   --color-hunk-bg: #1f2b33;
   --color-selected: rgba(93, 179, 160, 0.16);
+  --color-on-accent: #10161a;
   --color-scrim: rgba(0, 0, 0, 0.5);
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
 }

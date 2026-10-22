@@ -9,7 +9,8 @@ import { commands, unwrap, type ConflictFile, type Side } from "../../ipc";
 import { joinPath } from "../../lib/paths";
 import { splitPath } from "../changes/fileState";
 import { useNotify } from "../notify/notifyStore";
-import { useEditors } from "../repos/api";
+import { useEditorsPreferredFirst } from "../repos/api";
+import { useSettings } from "../settings/api";
 import { useConflictActions } from "./api";
 import styles from "./Conflicts.module.css";
 
@@ -17,7 +18,7 @@ import styles from "./Conflicts.module.css";
 export function ConflictActions({ repo, file }: { repo: string; file: ConflictFile }) {
   const { t } = useTranslation("conflicts");
   const { resolve, markResolved } = useConflictActions(repo);
-  const editors = useEditors();
+  const editors = useEditorsPreferredFirst(useSettings().editor);
   const showError = useNotify((s) => s.showError);
   const [confirmMarkers, setConfirmMarkers] = useState(false);
   const busy = resolve.isPending || markResolved.isPending;
@@ -43,8 +44,8 @@ export function ConflictActions({ repo, file }: { repo: string; file: ConflictFi
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content className={menu.content} sideOffset={4}>
-              {editors.data?.length ? (
-                editors.data.map((editor) => (
+              {editors.length ? (
+                editors.map((editor) => (
                   <DropdownMenu.Item
                     key={editor.id}
                     className={menu.item}

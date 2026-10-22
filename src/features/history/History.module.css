@@ -31,7 +31,7 @@
 
 .scroll:focus-visible .row[aria-selected="true"] {
   background: var(--color-river);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .scroll:focus-visible .row[aria-selected="true"] .meta {

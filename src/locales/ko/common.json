@@ -1,7 +1,8 @@
 {
   "appName": "가람",
   "language": {
-    "label": "언어"
+    "label": "언어",
+    "system": "시스템 언어"
   },
   "error": {
     "showDetails": "자세히 보기",

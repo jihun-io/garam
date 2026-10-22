@@ -101,13 +101,26 @@ export const commands = {
 	 *  operation that asked.
 	 */
 	credentialRespond: (requestId: string, answer: string | null) => __TAURI_INVOKE<void>("credential_respond", { requestId, answer }),
+	settingsGet: () => __TAURI_INVOKE<AppSettings>("settings_get"),
+	settingsSet: (settings: AppSettings) => typedError<null, AppError>(__TAURI_INVOKE("settings_set", { settings })),
+	/**  The operating system's accent color as `#rrggbb`, if it can be read. */
+	systemAccentColor: () => typedError<string | null, AppError>(__TAURI_INVOKE("system_accent_color")),
+	gitGlobalGet: () => typedError<GlobalSettings, AppError>(__TAURI_INVOKE("git_global_get")),
+	/**  Sets a global git setting; an empty value removes it. */
+	gitGlobalSet: (key: GlobalKey, value: string) => typedError<null, AppError>(__TAURI_INVOKE("git_global_set", { key, value })),
 	externalEditors: () => typedError<ExternalEditor[], AppError>(__TAURI_INVOKE("external_editors")),
+	externalTerminals: () => typedError<ExternalTerminal[], AppError>(__TAURI_INVOKE("external_terminals")),
 	externalOpenEditor: (editorId: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_editor", { editorId, path })),
-	externalOpenTerminal: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_terminal", { path })),
+	/**  Opens `path` in `terminal_id`, or the first terminal found. */
+	externalOpenTerminal: (path: string, terminalId: string | null) => typedError<null, AppError>(__TAURI_INVOKE("external_open_terminal", { path, terminalId })),
 	externalReveal: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_reveal", { path })),
 };
 
 /* Types */
+export type Accent = "garam" | "blue" | "purple" | "pink" | "orange" | 
+/**  The operating system's accent color, where it can be read. */
+"system";
+
 /**
  *  Error shape returned by every command.
  * 
@@ -122,6 +135,20 @@ export type AppError = {
 
 /**  Errors that come from the app layer rather than from git. */
 export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "external_app_not_found" | "external_app_failed" | "trash_failed" | "watch_failed";
+
+export type AppSettings = {
+	/**  UI language code; `None` follows the system language. */
+	language: string | null,
+	theme: Theme,
+	accent: Accent,
+	diffFontSize: DiffFontSize,
+	/**  Preferred editor id; `None` uses the first one found. */
+	editor: string | null,
+	/**  Preferred terminal id; `None` uses the first one found. */
+	terminal: string | null,
+	/**  Minutes between background fetches; 0 turns them off. */
+	fetchIntervalMinutes: number,
+};
 
 export type AutoStash = {
 	/**  Commit id of the stash entry; stable while `stash@{n}` indexes shift. */
@@ -232,6 +259,8 @@ export type CredentialRequest = {
 	prompt: CredentialPrompt,
 };
 
+export type DiffFontSize = "small" | "medium" | "large";
+
 export type DiffLine = {
 	kind: LineKind,
 	text: string,
@@ -273,6 +302,11 @@ export type ExternalEditor = {
 	name: string,
 };
 
+export type ExternalTerminal = {
+	id: string,
+	name: string,
+};
+
 export type FileChange = {
 	/**  Path relative to the repository root, with `/` separators. */
 	path: string,
@@ -294,6 +328,20 @@ selectable: boolean } | { type: "binary" } | { type: "too_large" };
 export type GitInfo = {
 	version: string,
 	path: string,
+};
+
+export type GlobalKey = 
+/**  `user.name` */
+"user_name" | 
+/**  `user.email` */
+"user_email" | 
+/**  `init.defaultBranch` */
+"default_branch";
+
+export type GlobalSettings = {
+	userName: string | null,
+	userEmail: string | null,
+	defaultBranch: string | null,
 };
 
 export type HeadCommit = {
@@ -423,6 +471,8 @@ export type SwitchMode =
 "bring_changes" | 
 /**  Stash the changes on the current branch first. */
 "leave_changes";
+
+export type Theme = "system" | "light" | "dark";
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

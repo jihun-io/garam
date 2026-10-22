@@ -51,6 +51,12 @@ export function useRepositoryActions() {
   };
 }
 
+/** Detected editors, with the one chosen in settings first. */
+export function useEditorsPreferredFirst(preferred: string | null) {
+  const editors = useEditors().data ?? [];
+  return [...editors].sort((a, b) => Number(b.id === preferred) - Number(a.id === preferred));
+}
+
 export function useEditors() {
   return useQuery({
     queryKey: ["external", "editors"],

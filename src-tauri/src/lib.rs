@@ -4,6 +4,9 @@ mod error;
 mod external;
 mod operations;
 mod repositories;
+mod settings;
+mod storage;
+mod system;
 mod watcher;
 
 use std::sync::Arc;
@@ -17,7 +20,7 @@ use crate::repositories::RepositoryStore;
 /// Single source of truth for the IPC surface. Also used by the
 /// `export_bindings` test to regenerate `src/ipc/bindings.ts`.
 pub fn specta_builder() -> Builder<tauri::Wry> {
-    use commands::{branches, changes, conflicts, external, git, history, remote, repo};
+    use commands::{branches, changes, conflicts, external, git, history, remote, repo, settings};
     Builder::<tauri::Wry>::new().commands(collect_commands![
         git::git_info,
         repo::repo_list,
@@ -65,7 +68,13 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         remote::remote_push,
         remote::remote_publish,
         remote::credential_respond,
+        settings::settings_get,
+        settings::settings_set,
+        settings::system_accent_color,
+        settings::git_global_get,
+        settings::git_global_set,
         external::external_editors,
+        external::external_terminals,
         external::external_open_editor,
         external::external_open_terminal,
         external::external_reveal,
@@ -102,6 +111,9 @@ pub fn run() {
             let data_dir = app.path().app_data_dir()?;
             app.manage(Arc::new(RepositoryStore::load(
                 data_dir.join("repositories.json"),
+            )));
+            app.manage(Arc::new(settings::SettingsStore::load(
+                data_dir.join("settings.json"),
             )));
             app.manage(Arc::new(Operations::default()));
             app.manage(Arc::new(askpass::Askpass::start()));

@@ -9,6 +9,7 @@ import { useBranches } from "../branches/api";
 import { CommitCounts } from "../branches/CommitCounts";
 import { useStatus } from "../changes/api";
 import { useNotify } from "../notify/notifyStore";
+import { useSettings } from "../settings/api";
 import { useRemoteInfo, useSyncActions, type SyncResult } from "./api";
 import { hasUpstream, primaryAction } from "./primaryAction";
 import styles from "./SyncButton.module.css";
@@ -40,7 +41,8 @@ export function SyncButton({ repo }: { repo: string }) {
   const { run, cancel } = useSyncActions(repo);
   const { showError, showInfo } = useNotify();
   const remote = info.data?.defaultRemote ?? null;
-  useBackgroundFetch(repo, remote);
+  const { fetchIntervalMinutes } = useSettings();
+  useBackgroundFetch(repo, remote, fetchIntervalMinutes);
   useTick(60 * 1000);
 
   if (!status.data || !info.data || info.data.remotes.length === 0) return null;

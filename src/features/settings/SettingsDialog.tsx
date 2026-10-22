@@ -2,9 +2,20 @@ import { Dialog, Tabs } from "radix-ui";
 import { useTranslation } from "react-i18next";
 
 import { IconButton } from "../../components/ui/IconButton";
+import { AppearanceSettings } from "./AppearanceSettings";
+import { AppsSettings, SyncSettings } from "./AppsAndSyncSettings";
+import { GitSettings } from "./GitSettings";
 import { LanguageSelect } from "./LanguageSelect";
 import styles from "./SettingsDialog.module.css";
 import { useSettingsDialog } from "./settingsDialogStore";
+
+const SECTIONS = [
+  { id: "general", Content: LanguageSelect },
+  { id: "appearance", Content: AppearanceSettings },
+  { id: "git", Content: GitSettings },
+  { id: "apps", Content: AppsSettings },
+  { id: "sync", Content: SyncSettings },
+] as const;
 
 /** App settings: sections on the left, the chosen section on the right. */
 export function SettingsDialog() {
@@ -24,16 +35,18 @@ export function SettingsDialog() {
           </header>
           <Tabs.Root className={styles.body} orientation="vertical" defaultValue="general">
             <Tabs.List className={styles.nav} aria-label={t("sections")}>
-              <Tabs.Trigger value="general" className={styles.navItem}>
-                {t("general.title")}
-              </Tabs.Trigger>
+              {SECTIONS.map(({ id }) => (
+                <Tabs.Trigger key={id} value={id} className={styles.navItem}>
+                  {t(`${id}.title`)}
+                </Tabs.Trigger>
+              ))}
             </Tabs.List>
-            <Tabs.Content value="general" className={styles.section}>
-              <h3 className={styles.sectionTitle}>{t("general.title")}</h3>
-              <div className={styles.row}>
-                <LanguageSelect />
-              </div>
-            </Tabs.Content>
+            {SECTIONS.map(({ id, Content }) => (
+              <Tabs.Content key={id} value={id} className={styles.section}>
+                <h3 className={styles.sectionTitle}>{t(`${id}.title`)}</h3>
+                <Content />
+              </Tabs.Content>
+            ))}
           </Tabs.Root>
         </Dialog.Content>
       </Dialog.Portal>

@@ -90,42 +90,120 @@ pub fn open_in_editor(editor_id: &str, dir: &Path) -> AppResult<()> {
     spawn_detached(command)
 }
 
-pub fn open_in_terminal(dir: &Path) -> AppResult<()> {
-    let mut command = if cfg!(target_os = "macos") {
-        let mut c = Command::new("open");
-        c.args(["-a", "Terminal"]).arg(dir);
-        c
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+pub struct ExternalTerminal {
+    pub id: String,
+    pub name: String,
+}
+
+type Launch = Box<dyn Fn(&Path) -> Command>;
+
+/// Terminals installed on this machine, in a fixed order, each with how to
+/// open it in a folder.
+fn available_terminals() -> Vec<(ExternalTerminal, Launch)> {
+    let terminal = |id: &str, name: &str| ExternalTerminal {
+        id: id.into(),
+        name: name.into(),
+    };
+    let mut found: Vec<(ExternalTerminal, Launch)> = Vec::new();
+    if cfg!(target_os = "macos") {
+        const APPS: &[(&str, &str, &str)] = &[
+            ("terminal", "Terminal", "Terminal.app"),
+            ("iterm", "iTerm", "iTerm.app"),
+            ("ghostty", "Ghostty", "Ghostty.app"),
+            ("warp", "Warp", "Warp.app"),
+            ("wezterm", "WezTerm", "WezTerm.app"),
+            ("kitty", "kitty", "kitty.app"),
+            ("alacritty", "Alacritty", "Alacritty.app"),
+        ];
+        let home_apps = env::var_os("HOME").map(|h| PathBuf::from(h).join("Applications"));
+        let dirs: Vec<PathBuf> = [
+            Some(PathBuf::from("/Applications")),
+            Some(PathBuf::from("/Applications/Utilities")),
+            Some(PathBuf::from("/System/Applications/Utilities")),
+            home_apps,
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        for (id, name, app) in APPS {
+            if let Some(path) = dirs.iter().map(|d| d.join(app)).find(|p| p.exists()) {
+                let launch: Launch = Box::new(move |dir| {
+                    let mut c = Command::new("open");
+                    c.arg("-a").arg(&path).arg(dir);
+                    c
+                });
+                found.push((terminal(id, name), launch));
+            }
+        }
     } else if cfg!(windows) {
         if let Some(wt) = find_on_path("wt") {
-            let mut c = Command::new(wt);
-            c.arg("-d").arg(dir);
-            c
-        } else {
-            // `start` opens a new console window running cmd in `dir`.
+            let launch: Launch = Box::new(move |dir| {
+                let mut c = Command::new(&wt);
+                c.arg("-d").arg(dir);
+                c
+            });
+            found.push((terminal("windows_terminal", "Windows Terminal"), launch));
+        }
+        if let Some(shell) = find_on_path("pwsh").or_else(|| find_on_path("powershell")) {
+            let launch: Launch = Box::new(move |dir| {
+                // `start` opens a new console window running the shell.
+                let mut c = Command::new("cmd.exe");
+                c.args(["/C", "start", ""]).arg(&shell).arg("-NoExit");
+                c.current_dir(dir);
+                c
+            });
+            found.push((terminal("powershell", "PowerShell"), launch));
+        }
+        let launch: Launch = Box::new(|dir| {
             let mut c = Command::new("cmd.exe");
             c.args(["/C", "start", "cmd.exe"]).current_dir(dir);
             c
-        }
+        });
+        found.push((terminal("cmd", "Command Prompt"), launch));
     } else {
-        const TERMINALS: &[&str] = &[
-            "x-terminal-emulator",
-            "gnome-terminal",
-            "konsole",
-            "xfce4-terminal",
-            "kitty",
-            "alacritty",
-            "xterm",
+        const BINS: &[(&str, &str)] = &[
+            ("x-terminal-emulator", "System default"),
+            ("gnome-terminal", "GNOME Terminal"),
+            ("ptyxis", "Ptyxis"),
+            ("konsole", "Konsole"),
+            ("xfce4-terminal", "Xfce Terminal"),
+            ("ghostty", "Ghostty"),
+            ("wezterm", "WezTerm"),
+            ("kitty", "kitty"),
+            ("alacritty", "Alacritty"),
+            ("xterm", "XTerm"),
         ];
-        let bin = TERMINALS
-            .iter()
-            .find_map(|t| find_on_path(t))
-            .ok_or_else(|| not_found("terminal"))?;
-        let mut c = Command::new(bin);
-        c.current_dir(dir);
-        c
-    };
-    command.current_dir(dir);
-    spawn_detached(command)
+        for (bin, name) in BINS {
+            if let Some(path) = find_on_path(bin) {
+                let launch: Launch = Box::new(move |dir| {
+                    let mut c = Command::new(&path);
+                    c.current_dir(dir);
+                    c
+                });
+                found.push((terminal(bin, name), launch));
+            }
+        }
+    }
+    found
+}
+
+pub fn detect_terminals() -> Vec<ExternalTerminal> {
+    available_terminals().into_iter().map(|(t, _)| t).collect()
+}
+
+/// Opens `dir` in the terminal `terminal_id`, or the first one found if
+/// that one isn't installed (or none was chosen).
+pub fn open_in_terminal(dir: &Path, terminal_id: Option<&str>) -> AppResult<()> {
+    let mut terminals = available_terminals();
+    let index = terminal_id
+        .and_then(|id| terminals.iter().position(|(t, _)| t.id == id))
+        .unwrap_or(0);
+    if terminals.is_empty() {
+        return Err(not_found("terminal"));
+    }
+    let (_, launch) = terminals.swap_remove(index);
+    spawn_detached(launch(dir))
 }
 
 pub fn reveal_in_file_manager(dir: &Path) -> AppResult<()> {

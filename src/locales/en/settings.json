@@ -5,5 +5,55 @@
   "sections": "Settings sections",
   "general": {
     "title": "General"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "theme": "Theme",
+    "themes": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "accent": "Accent color",
+    "accents": {
+      "garam": "Garam green",
+      "blue": "Blue",
+      "purple": "Purple",
+      "pink": "Pink",
+      "orange": "Orange",
+      "system": "System"
+    },
+    "accentSystemHint": "Uses your system's accent color, adjusted to stay readable.",
+    "accentSystemUnavailable": "Garam can't read the accent color on this system, so it uses Garam green.",
+    "diffFontSize": "Diff text size",
+    "diffFontSizes": {
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large"
+    }
+  },
+  "git": {
+    "title": "Git",
+    "hint": "These are saved in your global Git configuration, so the command line uses them too.",
+    "name": "Name",
+    "email": "Email",
+    "defaultBranch": "Default branch for new repositories",
+    "defaultBranchPlaceholder": "main",
+    "saved": "Saved"
+  },
+  "apps": {
+    "title": "Apps",
+    "editor": "Editor",
+    "terminal": "Terminal",
+    "firstFound": "First one found ({{name}})",
+    "noneFound": "None found"
+  },
+  "sync": {
+    "title": "Sync",
+    "fetchInterval": "Fetch in the background",
+    "off": "Never",
+    "minutes_one": "Every {{count}} minute",
+    "minutes_other": "Every {{count}} minutes",
+    "hint": "Background fetches never ask for credentials. If signing in is needed, fetch from the toolbar."
   }
 }
