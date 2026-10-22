@@ -85,6 +85,12 @@ pub fn list(
         args.push("--first-parent".into());
     }
     let query = filter.query.trim();
+    let path = filter.path.trim();
+    // Children before parents, so the list can be drawn as a graph. Search
+    // results stay newest first; a path filter skips parents anyway.
+    if query.is_empty() && path.is_empty() {
+        args.push("--topo-order".into());
+    }
     if !query.is_empty() {
         match filter.search_in {
             SearchField::Message => args.push(format!("--grep={query}")),
@@ -115,7 +121,6 @@ pub fn list(
             args.push(oid);
         }
     }
-    let path = filter.path.trim();
     let paths: Vec<&str> = if path.is_empty() { vec![] } else { vec![path] };
     let mut commits = log_records(git, repo, &args, &paths, skip, limit)?;
 
@@ -209,6 +214,25 @@ pub struct HistoryMarkers {
     pub unpushed: Vec<String>,
     /// Commits on the upstream that HEAD doesn't have yet, newest first.
     pub incoming: Vec<CommitSummary>,
+    /// Stashed changes, newest first.
+    pub stashes: Vec<StashEntry>,
+}
+
+/// One entry of `git stash list`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct StashEntry {
+    pub oid: String,
+    /// The commit the changes were stashed on.
+    pub base: String,
+    /// `stash@{0}`.
+    pub name: String,
+    /// git's description, e.g. `On main: message` or `WIP on main: …`.
+    pub message: String,
+    pub author_name: String,
+    /// Seconds since the Unix epoch.
+    pub created_at: u32,
 }
 
 pub fn markers(git: &Git, repo: &Path) -> Result<HistoryMarkers, GitError> {
@@ -227,6 +251,7 @@ pub fn markers(git: &Git, repo: &Path) -> Result<HistoryMarkers, GitError> {
         ..Default::default()
     };
 
+    markers.stashes = stashes(git, repo)?;
     let Some(head) = crate::commit::head_oid(git, repo)? else {
         return Ok(markers);
     };
@@ -245,12 +270,50 @@ pub fn markers(git: &Git, repo: &Path) -> Result<HistoryMarkers, GitError> {
     if let Some(upstream) = &parsed.upstream {
         let not_upstream = format!("^{upstream}");
         markers.unpushed = rev_list(git, repo, &["HEAD", &not_upstream])?;
-        let revs = [upstream.clone(), "^HEAD".to_owned()];
+        let revs = [
+            "--topo-order".to_owned(),
+            upstream.clone(),
+            "^HEAD".to_owned(),
+        ];
         markers.incoming = log_records(git, repo, &revs, &[], 0, MAX_INCOMING)?;
     } else if parsed.has_remote {
         markers.unpushed = rev_list(git, repo, &["HEAD", "--not", "--remotes"])?;
     }
     Ok(markers)
+}
+
+fn stashes(git: &Git, repo: &Path) -> Result<Vec<StashEntry>, GitError> {
+    let output = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args([
+            "stash",
+            "list",
+            "-z",
+            "--format=%H%x1f%P%x1f%gd%x1f%gs%x1f%an%x1f%ct",
+        ])
+        .run()?;
+    Ok(output
+        .stdout_str()
+        .split('\0')
+        .filter_map(parse_stash)
+        .collect())
+}
+
+fn parse_stash(record: &str) -> Option<StashEntry> {
+    let f: Vec<&str> = record.trim_start_matches('\n').splitn(6, '\x1f').collect();
+    let [oid, parents, name, message, author, date] = f[..] else {
+        return None;
+    };
+    Some(StashEntry {
+        oid: oid.to_owned(),
+        base: parents.split_whitespace().next()?.to_owned(),
+        name: name.to_owned(),
+        message: message.to_owned(),
+        author_name: author.to_owned(),
+        created_at: date.parse().unwrap_or(0),
+    })
 }
 
 fn rev_list(git: &Git, repo: &Path, revs: &[&str]) -> Result<Vec<String>, GitError> {
@@ -661,6 +724,19 @@ mod tests {
         assert_eq!(parsed.refs[2].kind, RefKind::Remote);
         assert_eq!(parsed.refs[3].kind, RefKind::Tag);
         assert_eq!(parsed.refs[3].oid, "eee", "annotated tags are peeled");
+    }
+
+    #[test]
+    fn parses_stash_entries() {
+        let entry =
+            parse_stash("aaa\x1fbbb ccc\x1fstash@{0}\x1fOn main: 메모\x1f김가람\x1f1700000000")
+                .unwrap();
+        assert_eq!(entry.oid, "aaa");
+        assert_eq!(entry.base, "bbb");
+        assert_eq!(entry.name, "stash@{0}");
+        assert_eq!(entry.message, "On main: 메모");
+        assert_eq!(entry.created_at, 1_700_000_000);
+        assert!(parse_stash("").is_none());
     }
 
     #[test]

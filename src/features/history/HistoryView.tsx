@@ -21,7 +21,9 @@ import { isUnfiltered, useHistoryFilter, useHistoryFilters, useSettledFilter } f
 import { HistoryDialogs } from "./HistoryDialogs";
 import { useHistoryDialog } from "./historyDialogStore";
 import { HistorySearch } from "./HistorySearch";
+import { buildGraph } from "./graph";
 import { toMarks } from "./refs";
+import { buildRows, graphNodes } from "./rows";
 
 /** Commit list on the left, the selected commit on the right. */
 export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
@@ -44,13 +46,37 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
   const openDialog = useHistoryDialog((s) => s.open);
   const setDraft = useCommitDrafts((s) => s.set);
   const { showError, showInfo } = useNotify();
-  const [selectedOid, setSelectedOid] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const head = status.data?.branch.oid ?? null;
 
-  // Commits waiting to be pulled sit above HEAD, where a pull puts them;
-  // a search or filter shows only what it found.
-  const own = history.data?.pages.flat() ?? [];
-  const commits = unfiltered ? [...(markers.data?.incoming ?? []), ...own] : own;
-  const selected = commits.find((c) => c.oid === selectedOid) ?? own[0] ?? null;
+  // Uncommitted changes, commits waiting to be pulled and stashes join the
+  // plain history; a search or filter shows only what it found.
+  const pages = history.data?.pages;
+  const changedFiles = status.data?.files.length ?? 0;
+  const rows = useMemo(
+    () =>
+      buildRows({
+        own: pages?.flat() ?? [],
+        incoming: markers.data?.incoming ?? [],
+        stashes: markers.data?.stashes ?? [],
+        changedFiles,
+        head,
+        extras: unfiltered,
+      }),
+    [pages, markers.data, changedFiles, head, unfiltered],
+  );
+  // Searches list matches newest first and paths skip parents: no graph.
+  const graphed = filter.query.trim() === "" && filter.path.trim() === "";
+  const graph = useMemo(
+    () => (graphed ? buildGraph(graphNodes(rows, head), filter.firstParent) : null),
+    [graphed, rows, head, filter.firstParent],
+  );
+  // Until something is picked: HEAD's commit, or the first a search found.
+  const selected =
+    rows.find((r) => r.id === selectedId) ??
+    rows.find((r) => r.id === head) ??
+    rows.find((r) => r.kind === "commit" && marks.sync.get(r.id) !== "incoming") ??
+    null;
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = history;
   const loadMore = useCallback(() => {
     if (!isFetchingNextPage) void fetchNextPage();
@@ -63,7 +89,6 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
       .catch(showError);
   };
 
-  const head = status.data?.branch.oid ?? null;
   const hasRemote = markers.data?.refs.some((r) => r.kind === "remote") ?? false;
   const actions: CommitActions = {
     copyHash: (commit) => copyHash(commit.oid),
@@ -112,13 +137,24 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
         <ErrorMessage error={toAppError(history.error)} />
       </div>
     );
+  } else if (selected?.kind === "wip") {
+    main = (
+      <EmptyMessage
+        icon="modified"
+        title={t("wip.title", { count: selected.count })}
+        body={t("wip.body")}
+      >
+        <Button onClick={() => runCommand("view.changes")}>{t("wip.open")}</Button>
+      </EmptyMessage>
+    );
   } else if (selected) {
     main = (
       <CommitDetailView
         repo={repo}
-        oid={selected.oid}
-        badges={marks.refs.get(selected.oid) ?? []}
-        sync={marks.sync.get(selected.oid)}
+        oid={selected.id}
+        badges={marks.refs.get(selected.id) ?? []}
+        sync={marks.sync.get(selected.id)}
+        stash={selected.kind === "stash" ? selected.stash : undefined}
         onCopyHash={copyHash}
       />
     );
@@ -140,10 +176,12 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
         {tabs}
         <HistorySearch repo={repo} />
         <CommitList
-          commits={commits}
+          rows={rows}
+          graph={graph}
+          head={head}
           marks={marks}
-          selectedOid={selected?.oid ?? null}
-          onSelect={setSelectedOid}
+          selectedId={selected?.id ?? null}
+          onSelect={setSelectedId}
           hasMore={hasNextPage}
           loadMore={loadMore}
           actions={actions}

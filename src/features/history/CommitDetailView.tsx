@@ -5,7 +5,13 @@ import { ErrorMessage } from "../../components/ErrorMessage";
 import { Icon } from "../../components/Icon";
 import { Loading } from "../../components/ui/Loading";
 import { Tooltip } from "../../components/ui/Tooltip";
-import { toAppError, type ChangeKind, type CommitDetail, type CommitFile } from "../../ipc";
+import {
+  toAppError,
+  type ChangeKind,
+  type CommitDetail,
+  type CommitFile,
+  type StashEntry,
+} from "../../ipc";
 import { shortHash } from "../../lib/hash";
 import { useRelativeTime } from "../../lib/time";
 import diffStyles from "../changes/DiffView.module.css";
@@ -15,6 +21,7 @@ import { useCommitDetail, useCommitFileDiff } from "./api";
 import styles from "./History.module.css";
 import { RefBadges } from "./RefBadges";
 import type { RefBadge, SyncState } from "./refs";
+import { stashTitle } from "./rows";
 
 function displayKind(kind: ChangeKind): DisplayKind {
   switch (kind) {
@@ -39,12 +46,15 @@ export function CommitDetailView({
   oid,
   badges,
   sync,
+  stash,
   onCopyHash,
 }: {
   repo: string;
   oid: string;
   badges: RefBadge[];
   sync: SyncState | undefined;
+  /** Shown as stashed changes rather than a commit. */
+  stash?: StashEntry;
   onCopyHash: (oid: string) => void;
 }) {
   const detail = useCommitDetail(repo, oid);
@@ -63,6 +73,7 @@ export function CommitDetailView({
       commit={detail.data}
       badges={badges}
       sync={sync}
+      stash={stash}
       onCopyHash={onCopyHash}
     />
   );
@@ -73,12 +84,14 @@ function Loaded({
   commit,
   badges,
   sync,
+  stash,
   onCopyHash,
 }: {
   repo: string;
   commit: CommitDetail;
   badges: RefBadge[];
   sync: SyncState | undefined;
+  stash?: StashEntry;
   onCopyHash: (oid: string) => void;
 }) {
   const { t, i18n } = useTranslation(["history", "changes"]);
@@ -91,8 +104,11 @@ function Loaded({
   return (
     <div className={styles.detail}>
       <header className={styles.commitHeader}>
-        <h2 className={styles.commitSummary}>{commit.summary}</h2>
-        {commit.body && <p className={styles.commitBody}>{commit.body}</p>}
+        <h2 className={styles.commitSummary}>
+          {stash ? stashTitle(t, stash.message) : commit.summary}
+        </h2>
+        {stash && <p className={styles.commitBody}>{t("stash.detail", { name: stash.name })}</p>}
+        {!stash && commit.body && <p className={styles.commitBody}>{commit.body}</p>}
         <p className={styles.commitMeta}>
           <Tooltip content={commit.authorEmail}>
             <span>{commit.authorName}</span>
@@ -103,7 +119,7 @@ function Loaded({
           {commit.committerName !== commit.authorName && (
             <span>{t("detail.committedBy", { name: commit.committerName })}</span>
           )}
-          {commit.parents.length > 1 && <span>{t("detail.merge")}</span>}
+          {!stash && commit.parents.length > 1 && <span>{t("detail.merge")}</span>}
           {sync && (
             <span className={styles.syncNote}>
               <Icon name={sync === "unpushed" ? "push" : "pull"} size={12} />

@@ -1,6 +1,7 @@
 // One icon per meaning, so the same idea looks the same everywhere (see
 // docs/UI.md 4.2). Screens use these names, never Phosphor directly.
 // Icons are imported one by one so only the ones used are bundled.
+import { Archive } from "@phosphor-icons/react/dist/csr/Archive";
 import { ArrowCircleRight } from "@phosphor-icons/react/dist/csr/ArrowCircleRight";
 import { ArrowDown } from "@phosphor-icons/react/dist/csr/ArrowDown";
 import { ArrowSquareOut } from "@phosphor-icons/react/dist/csr/ArrowSquareOut";
@@ -68,6 +69,7 @@ export const Icons = {
   remoteBranch: Cloud,
   tag: Tag,
   detachedHead: GitCommit,
+  stash: Archive,
 
   // Appearance
   themeSystem: Monitor,

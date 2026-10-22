@@ -447,6 +447,8 @@ export type HistoryMarkers = {
 	unpushed: string[],
 	/**  Commits on the upstream that HEAD doesn't have yet, newest first. */
 	incoming: CommitSummary[],
+	/**  Stashed changes, newest first. */
+	stashes: StashEntry[],
 };
 
 /**  Which commits the history walks. */
@@ -633,6 +635,20 @@ export type SignInCode = {
 	verificationUri: string,
 	/**  Seconds until the code expires. */
 	expiresIn: number,
+};
+
+/**  One entry of `git stash list`. */
+export type StashEntry = {
+	oid: string,
+	/**  The commit the changes were stashed on. */
+	base: string,
+	/**  `stash@{0}`. */
+	name: string,
+	/**  git's description, e.g. `On main: message` or `WIP on main: …`. */
+	message: string,
+	authorName: string,
+	/**  Seconds since the Unix epoch. */
+	createdAt: number,
 };
 
 /**  How to treat uncommitted changes when switching branches. */

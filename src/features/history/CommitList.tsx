@@ -1,15 +1,19 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ContextMenu } from "radix-ui";
-import { useEffect, useRef, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Icon } from "../../components/Icon";
 import menu from "../../components/ui/Menu.module.css";
 import { Tooltip } from "../../components/ui/Tooltip";
 import type { CommitSummary } from "../../ipc";
 import { useRelativeTime } from "../../lib/time";
+import type { Graph } from "./graph";
+import { GraphCell, type NodeShape } from "./GraphCell";
 import styles from "./History.module.css";
 import { RefBadges, SyncMark } from "./RefBadges";
 import type { HistoryMarks } from "./refs";
+import { stashTitle, type HistoryRow } from "./rows";
 
 const ROW_HEIGHT = 48;
 /** Start loading the next page this many rows before the end. */
@@ -31,48 +35,52 @@ export type CommitActions = {
 };
 
 export function CommitList({
-  commits,
+  rows,
+  graph,
+  head,
   marks,
-  selectedOid,
+  selectedId,
   onSelect,
   hasMore,
   loadMore,
   actions,
 }: {
-  commits: CommitSummary[];
+  rows: HistoryRow[];
+  /** Lanes per row, or `null` when the list isn't drawn as a graph. */
+  graph: Graph | null;
+  head: string | null;
   marks: HistoryMarks;
-  selectedOid: string | null;
-  onSelect: (oid: string) => void;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
   hasMore: boolean;
   loadMore: () => void;
   actions: CommitActions;
 }) {
   const { t } = useTranslation("history");
-  const relativeTime = useRelativeTime();
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
-    count: commits.length + (hasMore ? 1 : 0),
+    count: rows.length + (hasMore ? 1 : 0),
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 12,
   });
   const items = virtualizer.getVirtualItems();
   const lastIndex = items[items.length - 1]?.index ?? 0;
-  const selectedIndex = commits.findIndex((c) => c.oid === selectedOid);
+  const selectedIndex = rows.findIndex((r) => r.id === selectedId);
 
   useEffect(() => {
-    if (hasMore && lastIndex >= commits.length - PREFETCH_ROWS) loadMore();
-  }, [hasMore, lastIndex, commits.length, loadMore]);
+    if (hasMore && lastIndex >= rows.length - PREFETCH_ROWS) loadMore();
+  }, [hasMore, lastIndex, rows.length, loadMore]);
 
   useEffect(() => {
     if (selectedIndex >= 0) virtualizer.scrollToIndex(selectedIndex, { align: "auto" });
   }, [selectedIndex, virtualizer]);
 
   const onKeyDown = (e: KeyboardEvent) => {
-    if (commits.length === 0 || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+    if (rows.length === 0 || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
     e.preventDefault();
     const delta = e.key === "ArrowDown" ? 1 : -1;
-    onSelect(commits[Math.max(0, Math.min(commits.length - 1, selectedIndex + delta))].oid);
+    onSelect(rows[Math.max(0, Math.min(rows.length - 1, selectedIndex + delta))].id);
   };
 
   return (
@@ -88,49 +96,84 @@ export function CommitList({
       <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
         {items.map((item) => {
           const style = { height: item.size, transform: `translateY(${item.start}px)` };
-          const commit = commits[item.index];
-          if (!commit) {
+          const row = rows[item.index];
+          if (!row) {
             return (
               <p key="loading" className={`${styles.row} ${styles.loading}`} style={style}>
                 {t("list.loading")}
               </p>
             );
           }
-          const sync = marks.sync.get(commit.oid);
+          const shape: NodeShape =
+            row.kind === "commit" ? (row.id === head ? "head" : "commit") : row.kind;
+          const option = (
+            <div
+              id={`commit-${item.index}`}
+              role="option"
+              aria-selected={row.id === selectedId}
+              className={styles.row}
+              data-kind={row.kind}
+              data-sync={marks.sync.get(row.id)}
+              style={style}
+              onMouseDown={() => onSelect(row.id)}
+            >
+              {graph && (
+                <GraphCell
+                  row={graph.rows[item.index]}
+                  lanes={graph.width}
+                  height={item.size}
+                  shape={shape}
+                />
+              )}
+              <RowText row={row} marks={marks} />
+            </div>
+          );
+          if (row.kind !== "commit") return <Fragment key={row.id}>{option}</Fragment>;
           return (
-            <ContextMenu.Root key={commit.oid}>
-              <ContextMenu.Trigger asChild>
-                <div
-                  id={`commit-${item.index}`}
-                  role="option"
-                  aria-selected={commit.oid === selectedOid}
-                  className={styles.row}
-                  data-sync={sync}
-                  style={style}
-                  onMouseDown={() => onSelect(commit.oid)}
-                >
-                  <span className={styles.titleLine}>
-                    <Tooltip content={commit.summary} whenTruncated>
-                      <span className={styles.summary}>{commit.summary}</span>
-                    </Tooltip>{" "}
-                    <RefBadges badges={marks.refs.get(commit.oid) ?? []} />
-                  </span>
-                  {/* Keeps the two lines apart in the row's accessible name. */}{" "}
-                  <span className={styles.meta}>
-                    {sync && <SyncMark state={sync} />}
-                    {sync && " "}
-                    {commit.authorName} · {relativeTime(commit.authoredAt)}
-                  </span>
-                </div>
-              </ContextMenu.Trigger>
+            <ContextMenu.Root key={row.id}>
+              <ContextMenu.Trigger asChild>{option}</ContextMenu.Trigger>
               <ContextMenu.Portal>
-                <CommitMenu commit={commit} actions={actions} />
+                <CommitMenu commit={row.commit} actions={actions} />
               </ContextMenu.Portal>
             </ContextMenu.Root>
           );
         })}
       </div>
     </div>
+  );
+}
+
+function RowText({ row, marks }: { row: HistoryRow; marks: HistoryMarks }) {
+  const { t } = useTranslation("history");
+  const relativeTime = useRelativeTime();
+  if (row.kind === "wip") {
+    return (
+      <span className={styles.rowText}>
+        <span className={styles.summary}>{t("wip.title", { count: row.count })}</span>{" "}
+        <span className={styles.meta}>{t("wip.meta")}</span>
+      </span>
+    );
+  }
+  const commit = row.commit;
+  const sync = marks.sync.get(commit.oid);
+  const title = row.kind === "stash" ? stashTitle(t, row.stash.message) : commit.summary;
+  return (
+    <span className={styles.rowText}>
+      <span className={styles.titleLine}>
+        {row.kind === "stash" && <Icon name="stash" size={14} />}
+        <Tooltip content={title} whenTruncated>
+          <span className={styles.summary}>{title}</span>
+        </Tooltip>{" "}
+        <RefBadges badges={marks.refs.get(commit.oid) ?? []} />
+      </span>
+      {/* Keeps the two lines apart in the row's accessible name. */}{" "}
+      <span className={styles.meta}>
+        {sync && <SyncMark state={sync} />}
+        {sync && " "}
+        {row.kind === "stash" ? `${t("stash.label")} · ` : `${commit.authorName} · `}
+        {relativeTime(commit.authoredAt)}
+      </span>
+    </span>
   );
 }
 

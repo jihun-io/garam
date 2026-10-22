@@ -11,12 +11,14 @@
 /* Inset, rounded selection like the file list; rows are told apart by the
    two-line rhythm, not by rules between them. */
 .row {
+  /* Hollow graph nodes are filled with whatever is behind the row. */
+  --row-bg: var(--color-bg);
   position: absolute;
   top: 0;
   left: 6px;
-  display: grid;
-  align-content: center;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   width: calc(100% - 12px);
   margin: 0;
   padding: 0 6px;
@@ -25,16 +27,57 @@
 }
 
 .row:hover {
-  background: var(--color-hover);
+  --row-bg: var(--color-hover);
+  background: var(--row-bg);
 }
 
 .row[aria-selected="true"] {
-  background: var(--color-selected);
+  --row-bg: var(--color-selected);
+  background: var(--row-bg);
 }
 
 .scroll:focus-visible .row[aria-selected="true"] {
-  background: var(--color-river);
+  --row-bg: var(--color-river);
+  background: var(--row-bg);
   color: var(--color-on-accent);
+}
+
+.rowText {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* The commit graph: one color, since color means state here
+   (docs/DESIGN.md 1.1). Node shapes tell HEAD, uncommitted changes and
+   stashes apart. */
+.graph {
+  flex: none;
+  align-self: stretch;
+  margin-left: -6px;
+  color: var(--color-ink-muted);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.scroll:focus-visible .row[aria-selected="true"] .graph {
+  color: inherit;
+}
+
+.node {
+  fill: currentColor;
+  stroke: none;
+}
+
+.headNode {
+  fill: var(--row-bg);
+  stroke-width: 2.5;
+}
+
+.hollowNode {
+  fill: var(--row-bg);
 }
 
 .scroll:focus-visible .row[aria-selected="true"] .meta {

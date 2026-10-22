@@ -115,5 +115,18 @@
     "messageHint": "With a message, the tag is annotated: it records who made it and when.",
     "cancel": "Cancel",
     "submit": "Create Tag"
+  },
+  "wip": {
+    "title_one": "Uncommitted changes ({{count}} file)",
+    "title_other": "Uncommitted changes ({{count}} files)",
+    "meta": "Commit them from the Changes tab",
+    "body": "These changes aren't in any commit yet.",
+    "open": "Show in Changes"
+  },
+  "stash": {
+    "label": "Stashed changes",
+    "auto": "Changes left on {{branch}} when switching branches",
+    "untitled": "Changes stashed on {{branch}}",
+    "detail": "Changes stashed as {{name}}. Untracked files aren't shown here."
   }
 }

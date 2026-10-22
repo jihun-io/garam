@@ -479,3 +479,62 @@ fn follows_only_first_parents_when_asked() {
     );
     assert!(summaries(&repo, &HistoryFilter::default()).contains(&"Feature work".to_owned()));
 }
+
+#[test]
+fn lists_children_before_parents_across_branches() {
+    let repo = TestRepo::new();
+    repo.write("a.txt", "a\n");
+    repo.commit_all("base");
+    repo.git(["switch", "--quiet", "-c", "side"]);
+    repo.write("s.txt", "s\n");
+    repo.commit_all("side work");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.write("m.txt", "m\n");
+    repo.commit_all("main work");
+    // Side's commit gets the newest date, which date order would put first.
+    repo.git(["switch", "--quiet", "side"]);
+    repo.git([
+        "commit",
+        "--quiet",
+        "--amend",
+        "--no-edit",
+        "--date=2100-01-01T00:00:00",
+    ]);
+    repo.git(["switch", "--quiet", "main"]);
+    repo.git(["merge", "--quiet", "--no-ff", "-m", "Merge side", "side"]);
+
+    let commits = log::list(
+        repo.git_handle(),
+        repo.path(),
+        &HistoryFilter::default(),
+        0,
+        50,
+    )
+    .unwrap();
+    let position = |oid: &str| commits.iter().position(|c| c.oid == oid);
+    for (i, commit) in commits.iter().enumerate() {
+        for parent in &commit.parents {
+            assert!(
+                position(parent).unwrap() > i,
+                "{} before its parent",
+                commit.summary
+            );
+        }
+    }
+}
+
+#[test]
+fn markers_list_stashes_with_their_base() {
+    let repo = repo_with_history(1);
+    let base = head_of(&repo);
+    repo.write("counter.txt", "changed\n");
+    repo.git(["stash", "push", "--quiet", "--message", "half done"]);
+
+    let markers = log::markers(repo.git_handle(), repo.path()).unwrap();
+    assert_eq!(markers.stashes.len(), 1);
+    let stash = &markers.stashes[0];
+    assert_eq!(stash.base, base);
+    assert_eq!(stash.name, "stash@{0}");
+    assert_eq!(stash.message, "On main: half done");
+    assert_eq!(stash.author_name, "Garam Test");
+}

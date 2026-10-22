@@ -2,7 +2,13 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { commands, type CommitDetail, type CommitSummary, type HistoryMarkers } from "../../ipc";
+import {
+  commands,
+  type CommitDetail,
+  type CommitSummary,
+  type FileChange,
+  type HistoryMarkers,
+} from "../../ipc";
 import { axeViolations } from "../../test/axe";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { useBranchDialog } from "../branches/branchDialogStore";
@@ -66,13 +72,14 @@ const markers: HistoryMarkers = {
   ],
   unpushed: [commits[0].oid],
   incoming: [],
+  stashes: [],
 };
 
-function setup(historyMarkers: HistoryMarkers = markers) {
+function setup(historyMarkers: HistoryMarkers = markers, files: FileChange[] = []) {
   vi.mocked(commands.statusGet).mockResolvedValue(
     ok({
       branch: { head: "main", oid: commits[0].oid, upstream: null, ahead: 0, behind: 0 },
-      files: [],
+      files,
     }),
   );
   vi.mocked(commands.historyList).mockResolvedValue(ok(commits));
@@ -524,6 +531,57 @@ describe("HistoryView", () => {
 
     await user.click(submit);
     expect(await screen.findByText("Created tag v1.0.")).toBeVisible();
+  });
+
+  it("draws the graph with uncommitted changes and stashes, but not for a search", async () => {
+    const user = userEvent.setup();
+    const stashed: HistoryMarkers["stashes"][number] = {
+      oid: "s".repeat(40),
+      base: commits[1].oid,
+      name: "stash@{0}",
+      message: "On main: garam-auto-stash:main",
+      authorName: "김가람",
+      createdAt: now,
+    };
+    const { container } = setup({ ...markers, stashes: [stashed] }, [
+      { path: "a.txt", origPath: null, staged: null, unstaged: "modified", isSubmodule: false },
+      { path: "b.txt", origPath: null, staged: "added", unstaged: null, isSubmodule: false },
+    ]);
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    await within(list).findByText("Uncommitted changes (2 files)");
+    await within(list).findByText(/Changes left on main/);
+    const names = within(list)
+      .getAllByRole("option")
+      .map((o) => o.textContent);
+    expect(names[0]).toMatch(/^Uncommitted changes/);
+    expect(names[1]).toMatch(/^Add login screen/);
+    expect(names[2]).toMatch(/^Changes left on main when switching branches/);
+    expect(names[3]).toMatch(/^Commit number 2/);
+    expect(list.querySelectorAll("svg circle, svg rect").length).toBeGreaterThanOrEqual(5);
+    expect(await axeViolations(container)).toEqual([]);
+
+    await user.click(within(list).getByText("Uncommitted changes (2 files)"));
+    expect(await screen.findByRole("button", { name: "Show in Changes" })).toBeVisible();
+
+    vi.mocked(commands.commitDetail).mockImplementation(async (_repo, oid) =>
+      ok(
+        detail(
+          commits.find((c) => c.oid === oid) ??
+            commit(0, { oid, parents: [commits[1].oid, "i".repeat(40)], summary: "On main: x" }),
+        ),
+      ),
+    );
+    await user.click(within(list).getByText(/Changes left on main/));
+    expect(
+      await screen.findByRole("heading", { name: "Changes left on main when switching branches" }),
+    ).toBeVisible();
+    expect(screen.getByText(/Untracked files aren't shown here/)).toBeVisible();
+    expect(screen.queryByText("Merge commit")).toBeNull();
+
+    vi.mocked(commands.historyList).mockResolvedValue(ok([commits[2]]));
+    await user.type(screen.getByRole("searchbox"), "number");
+    await waitFor(() => expect(within(list).getAllByRole("option")).toHaveLength(1));
+    expect(list.querySelector("svg")).toBeNull();
   });
 
   it("explains an empty history", async () => {
