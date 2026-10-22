@@ -117,14 +117,7 @@ export function CommitList({
               style={style}
               onMouseDown={() => onSelect(row.id)}
             >
-              {graph && (
-                <GraphCell
-                  row={graph.rows[item.index]}
-                  lanes={graph.width}
-                  height={item.size}
-                  shape={shape}
-                />
-              )}
+              {graph && <GraphCell row={graph.rows[item.index]} height={item.size} shape={shape} />}
               <RowText row={row} marks={marks} />
             </div>
           );

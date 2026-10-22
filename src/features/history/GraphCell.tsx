@@ -8,7 +8,7 @@ export const MAX_LANES = 10;
 
 export type NodeShape = "commit" | "head" | "wip" | "stash";
 
-export function graphWidth(lanes: number): number {
+function graphWidth(lanes: number): number {
   return Math.min(lanes, MAX_LANES) * LANE + LANE / 2;
 }
 
@@ -17,12 +17,10 @@ const x = (lane: number) => LANE / 2 + 2 + lane * LANE;
 /** One row's slice of the commit graph: lines through it and its node. */
 export function GraphCell({
   row,
-  lanes,
   height,
   shape,
 }: {
   row: GraphRow;
-  lanes: number;
   height: number;
   shape: NodeShape;
 }) {
@@ -37,7 +35,7 @@ export function GraphCell({
   return (
     <svg
       className={styles.graph}
-      width={graphWidth(lanes)}
+      width={graphWidth(row.width)}
       height={height}
       aria-hidden
       focusable="false"

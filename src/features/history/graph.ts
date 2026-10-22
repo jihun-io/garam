@@ -17,20 +17,24 @@ export type GraphLine = { from: number; to: number; dashed: boolean };
 
 export type GraphRow = {
   column: number;
+  /**
+   * Lanes this row draws in. Each row is only as wide as itself, so rows
+   * loaded later never widen rows already on screen.
+   */
+  width: number;
   /** From the row's top edge to its middle. */
   upper: GraphLine[];
   /** From the row's middle to its bottom edge. */
   lower: GraphLine[];
 };
 
-export type Graph = { rows: GraphRow[]; /** Lanes the widest row uses. */ width: number };
+export type Graph = { rows: GraphRow[] };
 
 type Lane = { waitingFor: string; dashed: boolean } | null;
 
 export function buildGraph(nodes: GraphNode[], firstParentOnly = false): Graph {
   const lanes: Lane[] = [];
   const rows: GraphRow[] = [];
-  let width = 0;
 
   const take = (lane: Lane): number => {
     const free = lanes.indexOf(null);
@@ -81,9 +85,9 @@ export function buildGraph(nodes: GraphNode[], firstParentOnly = false): Graph {
     });
 
     while (lanes.length > 0 && lanes[lanes.length - 1] === null) lanes.pop();
+    let width = column + 1;
     for (const line of [...upper, ...lower]) width = Math.max(width, line.from + 1, line.to + 1);
-    width = Math.max(width, column + 1);
-    rows.push({ column, upper, lower });
+    rows.push({ column, width, upper, lower });
   }
-  return { rows, width };
+  return { rows };
 }

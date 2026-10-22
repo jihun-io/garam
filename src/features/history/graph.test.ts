@@ -11,11 +11,10 @@ describe("buildGraph", () => {
       { id: "b", parents: ["a"] },
       { id: "a", parents: [] },
     ]);
-    expect(graph.width).toBe(1);
     expect(graph.rows).toEqual([
-      { column: 0, upper: [], lower: [line(0, 0)] },
-      { column: 0, upper: [line(0, 0)], lower: [line(0, 0)] },
-      { column: 0, upper: [line(0, 0)], lower: [] },
+      { column: 0, width: 1, upper: [], lower: [line(0, 0)] },
+      { column: 0, width: 1, upper: [line(0, 0)], lower: [line(0, 0)] },
+      { column: 0, width: 1, upper: [line(0, 0)], lower: [] },
     ]);
   });
 
@@ -25,26 +24,28 @@ describe("buildGraph", () => {
     //   b  s
     //   | /
     //   a
-    const { rows, width } = buildGraph([
+    const { rows } = buildGraph([
       { id: "m", parents: ["b", "s"] },
       { id: "b", parents: ["a"] },
       { id: "s", parents: ["a"] },
       { id: "a", parents: [] },
     ]);
-    expect(width).toBe(2);
-    expect(rows[0]).toEqual({ column: 0, upper: [], lower: [line(0, 0), line(0, 1)] });
+    expect(rows[0]).toEqual({ column: 0, width: 2, upper: [], lower: [line(0, 0), line(0, 1)] });
     expect(rows[1]).toEqual({
       column: 0,
+      width: 2,
       upper: [line(0, 0), line(1, 1)],
       lower: [line(1, 1), line(0, 0)],
     });
     // s waits in lane 1; a is already awaited in lane 0, so s joins it.
     expect(rows[2]).toEqual({
       column: 1,
+      width: 2,
       upper: [line(0, 0), line(1, 1)],
       lower: [line(0, 0), line(1, 0)],
     });
-    expect(rows[3]).toEqual({ column: 0, upper: [line(0, 0)], lower: [] });
+    // Back to one lane: this row is narrow again.
+    expect(rows[3]).toEqual({ column: 0, width: 1, upper: [line(0, 0)], lower: [] });
   });
 
   it("starts a new lane for another branch tip and reuses freed lanes", () => {
@@ -61,14 +62,14 @@ describe("buildGraph", () => {
   });
 
   it("follows only first parents when asked", () => {
-    const { rows, width } = buildGraph(
+    const { rows } = buildGraph(
       [
         { id: "m", parents: ["b", "s"] },
         { id: "b", parents: [] },
       ],
       true,
     );
-    expect(width).toBe(1);
+    expect(rows.map((r) => r.width)).toEqual([1, 1]);
     expect(rows[0].lower).toEqual([line(0, 0)]);
   });
 
@@ -82,11 +83,27 @@ describe("buildGraph", () => {
     expect(rows[0].lower).toEqual([line(0, 0, true)]);
     expect(rows[1]).toEqual({
       column: 1,
+      width: 2,
       upper: [line(0, 0, true)],
       lower: [line(0, 0, true), line(1, 1)],
     });
     expect(rows[2].column).toBe(0);
     expect(rows[2].upper).toEqual([line(0, 0, true), line(1, 1)]);
+  });
+
+  it("keeps earlier rows narrow when wider rows load later", () => {
+    const narrow = [
+      { id: "c", parents: ["b"] },
+      { id: "b", parents: ["a"] },
+    ];
+    const wide = [
+      { id: "a", parents: ["x", "y", "z"] },
+      { id: "x", parents: [] },
+    ];
+    const before = buildGraph(narrow).rows;
+    const after = buildGraph([...narrow, ...wide]).rows;
+    expect(after.slice(0, 2)).toEqual(before);
+    expect(after[2].width).toBe(3);
   });
 
   it("keeps lines going past the loaded rows", () => {
