@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for every repository window",
-  "windows": ["main", "repo-*"],
+  "description": "Capability for every repository window and the settings window",
+  "windows": ["main", "repo-*", "settings"],
   "permissions": [
     "core:default",
     "opener:default",

@@ -55,6 +55,11 @@ export const commands = {
 	 *  showing it.
 	 */
 	windowOpen: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("window_open", { path })),
+	/**
+	 *  Opens the settings window, or brings it forward if it is already open.
+	 *  There is one for the whole app.
+	 */
+	windowOpenSettings: () => typedError<null, AppError>(__TAURI_INVOKE("window_open_settings")),
 	statusGet: (repo: string) => typedError<RepoStatus, AppError>(__TAURI_INVOKE("status_get", { repo })),
 	diffGet: (repo: string, file: FileChange) => typedError<FileDiff, AppError>(__TAURI_INVOKE("diff_get", { repo, file })),
 	diffImages: (repo: string, file: FileChange) => typedError<ImageVersions, AppError>(__TAURI_INVOKE("diff_images", { repo, file })),
@@ -177,6 +182,8 @@ export const commands = {
 	githubSignOut: (key: string) => typedError<null, AppError>(__TAURI_INVOKE("github_sign_out", { key })),
 	settingsGet: () => __TAURI_INVOKE<AppSettings>("settings_get"),
 	settingsSet: (settings: AppSettings) => typedError<null, AppError>(__TAURI_INVOKE("settings_set", { settings })),
+	/**  The language setting the app started with, the same in every window. */
+	settingsLaunchLanguage: () => __TAURI_INVOKE<string | null>("settings_launch_language"),
 	/**  The operating system's accent color as `#rrggbb`, if it can be read. */
 	systemAccentColor: () => typedError<string | null, AppError>(__TAURI_INVOKE("system_accent_color")),
 	gitGlobalGet: () => typedError<GlobalSettings, AppError>(__TAURI_INVOKE("git_global_get")),

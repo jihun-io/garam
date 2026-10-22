@@ -1,51 +1,24 @@
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--color-scrim);
-  animation: fade-in var(--dur-base) var(--ease-out);
-}
-
-.content {
-  position: fixed;
-  inset: 0;
+.root {
   display: grid;
   grid-template-rows: auto 1fr;
-  width: min(680px, calc(100vw - 32px));
-  height: min(480px, 80vh);
-  margin: auto;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-  background: var(--color-raised);
-  box-shadow: var(--shadow-raised);
-  animation: dialog-in var(--dur-base) var(--ease-out);
+  height: 100vh;
+  background: var(--color-surface);
 }
 
-.content:focus-visible {
-  outline: none;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes dialog-in {
-  from {
-    opacity: 0;
-    transform: scale(0.98);
-  }
-}
-
+/* Matches the repository window's toolbar, so the window buttons sit in
+   its vertical center (tauri.conf.json `trafficLightPosition`). */
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  height: 52px;
+  padding: 0 var(--space-4);
+  padding-left: max(var(--space-4), var(--titlebar-inset));
   border-bottom: 1px solid var(--color-line);
+  background: var(--color-bg);
 }
 
 .title {
+  margin: 0;
   font-size: var(--text-lg);
   font-weight: 650;
 }

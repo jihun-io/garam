@@ -10,6 +10,9 @@ use crate::windows::RepoWindows;
 /// pixels, so it doesn't cover it exactly.
 const CASCADE_OFFSET: f64 = 28.0;
 
+/// Label of the settings window; `capabilities/default.json` lists it.
+const SETTINGS_WINDOW: &str = "settings";
+
 /// Brings forward the window, other than the calling one, that shows
 /// `path`. Returns whether there was one.
 #[tauri::command]
@@ -51,6 +54,20 @@ pub async fn window_open(
     blocking(move || store.select(&path)).await
 }
 
+/// Opens the settings window, or brings it forward if it is already open.
+/// There is one for the whole app.
+#[tauri::command]
+#[specta::specta]
+pub fn window_open_settings(app: AppHandle) -> AppResult<()> {
+    if let Some(window) = app.get_webview_window(SETTINGS_WINDOW) {
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+        return Ok(());
+    }
+    build_settings_window(&app)
+        .map_err(|e| AppError::app(AppErrorKind::WindowFailed, Some(e.to_string())))
+}
+
 fn focus_window_showing(
     app: &AppHandle,
     windows: &RepoWindows,
@@ -84,5 +101,28 @@ fn build_window(app: &AppHandle, from: &WebviewWindow, label: &str) -> tauri::Re
         builder = builder.position(position.x + CASCADE_OFFSET, position.y + CASCADE_OFFSET);
     }
     builder.build()?;
+    Ok(())
+}
+
+/// A fixed-size window with the same title bar as the repository windows.
+/// The page tells it apart by its label.
+fn build_settings_window(app: &AppHandle) -> tauri::Result<()> {
+    let mut config = app
+        .config()
+        .app
+        .windows
+        .first()
+        .cloned()
+        .unwrap_or_default();
+    config.label = SETTINGS_WINDOW.to_owned();
+    config.width = 680.0;
+    config.height = 480.0;
+    config.min_width = None;
+    config.min_height = None;
+    config.resizable = false;
+    config.maximizable = false;
+    config.minimizable = false;
+    config.center = true;
+    WebviewWindowBuilder::from_config(app, &config)?.build()?;
     Ok(())
 }

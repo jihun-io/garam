@@ -3,15 +3,20 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands, type AppSettings } from "../../ipc";
+import { runCommand } from "../../lib/commands";
+import { axeViolations } from "../../test/axe";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { Notifications } from "../notify/Notifications";
 import { DEFAULT_SETTINGS } from "./api";
-import { SettingsDialog } from "./SettingsDialog";
-import { useSettingsDialog } from "./settingsDialogStore";
 import { SettingsEffects } from "./SettingsEffects";
+import { SettingsCommand, SettingsWindow } from "./SettingsWindow";
 
 vi.mock("@tauri-apps/api/window", () => ({
-  getCurrentWindow: () => ({ setTheme: vi.fn(async () => {}) }),
+  getCurrentWindow: () => ({
+    label: "main",
+    setTheme: vi.fn(async () => {}),
+    setTitle: vi.fn(async () => {}),
+  }),
 }));
 vi.mock("../../ipc/bindings", () => ({
   commands: {
@@ -22,6 +27,8 @@ vi.mock("../../ipc/bindings", () => ({
     gitGlobalSet: vi.fn(),
     externalEditors: vi.fn(),
     externalTerminals: vi.fn(),
+    windowOpenSettings: vi.fn(),
+    settingsLaunchLanguage: vi.fn(),
   },
 }));
 
@@ -30,6 +37,7 @@ const ok = <T,>(data: T) => ({ status: "ok" as const, data });
 function setup(settings: Partial<AppSettings> = {}, systemAccent: string | null = "#953d96") {
   vi.mocked(commands.settingsGet).mockResolvedValue({ ...DEFAULT_SETTINGS, ...settings });
   vi.mocked(commands.settingsSet).mockResolvedValue(ok(null));
+  vi.mocked(commands.settingsLaunchLanguage).mockResolvedValue(settings.language ?? null);
   vi.mocked(commands.systemAccentColor).mockResolvedValue(ok(systemAccent));
   vi.mocked(commands.gitGlobalGet).mockResolvedValue(
     ok({ userName: "Garam", userEmail: "garam@example.com", defaultBranch: null }),
@@ -44,11 +52,10 @@ function setup(settings: Partial<AppSettings> = {}, systemAccent: string | null 
   vi.mocked(commands.externalTerminals).mockResolvedValue(
     ok([{ id: "terminal", name: "Terminal" }]),
   );
-  useSettingsDialog.setState({ open: true });
   return renderWithQuery(
     <>
       <SettingsEffects />
-      <SettingsDialog />
+      <SettingsWindow />
       <Notifications />
     </>,
   );
@@ -61,9 +68,9 @@ async function choose(user: ReturnType<typeof userEvent.setup>, label: string, o
 }
 
 async function openSection(user: ReturnType<typeof userEvent.setup>, name: string) {
-  const dialog = await screen.findByRole("dialog", { name: "Settings" });
-  await user.click(within(dialog).getByRole("tab", { name }));
-  return dialog;
+  const main = await screen.findByRole("main");
+  await user.click(within(main).getByRole("tab", { name }));
+  return main;
 }
 
 describe("settings", () => {
@@ -155,5 +162,20 @@ describe("settings", () => {
     await choose(user, "Language", "한국어");
     expect(commands.settingsSet).toHaveBeenLastCalledWith({ ...DEFAULT_SETTINGS, language: "ko" });
     expect(await screen.findByRole("tab", { name: "일반" })).toBeVisible();
+  });
+
+  it("opens the settings window from the Settings command", async () => {
+    vi.mocked(commands.windowOpenSettings).mockResolvedValue(ok(null));
+    renderWithQuery(<SettingsCommand />);
+    expect(runCommand("settings")).toBe(true);
+    expect(commands.windowOpenSettings).toHaveBeenCalledOnce();
+  });
+
+  it("shows the sections in a window of their own", async () => {
+    const { container } = setup();
+    expect(await screen.findByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
+    await screen.findByRole("combobox", { name: "Language" });
+    expect(await axeViolations(container)).toEqual([]);
   });
 });

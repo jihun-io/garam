@@ -3,12 +3,10 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Fragment, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
-import { IconButton } from "../../components/ui/IconButton";
 import type { RepositoryEntry } from "../../ipc";
-import { shortcutFor, useCommand } from "../../lib/commands";
+import { useCommand } from "../../lib/commands";
 import { BranchControls } from "../branches/BranchControls";
 import { useRepoWatcher } from "../changes/useRepoWatcher";
-import { useSettingsDialog } from "../settings/settingsDialogStore";
 import { SyncButton } from "../sync/SyncButton";
 import { OpenInMenu } from "./OpenInMenu";
 import { RepoPicker } from "./RepoPicker";
@@ -24,8 +22,7 @@ export function Workspace({
   repositories: RepositoryEntry[];
   selected: RepositoryEntry | null;
 }) {
-  const { t } = useTranslation(["settings", "common"]);
-  const openSettings = useSettingsDialog((s) => s.setOpen);
+  const { t } = useTranslation();
   const active = selected && !selected.missing ? selected.path : null;
   useRepoWatcher(active);
   useWindowTitle(selected?.name ?? null);
@@ -54,17 +51,11 @@ export function Workspace({
         <div className={styles.spacer} data-tauri-drag-region />
         <div className={styles.actions}>
           {selected && <OpenInMenu path={selected.path} disabled={selected.missing} />}
-          <IconButton
-            icon="settings"
-            label={t("open")}
-            shortcut={shortcutFor("settings")}
-            onClick={() => openSettings(true)}
-          />
         </div>
       </header>
       <main className={styles.main}>
         {/* For screen reader heading navigation; the toolbar shows the name. */}
-        <h1 className="sr-only">{selected?.name ?? t("common:appName")}</h1>
+        <h1 className="sr-only">{selected?.name ?? t("appName")}</h1>
         {selected &&
           (selected.missing ? (
             <RepositoryOverview key={selected.path} repository={selected} />

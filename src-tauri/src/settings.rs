@@ -91,6 +91,7 @@ impl Default for AppSettings {
 pub struct SettingsStore {
     file: PathBuf,
     data: Mutex<AppSettings>,
+    launch_language: Option<String>,
 }
 
 impl SettingsStore {
@@ -104,11 +105,18 @@ impl SettingsStore {
         {
             merged.extend(stored);
         }
-        let data = serde_json::from_value(merged).unwrap_or_default();
+        let data: AppSettings = serde_json::from_value(merged).unwrap_or_default();
         Self {
             file,
+            launch_language: data.language.clone(),
             data: Mutex::new(data),
         }
+    }
+
+    /// The language setting when the app started; macOS's own menus keep
+    /// it until the next launch.
+    pub fn launch_language(&self) -> Option<String> {
+        self.launch_language.clone()
     }
 
     pub fn get(&self) -> AppSettings {
@@ -151,6 +159,22 @@ mod tests {
         };
         store.set(changed.clone()).unwrap();
         assert_eq!(SettingsStore::load(file).get(), changed);
+    }
+
+    #[test]
+    fn keeps_the_language_it_started_with() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("settings.json");
+        fs::write(&file, r#"{ "language": "en" }"#).unwrap();
+        let store = SettingsStore::load(file);
+        store
+            .set(AppSettings {
+                language: Some("ko".into()),
+                ..store.get()
+            })
+            .unwrap();
+        assert_eq!(store.get().language.as_deref(), Some("ko"));
+        assert_eq!(store.launch_language().as_deref(), Some("en"));
     }
 
     #[test]

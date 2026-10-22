@@ -38,6 +38,13 @@ pub async fn settings_set(
     Ok(())
 }
 
+/// The language setting the app started with, the same in every window.
+#[tauri::command]
+#[specta::specta]
+pub fn settings_launch_language(store: Store<'_>) -> Option<String> {
+    store.launch_language()
+}
+
 pub const SETTINGS_CHANGED_EVENT: &str = "settings-changed";
 
 /// Quits and starts the app again, e.g. so macOS's own menus pick up a new

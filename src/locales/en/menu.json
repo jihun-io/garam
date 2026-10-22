@@ -60,6 +60,7 @@
     "selectAll": "Select All",
     "minimize": "Minimize",
     "zoom": "Zoom",
+    "closeWindow": "Close Window",
     "bringAllToFront": "Bring All to Front",
     "fullscreen": "Enter Full Screen",
     "quitOther": "Exit"

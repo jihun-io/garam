@@ -4,9 +4,11 @@ import ReactDOM from "react-dom/client";
 import i18n, { resolveLanguage, takeLegacyLanguage } from "./i18n";
 import "./styles/global.css";
 import { App, queryClient } from "./app/App";
+import { SettingsApp } from "./app/SettingsApp";
 import { commands, unwrap } from "./ipc";
-import { preloadSettings, rememberLaunchLanguage, settingsKeys } from "./features/settings/api";
+import { preloadSettings, settingsKeys } from "./features/settings/api";
 import { resolveAccent } from "./features/settings/SettingsEffects";
+import { isSettingsWindow } from "./features/settings/SettingsWindow";
 import { installContextMenuGuard } from "./lib/contextMenu";
 import { setSidebarWidth } from "./lib/layout";
 import { initTheme, setAppearance } from "./lib/theme";
@@ -37,13 +39,10 @@ async function start() {
     diffFontSize: settings.diffFontSize,
   });
   setSidebarWidth(settings.sidebarWidth);
-  rememberLaunchLanguage(settings.language);
   await i18n.changeLanguage(resolveLanguage(settings.language));
 
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>,
+    <React.StrictMode>{isSettingsWindow() ? <SettingsApp /> : <App />}</React.StrictMode>,
   );
 }
 

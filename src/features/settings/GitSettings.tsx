@@ -6,7 +6,7 @@ import { Loading } from "../../components/ui/Loading";
 import { toAppError, type GlobalKey } from "../../ipc";
 import { useGitGlobal, useSetGitGlobal } from "./api";
 import { Setting } from "./controls";
-import styles from "./SettingsDialog.module.css";
+import styles from "./Settings.module.css";
 
 export function GitSettings() {
   const { t } = useTranslation("settings");

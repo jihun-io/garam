@@ -7,8 +7,8 @@ import { Notifications } from "../features/notify/Notifications";
 import { StartupGate } from "../features/startup/StartupGate";
 import { TooltipProvider } from "../components/ui/Tooltip";
 import { WindowDragArea } from "../components/WindowDragArea";
-import { SettingsDialog } from "../features/settings/SettingsDialog";
 import { SettingsEffects } from "../features/settings/SettingsEffects";
+import { SettingsCommand } from "../features/settings/SettingsWindow";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,7 +27,7 @@ export function App() {
         <StartupGate />
         <Notifications />
         <CredentialDialog />
-        <SettingsDialog />
+        <SettingsCommand />
       </TooltipProvider>
     </QueryClientProvider>
   );

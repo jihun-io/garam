@@ -1,7 +1,5 @@
 {
   "title": "Settings",
-  "open": "Settings",
-  "close": "Close",
   "sections": "Settings sections",
   "general": {
     "title": "General",

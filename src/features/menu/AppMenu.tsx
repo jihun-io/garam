@@ -30,6 +30,7 @@ type Native =
   | "Minimize"
   | "Maximize"
   | "BringAllToFront"
+  | "CloseWindow"
   | "Fullscreen";
 
 /** Menu label for a command; "Show in Finder" differs per platform. */
@@ -139,6 +140,7 @@ async function buildMenu(
     ? submenu(t("menu:menus.window"), [
         native("Minimize", t("menu:native.minimize")),
         native("Maximize", t("menu:native.zoom")),
+        native("CloseWindow", t("menu:native.closeWindow")),
         separator(),
         native("BringAllToFront", t("menu:native.bringAllToFront")),
       ])

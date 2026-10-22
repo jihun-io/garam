@@ -9,7 +9,7 @@ import { ACCENT_PRESETS, accentPairFrom } from "../../lib/accent";
 import { useSettings, useSystemAccent, useUpdateSettings } from "./api";
 import { Setting } from "./controls";
 import segmented from "../../components/ui/Segmented.module.css";
-import styles from "./SettingsDialog.module.css";
+import styles from "./Settings.module.css";
 
 const THEMES: { value: Theme; icon: "themeSystem" | "themeLight" | "themeDark" }[] = [
   { value: "system", icon: "themeSystem" },

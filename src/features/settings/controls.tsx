@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from "react";
 
-import styles from "./SettingsDialog.module.css";
+import styles from "./Settings.module.css";
 
 /** A labelled setting with an optional hint below the control. */
 export function Setting({

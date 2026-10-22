@@ -4,10 +4,10 @@ import { Button } from "../../components/ui/Button";
 import { Select } from "../../components/ui/Select";
 import { commands, type OpenRepositoryIn } from "../../ipc";
 import { currentPlatform } from "../../lib/platform";
-import { getLaunchLanguage, useSettings, useUpdateSettings } from "./api";
+import { useLaunchLanguage, useSettings, useUpdateSettings } from "./api";
 import { Setting } from "./controls";
 import { LanguageSelectControl } from "./LanguageSelect";
-import styles from "./SettingsDialog.module.css";
+import styles from "./Settings.module.css";
 
 const OPEN_REPOSITORY_IN: OpenRepositoryIn[] = ["ask", "current_window", "new_window"];
 
@@ -15,9 +15,10 @@ export function GeneralSettings() {
   const { t } = useTranslation(["settings", "common"]);
   const { language, openRepositoryIn } = useSettings();
   const update = useUpdateSettings();
-  const launchLanguage = getLaunchLanguage();
+  const launchLanguage = useLaunchLanguage();
   // macOS adds some menu items itself and localizes them only at launch.
-  const needsRestart = currentPlatform() === "macos" && language !== launchLanguage;
+  const needsRestart =
+    currentPlatform() === "macos" && launchLanguage.isSuccess && language !== launchLanguage.data;
 
   return (
     <>

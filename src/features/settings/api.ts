@@ -7,6 +7,7 @@ export const settingsKeys = {
   app: ["settings"] as const,
   gitGlobal: ["settings", "git-global"] as const,
   systemAccent: ["settings", "system-accent"] as const,
+  launchLanguage: ["settings", "launch-language"] as const,
   terminals: ["external", "terminals"] as const,
 };
 
@@ -55,16 +56,14 @@ export function useUpdateSettings() {
   };
 }
 
-// The language the app started with; macOS's own menus keep it until the
-// next launch.
-let launchLanguage: string | null = null;
-
-export function rememberLaunchLanguage(language: string | null) {
-  launchLanguage = language;
-}
-
-export function getLaunchLanguage() {
-  return launchLanguage;
+/** The language setting the app started with; macOS's own menus keep it
+ * until the next launch. */
+export function useLaunchLanguage() {
+  return useQuery({
+    queryKey: settingsKeys.launchLanguage,
+    queryFn: () => commands.settingsLaunchLanguage(),
+    staleTime: Infinity,
+  });
 }
 
 /** Loads settings into the cache before the first render. */

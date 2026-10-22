@@ -4,12 +4,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { commands } from "../../ipc";
 import { renderWithQuery } from "../../test/renderWithQuery";
-import { DEFAULT_SETTINGS, rememberLaunchLanguage } from "./api";
+import { DEFAULT_SETTINGS } from "./api";
 import { GeneralSettings } from "./GeneralSettings";
 
 vi.mock("../../lib/platform", () => ({ currentPlatform: () => "macos" }));
 vi.mock("../../ipc/bindings", () => ({
-  commands: { settingsGet: vi.fn(), settingsSet: vi.fn(), appRestart: vi.fn() },
+  commands: {
+    settingsGet: vi.fn(),
+    settingsSet: vi.fn(),
+    settingsLaunchLanguage: vi.fn(),
+    appRestart: vi.fn(),
+  },
 }));
 
 describe("general settings on macOS", () => {
@@ -20,7 +25,7 @@ describe("general settings on macOS", () => {
 
   it("offers a restart once the language differs from the one at launch", async () => {
     const user = userEvent.setup();
-    rememberLaunchLanguage(null);
+    vi.mocked(commands.settingsLaunchLanguage).mockResolvedValue(null);
     vi.mocked(commands.settingsGet).mockResolvedValue(DEFAULT_SETTINGS);
     renderWithQuery(<GeneralSettings />);
 
