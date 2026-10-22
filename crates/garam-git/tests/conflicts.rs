@@ -2,7 +2,7 @@ use std::fs;
 
 use garam_git::conflict::{self, ConflictKind, Operation, Side};
 use garam_git::testing::TestRepo;
-use garam_git::{ErrorKind, branch, log};
+use garam_git::{CancelToken, ErrorKind, branch, log};
 
 fn read(repo: &TestRepo, path: &str) -> String {
     fs::read_to_string(repo.path().join(path)).unwrap()
@@ -152,7 +152,15 @@ fn rebase_sides_follow_the_user_not_git() {
 
     conflict::continue_operation(repo.git_handle(), repo.path()).unwrap();
     assert_eq!(state(&repo).operation, None);
-    let history = log::list(repo.git_handle(), repo.path(), &Default::default(), 0, 3).unwrap();
+    let history = log::list(
+        repo.git_handle(),
+        repo.path(),
+        &Default::default(),
+        0,
+        3,
+        &CancelToken::new(),
+    )
+    .unwrap();
     let summaries: Vec<_> = history.iter().map(|c| c.summary.as_str()).collect();
     assert_eq!(summaries, ["my work", "upstream", "base"]);
 }
@@ -173,7 +181,15 @@ fn continues_a_conflicted_revert() {
     conflict::mark_resolved(repo.git_handle(), repo.path(), "a.txt").unwrap();
     conflict::continue_operation(repo.git_handle(), repo.path()).unwrap();
     assert_eq!(state(&repo).operation, None);
-    let head = log::list(repo.git_handle(), repo.path(), &Default::default(), 0, 1).unwrap();
+    let head = log::list(
+        repo.git_handle(),
+        repo.path(),
+        &Default::default(),
+        0,
+        1,
+        &CancelToken::new(),
+    )
+    .unwrap();
     assert_eq!(head[0].summary, "Revert \"change\"");
 }
 

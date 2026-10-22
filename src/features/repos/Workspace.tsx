@@ -7,6 +7,7 @@ import type { RepositoryEntry } from "../../ipc";
 import { useCommand } from "../../lib/commands";
 import { BranchControls } from "../branches/BranchControls";
 import { useRepoWatcher } from "../changes/useRepoWatcher";
+import { useHistoryPrepare } from "../history/api";
 import { SyncButton } from "../sync/SyncButton";
 import { OpenInMenu } from "./OpenInMenu";
 import { RepoPicker } from "./RepoPicker";
@@ -25,6 +26,7 @@ export function Workspace({
   const { t } = useTranslation();
   const active = selected && !selected.missing ? selected.path : null;
   useRepoWatcher(active);
+  useHistoryPrepare(active);
   useWindowTitle(selected?.name ?? null);
   const client = useQueryClient();
   useCommand(

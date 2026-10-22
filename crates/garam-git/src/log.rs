@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::diff::{self, FileDiff};
 use crate::status::ChangeKind;
-use crate::{Git, GitError};
+use crate::{CancelToken, Git, GitError};
 
 /// Raw diffs larger than this are not rendered.
 const MAX_DIFF_BYTES: usize = 4 * 1024 * 1024;
@@ -71,13 +71,15 @@ pub struct HistoryFilter {
 }
 
 /// Up to `limit` commits matching `filter`, newest first, after skipping
-/// `skip`. Empty on a branch without commits.
+/// `skip`. Empty on a branch without commits. A search through a long
+/// history can take many seconds; `cancel` stops it.
 pub fn list(
     git: &Git,
     repo: &Path,
     filter: &HistoryFilter,
     skip: u32,
     limit: u32,
+    cancel: &CancelToken,
 ) -> Result<Vec<CommitSummary>, GitError> {
     let head = crate::commit::head_oid(git, repo)?;
     let mut args: Vec<String> = Vec::new();
@@ -122,7 +124,7 @@ pub fn list(
         }
     }
     let paths: Vec<&str> = if path.is_empty() { vec![] } else { vec![path] };
-    let mut commits = log_records(git, repo, &args, &paths, skip, limit)?;
+    let mut commits = run_log(git, repo, &args, &paths, skip, limit, Some(cancel))?;
 
     // A hash typed into the search finds that commit, wherever it is.
     if skip == 0
@@ -151,7 +153,19 @@ pub(crate) fn log_records(
     skip: u32,
     limit: u32,
 ) -> Result<Vec<CommitSummary>, GitError> {
-    let output = git
+    run_log(git, repo, revs, paths, skip, limit, None)
+}
+
+fn run_log(
+    git: &Git,
+    repo: &Path,
+    revs: &[String],
+    paths: &[&str],
+    skip: u32,
+    limit: u32,
+    cancel: Option<&CancelToken>,
+) -> Result<Vec<CommitSummary>, GitError> {
+    let command = git
         .command()
         .cwd(repo)
         .read_only()
@@ -163,8 +177,11 @@ pub(crate) fn log_records(
             &format!("--max-count={limit}"),
         ])
         .args(revs)
-        .paths(paths)
-        .run()?;
+        .paths(paths);
+    let output = match cancel {
+        Some(cancel) => command.run_streaming(cancel, |_| {})?,
+        None => command.run()?,
+    };
     output
         .stdout_str()
         .split('\0')

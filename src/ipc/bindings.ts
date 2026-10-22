@@ -110,8 +110,17 @@ export const commands = {
 	conflictMarkResolved: (repo: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_mark_resolved", { repo, path })),
 	conflictContinue: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_continue", { repo })),
 	conflictAbort: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_abort", { repo })),
-	/**  A page of the history `filter` selects, newest first. */
-	historyList: (repo: string, filter: HistoryFilter, skip: number, limit: number) => typedError<CommitSummary[], AppError>(__TAURI_INVOKE("history_list", { repo, filter, skip, limit })),
+	/**
+	 *  A page of the history `filter` selects, newest first. Cancel with
+	 *  `operation_cancel` using the same `operation_id`, for a search the user
+	 *  replaced before it finished.
+	 */
+	historyList: (operationId: string, repo: string, filter: HistoryFilter, skip: number, limit: number) => typedError<CommitSummary[], AppError>(__TAURI_INVOKE("history_list", { operationId, repo, filter, skip, limit })),
+	/**
+	 *  Writes git's commit-graph file if the repository has none, so history
+	 *  pages of a large repository load quickly. Returns whether it wrote one.
+	 */
+	historyPrepare: (repo: string) => typedError<boolean, AppError>(__TAURI_INVOKE("history_prepare", { repo })),
 	/**  Refs, unpushed and incoming commits, shown alongside the history. */
 	historyMarkers: (repo: string) => typedError<HistoryMarkers, AppError>(__TAURI_INVOKE("history_markers", { repo })),
 	commitDetail: (repo: string, oid: string) => typedError<CommitDetail, AppError>(__TAURI_INVOKE("commit_detail", { repo, oid })),

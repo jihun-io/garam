@@ -2,7 +2,7 @@ use garam_git::diff::{FileDiff, LineKind};
 use garam_git::log::{self, CommitFile, HistoryFilter, HistoryScope, RefKind, SearchField};
 use garam_git::status::ChangeKind;
 use garam_git::testing::TestRepo;
-use garam_git::{ErrorKind, status};
+use garam_git::{CancelToken, ErrorKind, status};
 
 fn repo_with_history(count: usize) -> TestRepo {
     let repo = TestRepo::new();
@@ -19,18 +19,22 @@ fn lists_commits_newest_first_in_pages() {
     let git = repo.git_handle();
     let head = HistoryFilter::default();
 
-    let first = log::list(git, repo.path(), &head, 0, 2).unwrap();
+    let first = log::list(git, repo.path(), &head, 0, 2, &CancelToken::new()).unwrap();
     let summaries: Vec<_> = first.iter().map(|c| c.summary.as_str()).collect();
     assert_eq!(summaries, ["commit 4", "commit 3"]);
     assert_eq!(first[0].parents, [first[1].oid.clone()]);
     assert_eq!(first[0].author_name, "Garam Test");
 
-    let last = log::list(git, repo.path(), &head, 4, 2).unwrap();
+    let last = log::list(git, repo.path(), &head, 4, 2, &CancelToken::new()).unwrap();
     assert_eq!(last.len(), 1);
     assert_eq!(last[0].summary, "commit 0");
     assert!(last[0].parents.is_empty(), "root commit");
 
-    assert!(log::list(git, repo.path(), &head, 5, 2).unwrap().is_empty());
+    assert!(
+        log::list(git, repo.path(), &head, 5, 2, &CancelToken::new())
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[test]
@@ -42,7 +46,8 @@ fn empty_repository_has_no_history() {
             repo.path(),
             &HistoryFilter::default(),
             0,
-            50
+            50,
+            &CancelToken::new()
         )
         .unwrap()
         .is_empty()
@@ -172,7 +177,15 @@ fn reverts_a_commit() {
         std::fs::read_to_string(repo.path().join("a.txt")).unwrap(),
         "one\n"
     );
-    let head = log::list(repo.git_handle(), repo.path(), &Default::default(), 0, 1).unwrap();
+    let head = log::list(
+        repo.git_handle(),
+        repo.path(),
+        &Default::default(),
+        0,
+        1,
+        &CancelToken::new(),
+    )
+    .unwrap();
     assert_eq!(head[0].summary, "Revert \"change\"");
 }
 
@@ -322,11 +335,18 @@ fn unborn_branch_has_no_markers() {
 }
 
 fn summaries(repo: &TestRepo, filter: &HistoryFilter) -> Vec<String> {
-    log::list(repo.git_handle(), repo.path(), filter, 0, 50)
-        .unwrap()
-        .into_iter()
-        .map(|c| c.summary)
-        .collect()
+    log::list(
+        repo.git_handle(),
+        repo.path(),
+        filter,
+        0,
+        50,
+        &CancelToken::new(),
+    )
+    .unwrap()
+    .into_iter()
+    .map(|c| c.summary)
+    .collect()
 }
 
 fn search(search_in: SearchField, query: &str) -> HistoryFilter {
@@ -406,6 +426,7 @@ fn a_hash_in_the_search_finds_that_commit() {
         &search(SearchField::Message, &feature[..10]),
         0,
         50,
+        &CancelToken::new(),
     )
     .unwrap();
     assert_eq!(found.len(), 1);
@@ -459,7 +480,15 @@ fn filters_by_path_and_scope() {
             ..Default::default()
         };
         assert!(
-            log::list(repo.git_handle(), repo.path(), &filter, 0, 50).is_err(),
+            log::list(
+                repo.git_handle(),
+                repo.path(),
+                &filter,
+                0,
+                50,
+                &CancelToken::new()
+            )
+            .is_err(),
             "{bad}"
         );
     }
@@ -516,6 +545,7 @@ fn lists_children_before_parents_across_branches() {
         &HistoryFilter::default(),
         0,
         50,
+        &CancelToken::new(),
     )
     .unwrap();
     let position = |oid: &str| commits.iter().position(|c| c.oid == oid);
@@ -643,4 +673,18 @@ fn head_subject(repo: &TestRepo) -> String {
         .stdout_str()
         .trim()
         .to_owned()
+}
+
+#[test]
+fn cancelled_search_stops() {
+    let repo = repo_with_history(3);
+    let filter = HistoryFilter {
+        query: "commit".into(),
+        search_in: SearchField::Content,
+        ..Default::default()
+    };
+    let cancel = CancelToken::new();
+    cancel.cancel();
+    let result = log::list(repo.git_handle(), repo.path(), &filter, 0, 50, &cancel);
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::Cancelled);
 }

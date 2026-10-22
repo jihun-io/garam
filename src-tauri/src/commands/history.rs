@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::Arc;
 
 use garam_git::commit::HeadCommit;
 use garam_git::compare::{self, CompareMode, Comparison, LostCommit};
@@ -7,30 +8,47 @@ use garam_git::log::{
     self, CherryPickOutcome, CommitDetail, CommitFile, CommitSummary, HistoryFilter,
     HistoryMarkers, ResetMode, Signature,
 };
-use garam_git::{ChangeKind, Git, blob, tag};
+use garam_git::{ChangeKind, Git, blob, commit_graph, tag};
+use tauri::State;
 
 use super::changes::{ImageVersions, data_url};
 use crate::error::{AppError, AppErrorKind, AppResult, blocking};
+use crate::operations::Operations;
 
-/// A page of the history `filter` selects, newest first.
+/// A page of the history `filter` selects, newest first. Cancel with
+/// `operation_cancel` using the same `operation_id`, for a search the user
+/// replaced before it finished.
 #[tauri::command]
 #[specta::specta]
 pub async fn history_list(
+    operations: State<'_, Arc<Operations>>,
+    operation_id: String,
     repo: String,
     filter: HistoryFilter,
     skip: u32,
     limit: u32,
 ) -> AppResult<Vec<CommitSummary>> {
+    let operations = Arc::clone(&operations);
     blocking(move || {
+        let guard = operations.start(operation_id);
         Ok(log::list(
             &Git::locate()?,
             Path::new(&repo),
             &filter,
             skip,
             limit,
+            &guard.token,
         )?)
     })
     .await
+}
+
+/// Writes git's commit-graph file if the repository has none, so history
+/// pages of a large repository load quickly. Returns whether it wrote one.
+#[tauri::command]
+#[specta::specta]
+pub async fn history_prepare(repo: String) -> AppResult<bool> {
+    blocking(move || Ok(commit_graph::ensure(&Git::locate()?, Path::new(&repo))?)).await
 }
 
 /// Refs, unpushed and incoming commits, shown alongside the history.

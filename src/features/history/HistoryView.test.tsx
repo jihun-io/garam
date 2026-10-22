@@ -52,6 +52,7 @@ vi.mock("../../ipc/bindings", () => ({
     compareFileDiff: vi.fn(),
     compareImages: vi.fn(),
     lostCommits: vi.fn(),
+    operationCancel: vi.fn(),
   },
 }));
 
@@ -206,7 +207,13 @@ describe("HistoryView", () => {
     setup();
     const list = await screen.findByRole("listbox", { name: "Commits" });
     expect(await within(list).findAllByRole("option")).toHaveLength(3);
-    expect(commands.historyList).toHaveBeenCalledWith("/repo", DEFAULT_FILTER, 0, 100);
+    expect(commands.historyList).toHaveBeenCalledWith(
+      expect.any(String),
+      "/repo",
+      DEFAULT_FILTER,
+      0,
+      100,
+    );
     // Fewer than a page: nothing more to load.
     expect(commands.historyList).toHaveBeenCalledTimes(1);
 
@@ -326,6 +333,7 @@ describe("HistoryView", () => {
     await user.type(search, "number 3");
     await waitFor(() =>
       expect(commands.historyList).toHaveBeenLastCalledWith(
+        expect.any(String),
         "/repo",
         { ...DEFAULT_FILTER, query: "number 3" },
         0,
@@ -334,7 +342,7 @@ describe("HistoryView", () => {
     );
     // Typing runs one search, not one per keystroke.
     expect(
-      vi.mocked(commands.historyList).mock.calls.filter(([, f]) => f.query !== ""),
+      vi.mocked(commands.historyList).mock.calls.filter(([, , f]) => f.query !== ""),
     ).toHaveLength(1);
     const list = screen.getByRole("listbox", { name: "Commits" });
     await waitFor(() => expect(within(list).getAllByRole("option")).toHaveLength(1));
@@ -369,6 +377,7 @@ describe("HistoryView", () => {
 
     await waitFor(() =>
       expect(commands.historyList).toHaveBeenLastCalledWith(
+        expect.any(String),
         "/repo",
         {
           scope: { kind: "ref", refname: "refs/remotes/origin/main" },
@@ -390,6 +399,32 @@ describe("HistoryView", () => {
     expect(within(panel).getByRole("textbox", { name: "Path" })).toHaveValue("");
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(commands.historyList).toHaveBeenCalledTimes(calls);
+  });
+
+  it("stops a slow search when the search changes", async () => {
+    const user = userEvent.setup();
+    setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+    // The first search never finishes, like a code search in a huge history.
+    vi.mocked(commands.historyList).mockReturnValue(new Promise(() => {}));
+    const search = screen.getByRole("searchbox", { name: "Search commits" });
+    await user.type(search, "slow");
+    await waitFor(() =>
+      expect(commands.historyList).toHaveBeenLastCalledWith(
+        expect.any(String),
+        "/repo",
+        { ...DEFAULT_FILTER, query: "slow" },
+        0,
+        100,
+      ),
+    );
+    const slowId = vi.mocked(commands.historyList).mock.lastCall![0];
+    expect(commands.operationCancel).not.toHaveBeenCalled();
+
+    vi.mocked(commands.historyList).mockResolvedValue(ok([commits[2]]));
+    await user.type(search, "er");
+    await waitFor(() => expect(commands.operationCancel).toHaveBeenCalledWith(slowId));
+    expect(vi.mocked(commands.historyList).mock.lastCall![0]).not.toBe(slowId);
   });
 
   it("offers to clear a search that finds nothing", async () => {

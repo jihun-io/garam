@@ -91,6 +91,7 @@ garam-git/src/
 ├── remote.rs      # fetch/pull/push/publish, 원격 저장소 정보
 ├── credential.rs  # askpass로 들어온 git·ssh 프롬프트 분류
 ├── log.rs         # 히스토리 페이지 조회, 커밋 상세·diff, revert
+├── commit_graph.rs # commit-graph 파일이 없으면 만들기 (대형 저장소 히스토리 속도)
 ├── stash.rs
 └── conflict.rs    # 충돌 상태 감지, ours/theirs 해결
 ```
@@ -167,6 +168,8 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - 프론트에서 받은 커밋 id는 16진수만 허용한다. `HEAD~1`이나 `-`로 시작하는 값이 옵션·리비전 식으로 해석되지 않게 하기 위해서다. 브랜치 시작점도 `-`로 시작하면 거부한다.
 - 히스토리 쿼리 키는 `["history", repo, ...]`로, 파일이 바뀔 때마다 무효화되는 `["repo", repo]` 아래에 두지 않는다. 목록 키에 HEAD 커밋 id를 넣어 HEAD가 움직일 때만 다시 불러오고, 커밋 상세와 diff는 바뀌지 않으므로 계속 캐시한다.
 - revert는 커밋을 만들므로 다른 index 쓰기와 같은 mutation scope에서 실행한다. 충돌하면 `revert_conflict`로 안내하고 해결은 M7에서 한다.
+- **commit-graph**: 저장소를 열면 `history_prepare`가 git의 commit-graph 파일(`.git/objects/info/commit-graph`)이 없을 때 한 번 만든다(`git commit-graph write --reachable`, `commit_graph.rs`). 이 파일이 없으면 `--topo-order`가 첫 커밋을 내기 전에 모든 커밋을 읽어서, 커밋 50만 개 저장소에서 페이지마다 약 1.5초가 걸린다(있으면 약 20ms). clone은 이 파일을 만들지 않고 `git gc`도 돌 때만 만든다. 캐시일 뿐이라 내용은 바뀌지 않는다. 이미 있으면(분리된 chain 포함) 건드리지 않고, `core.commitGraph=false`면 만들지 않는다. 경로 필터를 빠르게 하는 changed-path 블룸 필터(`--changed-paths`)는 만드는 데 약 10배가 걸려서 쓰지 않는다.
+- **검색 취소**: 검색어나 필터를 바꾸면 이전 페이지 요청은 더 필요 없다. `history_list`는 프론트가 만든 `operationId`를 받고, TanStack Query가 그 쿼리를 중단(`signal`)하면 `operation_cancel`로 git 프로세스를 끝낸다. 코드 내용 검색(`-S`)은 커밋 50만 개에서 20초 넘게 걸리기 때문이다.
 
 ### 2.9 충돌 해결
 
@@ -201,7 +204,7 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - 프론트↔Rust 통신은 **Tauri 명령(`invoke`)** 으로 한다. 명령 이름은 `도메인_동작`(예: `status_get`, `branch_create`).
 - **타입 공유**: `tauri-specta`로 Rust 타입에서 TypeScript 바인딩을 자동 생성한다. 생성 파일은 `src/ipc/bindings.ts`이며 직접 수정하지 않는다. 디버그 실행 시와 `pnpm bindings`(= `export_bindings` 테스트)에서 다시 만들어지고, CI는 커밋된 파일이 최신인지 검사한다. 프론트는 `src/ipc/index.ts`의 `unwrap()`으로 결과를 값 또는 `CommandError`로 바꿔 TanStack Query에 넘긴다.
 - **장시간 작업**(clone, fetch, pull, push): 진행률과 자격 증명 프롬프트를 `tauri::ipc::Channel<RemoteEvent>`로 스트리밍하고, 프론트가 만든 작업 ID로 취소할 수 있게 한다.
-- **저장소 변경 감지**: Rust에서 `notify`로 작업 트리와 `.git`을 감시하고, 디바운스(약 200ms)한 뒤 `repo-changed` 이벤트를 보낸다. 프론트는 해당 쿼리를 invalidate한다. 감시는 창(label)마다 따로 두고, 창이 닫히면 멈춘다.
+- **저장소 변경 감지**: Rust에서 `notify`로 작업 트리와 `.git`을 감시하고, 디바운스(약 200ms)한 뒤 `repo-changed` 이벤트를 보낸다. 프론트는 해당 쿼리를 invalidate한다. 감시는 창(label)마다 따로 두고, 창이 닫히면 멈춘다. 디바운서의 파일 ID 캐시는 쓰지 않는다(`NoCache`). 이름 변경 이벤트를 짝짓는 데만 쓰이는데, macOS·Windows에서는 감시를 시작할 때 저장소의 모든 파일을 훑고 경로를 메모리에 들고 있기 때문이다.
 - **여러 창**: 창마다 보여 주는 저장소는 Rust의 `RepoWindows`(창 label → 저장소 경로)가 기억한다(`src-tauri/src/windows.rs`). `repo_list`·`repo_select`는 호출한 창 기준으로 `selected`를 돌려주고 바꾼다. 처음 뜬 창은 마지막으로 연 저장소(`repositories.json`의 `selected`)를 이어받는다. 새 창은 `window_open`이 첫 창 설정(`tauri.conf.json`)을 복사해 `repo-<n>` label로 만들고, 같은 저장소가 이미 열려 있으면 `window_focus_repo`처럼 그 창을 앞으로 가져온다. 설정은 저장소가 없는 `settings` 창 하나에 띄운다(`window_open_settings`). 페이지는 창 label을 보고 저장소 화면 대신 설정 화면만 그린다(`src/app/SettingsApp.tsx`). 권한(`capabilities/default.json`)은 `main`, `repo-*`, `settings` 창에 준다. 각 창은 웹뷰가 따로라 쿼리 캐시도 따로이므로, 설정은 `settings-changed` 이벤트로, 저장소 목록은 창 포커스 때 다시 읽어 맞춘다.
 - **취소**: 장시간 작업은 프론트가 만든 `operationId`로 `Operations` 레지스트리에 `CancelToken`을 등록하고, `operation_cancel`로 취소한다. `GitCommand::run_streaming`이 토큰을 확인해 git 프로세스를 종료한다.
 - **앱 상태 저장**: 저장소 목록은 앱 데이터 폴더의 `repositories.json`에 저장한다(`src-tauri/src/repositories.rs`). 임시 파일에 쓴 뒤 이름을 바꾸는 방식으로 원자적으로 저장하고, 손상된 파일은 덮어쓰지 않고 `.corrupt-<시각>.json`으로 옮겨 둔다.

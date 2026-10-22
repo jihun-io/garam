@@ -38,6 +38,7 @@ export const historyKeys = {
   comparison: (repo: string, base: string, target: string, mode: CompareMode) =>
     ["repo", repo, "comparison", base, target, mode] as const,
   lost: (repo: string) => ["repo", repo, "lost-commits"] as const,
+  prepare: (repo: string) => ["history", repo, "prepare"] as const,
   signature: (repo: string, oid: string) => ["history", repo, "commit", oid, "signature"] as const,
 };
 
@@ -56,7 +57,16 @@ export function useHistory(
 ) {
   return useInfiniteQuery({
     queryKey: historyKeys.list(repo, head ?? null, filter, refs ?? ""),
-    queryFn: ({ pageParam }) => unwrap(commands.historyList(repo, filter, pageParam, PAGE_SIZE)),
+    queryFn: ({ pageParam, signal }) => {
+      // A code search through a long history can take many seconds; stop
+      // git when this page is no longer wanted (the search changed).
+      const operationId = crypto.randomUUID();
+      const cancel = () => void commands.operationCancel(operationId);
+      signal.addEventListener("abort", cancel);
+      return unwrap(commands.historyList(operationId, repo, filter, pageParam, PAGE_SIZE)).finally(
+        () => signal.removeEventListener("abort", cancel),
+      );
+    },
     initialPageParam: 0,
     getNextPageParam: (last, pages) =>
       // A found hash can add one commit to the first page.
@@ -64,6 +74,20 @@ export function useHistory(
     enabled: head !== undefined && refs !== undefined,
     staleTime: Infinity,
     placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * Writes git's commit-graph file once if the repository has none. Without
+ * it every history page of a large repository walks all of its commits.
+ */
+export function useHistoryPrepare(repo: string | null) {
+  useQuery({
+    queryKey: historyKeys.prepare(repo ?? ""),
+    queryFn: () => unwrap(commands.historyPrepare(repo!)),
+    enabled: repo !== null,
+    staleTime: Infinity,
+    retry: false,
   });
 }
 
