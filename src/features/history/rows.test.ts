@@ -43,6 +43,16 @@ describe("buildRows", () => {
     ]);
   });
 
+  it("drops incoming commits the history already has, and repeated rows", () => {
+    // Right after a pull: the history moved, the markers not yet.
+    const pulled = [commit("m", ["b", "i"]), commit("i", ["a"]), ...own, own[0]];
+    const rows = buildRows({ ...base, own: pulled, changedFiles: 0, extras: true });
+    expect(rows.map((r) => r.id)).toEqual(["m", "i", "b", "s", "a"]);
+    expect(
+      buildRows({ ...base, own: pulled, changedFiles: 0, extras: false }).map((r) => r.id),
+    ).toEqual(["m", "i", "b", "a"]);
+  });
+
   it("lists only commits for a search or filter", () => {
     const rows = buildRows({ ...base, changedFiles: 2, extras: false });
     expect(rows.map((r) => r.id)).toEqual(["b", "a"]);
