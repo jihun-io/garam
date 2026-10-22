@@ -1278,6 +1278,7 @@ dependencies = [
  "base64 0.22.1",
  "garam-git",
  "garam-github",
+ "getrandom 0.3.4",
  "keyring",
  "notify-debouncer-full",
  "serde",

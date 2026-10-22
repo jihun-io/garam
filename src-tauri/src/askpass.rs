@@ -16,9 +16,7 @@
 //! token without showing anything.
 
 use std::collections::HashMap;
-use std::collections::hash_map::RandomState;
 use std::env;
-use std::hash::{BuildHasher, Hasher};
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{Ipv4Addr, TcpListener, TcpStream};
 use std::path::PathBuf;
@@ -211,7 +209,7 @@ impl Askpass {
     pub fn start() -> Self {
         let state = Arc::new(Mutex::new(State::default()));
         let server = env::current_exe()
-            .and_then(|program| Self::listen(&state, random_token()).map(|s| (program, s)))
+            .and_then(|program| Self::listen(&state, random_token()?).map(|s| (program, s)))
             .map(|(program, (port, token))| Server {
                 port,
                 token,
@@ -401,15 +399,11 @@ fn wait_for_answer(state: &Mutex<State>, request: &Request) -> Option<String> {
     answer
 }
 
-/// 128 random bits from the OS-seeded keys of `RandomState`, hex encoded.
-fn random_token() -> String {
-    (0..2)
-        .map(|i| {
-            let mut hasher = RandomState::new().build_hasher();
-            hasher.write_u32(i);
-            format!("{:016x}", hasher.finish())
-        })
-        .collect()
+/// 128 random bits from the OS, hex encoded.
+fn random_token() -> io::Result<String> {
+    let mut bytes = [0u8; 16];
+    getrandom::fill(&mut bytes).map_err(io::Error::other)?;
+    Ok(bytes.iter().map(|b| format!("{b:02x}")).collect())
 }
 
 #[cfg(test)]
@@ -533,8 +527,8 @@ mod tests {
 
     #[test]
     fn tokens_are_random() {
-        let a = random_token();
+        let a = random_token().unwrap();
         assert_eq!(a.len(), 32);
-        assert_ne!(a, random_token());
+        assert_ne!(a, random_token().unwrap());
     }
 }

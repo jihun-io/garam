@@ -184,7 +184,7 @@ pub fn switch(
         BranchKind::Local => git
             .command()
             .cwd(repo)
-            .args(["switch", "--no-guess", &target.name])
+            .args(["switch", "--no-guess", "--end-of-options", &target.name])
             .run(),
         BranchKind::Remote => {
             // Reuse a local branch of the same name instead of failing.
@@ -192,12 +192,12 @@ pub fn switch(
             if local_exists(git, repo, local)? {
                 git.command()
                     .cwd(repo)
-                    .args(["switch", "--no-guess", local])
+                    .args(["switch", "--no-guess", "--end-of-options", local])
                     .run()
             } else {
                 git.command()
                     .cwd(repo)
-                    .args(["switch", "--track", &target.name])
+                    .args(["switch", "--track", "--end-of-options", &target.name])
                     .run()
             }
         }
@@ -253,7 +253,7 @@ pub fn rename(git: &Git, repo: &Path, old: &str, new: &str) -> Result<(), GitErr
     validate_name(git, new)?;
     git.command()
         .cwd(repo)
-        .args(["branch", "--move", old, new])
+        .args(["branch", "--move", "--end-of-options", old, new])
         .run()?;
     Ok(())
 }
@@ -263,7 +263,12 @@ pub fn rename(git: &Git, repo: &Path, old: &str, new: &str) -> Result<(), GitErr
 pub fn delete(git: &Git, repo: &Path, name: &str, force: bool) -> Result<(), GitError> {
     git.command()
         .cwd(repo)
-        .args(["branch", if force { "-D" } else { "-d" }, name])
+        .args([
+            "branch",
+            if force { "-D" } else { "-d" },
+            "--end-of-options",
+            name,
+        ])
         .run()?;
     Ok(())
 }
@@ -298,7 +303,7 @@ pub fn merge(git: &Git, repo: &Path, branch: &str) -> Result<MergeOutcome, GitEr
     let output = git
         .command()
         .cwd(repo)
-        .args(["merge", "--no-edit", branch])
+        .args(["merge", "--no-edit", "--end-of-options", branch])
         .run()?;
     let text = output.stdout_str();
     Ok(if text.contains("Already up to date") {

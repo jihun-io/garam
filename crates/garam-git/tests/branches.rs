@@ -207,6 +207,48 @@ fn renames_and_deletes() {
 }
 
 #[test]
+fn branch_names_that_look_like_options_stay_names() {
+    // git refuses to create these, but a tampered repository can hold them.
+    let repo = repo_with_commit();
+    repo.write("dash.txt", "x\n");
+    repo.commit_all("dash work");
+    repo.git(["update-ref", "refs/heads/-D", "HEAD"]);
+    repo.git(["update-ref", "refs/heads/-q", "HEAD"]);
+    repo.git(["reset", "--hard", "HEAD~"]);
+
+    branch::switch(
+        repo.git_handle(),
+        repo.path(),
+        &find(&repo, "-D"),
+        SwitchMode::BringChanges,
+        Some("main"),
+    )
+    .unwrap();
+    assert_eq!(current(&repo).as_deref(), Some("-D"));
+    branch::switch(
+        repo.git_handle(),
+        repo.path(),
+        &find(&repo, "main"),
+        SwitchMode::BringChanges,
+        Some("-D"),
+    )
+    .unwrap();
+
+    assert_eq!(
+        branch::merge(repo.git_handle(), repo.path(), "-D").unwrap(),
+        MergeOutcome::FastForward
+    );
+    branch::rename(repo.git_handle(), repo.path(), "-D", "was-dash").unwrap();
+    branch::delete(repo.git_handle(), repo.path(), "-q", false).unwrap();
+    let names: Vec<_> = branch::list(repo.git_handle(), repo.path())
+        .unwrap()
+        .into_iter()
+        .map(|b| b.name)
+        .collect();
+    assert_eq!(names, ["main", "was-dash"]);
+}
+
+#[test]
 fn merges_with_each_outcome() {
     let repo = repo_with_commit();
     branch::create(repo.git_handle(), repo.path(), "ff", None).unwrap();
