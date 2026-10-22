@@ -19,7 +19,11 @@ type FakeItem = {
   setEnabled: ReturnType<typeof vi.fn>;
 };
 
-const built = vi.hoisted(() => ({ menu: null as { items: unknown[] } | null }));
+const built = vi.hoisted(() => ({
+  menu: null as { items: unknown[] } | null,
+  /** Holds `setAsAppMenu` back until resolved. */
+  installed: Promise.resolve(),
+}));
 
 vi.mock("@tauri-apps/api/menu", () => {
   const make = async (opts: object) => ({ ...opts, setEnabled: vi.fn(async () => {}) });
@@ -35,7 +39,7 @@ vi.mock("@tauri-apps/api/menu", () => {
     },
     Menu: {
       new: async (opts: { items: unknown[] }) => {
-        const menu = { ...opts, setAsAppMenu: vi.fn(async () => {}) };
+        const menu = { ...opts, setAsAppMenu: vi.fn(() => built.installed) };
         built.menu = menu;
         return menu;
       },
@@ -66,6 +70,7 @@ function OfferPush({ enabled }: { enabled: boolean }) {
 describe("menu bar", () => {
   beforeEach(() => {
     built.menu = null;
+    built.installed = Promise.resolve();
   });
 
   it("builds translated menus with shortcuts", async () => {
@@ -105,6 +110,25 @@ describe("menu bar", () => {
         <OfferPush enabled />
       </>,
     );
+    await vi.waitFor(() => expect(push.setEnabled).toHaveBeenLastCalledWith(true));
+  });
+
+  it("enables a command offered while the menu was being set up", async () => {
+    let install = () => {};
+    built.installed = new Promise((resolve) => (install = resolve));
+    const { rerender } = render(<AppMenu />);
+    await vi.waitFor(() => expect(built.menu).not.toBeNull());
+    const push = itemWithId(menuNamed("Repository"), "sync.push");
+    expect(push.enabled).toBe(false);
+
+    // A screen offers it after the item was made, before the menu is up.
+    rerender(
+      <>
+        <AppMenu />
+        <OfferPush enabled />
+      </>,
+    );
+    install();
     await vi.waitFor(() => expect(push.setEnabled).toHaveBeenLastCalledWith(true));
   });
 });

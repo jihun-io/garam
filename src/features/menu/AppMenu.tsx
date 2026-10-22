@@ -182,7 +182,9 @@ export function AppMenu() {
       .then(async (menu) => {
         if (disposed) return;
         await menu.setAsAppMenu();
-        for (const id of items.keys()) shown.set(id, isCommandEnabled(id));
+        // Screens may have offered commands while the items were being
+        // made, so apply every item's current state once instead of
+        // assuming it's what it was built with.
         unsubscribe = subscribeCommands(sync);
         sync();
       })
