@@ -21,8 +21,13 @@ describe("sanitizeBranchName", () => {
 describe("relativeTime", () => {
   const now = Date.UTC(2026, 0, 10);
   it("formats in the given language", () => {
-    expect(relativeTime(now / 1000 - 3 * 24 * 3600, "en", now)).toBe("3 days ago");
-    expect(relativeTime(now / 1000 - 3 * 24 * 3600, "ko", now)).toBe("3일 전");
-    expect(relativeTime(now / 1000 - 10, "en", now)).toBe("this minute");
+    expect(relativeTime(now / 1000 - 3 * 24 * 3600, "en", "just now", now)).toBe("3 days ago");
+    expect(relativeTime(now / 1000 - 3 * 24 * 3600, "ko", "방금 전", now)).toBe("3일 전");
+    expect(relativeTime(now / 1000 - 120, "ko", "방금 전", now)).toBe("2분 전");
+  });
+
+  it('says just now under a minute, instead of Intl\'s "this minute"', () => {
+    expect(relativeTime(now / 1000 - 10, "en", "just now", now)).toBe("just now");
+    expect(relativeTime(now / 1000 - 59, "ko", "방금 전", now)).toBe("방금 전");
   });
 });

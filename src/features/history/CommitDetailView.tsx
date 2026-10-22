@@ -7,7 +7,7 @@ import { Loading } from "../../components/ui/Loading";
 import { Tooltip } from "../../components/ui/Tooltip";
 import { toAppError, type ChangeKind, type CommitDetail, type CommitFile } from "../../ipc";
 import { shortHash } from "../../lib/hash";
-import { relativeTime } from "../../lib/time";
+import { useRelativeTime } from "../../lib/time";
 import diffStyles from "../changes/DiffView.module.css";
 import { TextDiff } from "../changes/DiffView";
 import { splitPath, type DisplayKind } from "../changes/fileState";
@@ -63,6 +63,7 @@ function Loaded({
   onCopyHash: (oid: string) => void;
 }) {
   const { t, i18n } = useTranslation(["history", "changes"]);
+  const relativeTime = useRelativeTime();
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const selected = commit.files.find((f) => f.path === selectedPath) ?? commit.files[0] ?? null;
   const date = new Date(commit.authoredAt * 1000);
@@ -78,9 +79,7 @@ function Loaded({
             <span>{commit.authorName}</span>
           </Tooltip>
           <Tooltip content={date.toLocaleString(i18n.language)}>
-            <time dateTime={date.toISOString()}>
-              {relativeTime(commit.authoredAt, i18n.language)}
-            </time>
+            <time dateTime={date.toISOString()}>{relativeTime(commit.authoredAt)}</time>
           </Tooltip>
           {commit.committerName !== commit.authorName && (
             <span>{t("detail.committedBy", { name: commit.committerName })}</span>

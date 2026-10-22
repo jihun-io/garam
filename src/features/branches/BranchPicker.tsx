@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../components/ui/Button";
 import menu from "../../components/ui/Menu.module.css";
 import type { Branch, BranchStatus } from "../../ipc";
-import { relativeTime } from "../../lib/time";
+import { useRelativeTime } from "../../lib/time";
 import { useBranches } from "./api";
 import { useBranchDialog } from "./branchDialogStore";
 import { CommitCounts } from "./CommitCounts";
@@ -25,7 +25,8 @@ export function BranchPicker({
   status: BranchStatus;
   onChoose: (branch: Branch) => void;
 }) {
-  const { t, i18n } = useTranslation("branches");
+  const { t } = useTranslation("branches");
+  const relativeTime = useRelativeTime();
   const branches = useBranches(repo);
   const openDialog = useBranchDialog((s) => s.open);
   const [open, setOpen] = useState(false);
@@ -90,7 +91,7 @@ export function BranchPicker({
             <span className={styles.itemMeta}>
               {branch.upstreamGone && <span className={styles.gone}>{t("picker.gone")}</span>}
               <CommitCounts ahead={branch.ahead} behind={branch.behind} />
-              <span>{relativeTime(branch.committedAt, i18n.language)}</span>
+              <span>{relativeTime(branch.committedAt)}</span>
             </span>
           </button>
         </ContextMenu.Trigger>

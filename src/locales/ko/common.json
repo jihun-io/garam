@@ -14,5 +14,8 @@
   },
   "layout": {
     "resizeSidebar": "사이드바 크기 조절"
+  },
+  "time": {
+    "justNow": "방금 전"
   }
 }

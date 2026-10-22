@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import menu from "../../components/ui/Menu.module.css";
 import { toAppError } from "../../ipc";
 import { shortcutFor, useCommand } from "../../lib/commands";
-import { relativeTime } from "../../lib/time";
+import { useRelativeTime } from "../../lib/time";
 import { useBranches } from "../branches/api";
 import { CommitCounts } from "../branches/CommitCounts";
 import { useStatus } from "../changes/api";
@@ -34,7 +34,8 @@ function useTick(ms: number) {
  * the branch, plus a menu for the others. Hidden without remotes.
  */
 export function SyncButton({ repo }: { repo: string }) {
-  const { t, i18n } = useTranslation("sync");
+  const { t } = useTranslation("sync");
+  const relativeTime = useRelativeTime();
   const status = useStatus(repo);
   const info = useRemoteInfo(repo);
   const branches = useBranches(repo);
@@ -118,7 +119,7 @@ export function SyncButton({ repo }: { repo: string }) {
         ? t("unbornHint")
         : t("publishHint", { remote: remote ?? "" })
       : info.data.lastFetchedAt
-        ? t("lastFetched", { time: relativeTime(info.data.lastFetchedAt, i18n.language) })
+        ? t("lastFetched", { time: relativeTime(info.data.lastFetchedAt) })
         : t("neverFetched");
 
   return (

@@ -14,5 +14,8 @@
   },
   "layout": {
     "resizeSidebar": "Resize sidebar"
+  },
+  "time": {
+    "justNow": "just now"
   }
 }

@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import menu from "../../components/ui/Menu.module.css";
 import { Tooltip } from "../../components/ui/Tooltip";
 import type { CommitSummary } from "../../ipc";
-import { relativeTime } from "../../lib/time";
+import { useRelativeTime } from "../../lib/time";
 import styles from "./History.module.css";
 
 const ROW_HEIGHT = 48;
@@ -34,7 +34,8 @@ export function CommitList({
   loadMore: () => void;
   actions: CommitActions;
 }) {
-  const { t, i18n } = useTranslation("history");
+  const { t } = useTranslation("history");
+  const relativeTime = useRelativeTime();
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: commits.length + (hasMore ? 1 : 0),
@@ -97,7 +98,7 @@ export function CommitList({
                     <span className={styles.summary}>{commit.summary}</span>
                   </Tooltip>
                   <span className={styles.meta}>
-                    {commit.authorName} · {relativeTime(commit.authoredAt, i18n.language)}
+                    {commit.authorName} · {relativeTime(commit.authoredAt)}
                   </span>
                 </div>
               </ContextMenu.Trigger>
