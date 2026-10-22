@@ -90,6 +90,7 @@ UI 개선은 `docs/UI.md` 계획(1~6단계)을 따른다.
 - [x] 화면별 다듬기 (로딩·빈 화면, 알림, 히스토리·충돌 화면) — UI 5단계
 - [x] 접근성 점검 — UI 6단계 (실제 VoiceOver·NVDA 확인은 남음)
 - [ ] 대형 저장소 성능 점검 (SPEC 성공 기준)
+- [x] 앱 아이콘 자산: macOS Icon Composer/ICNS, Windows ICO, Linux PNG 및 재생성 스크립트
 - [ ] macOS 서명·공증, Windows 서명, Linux 패키지 (AppImage, deb)
 - [ ] 자동 업데이트
 - [ ] README (영어·한국어), 기여 가이드, 번역 기여 가이드
