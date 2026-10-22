@@ -11,8 +11,10 @@
     "rename": "이름 바꾸기…",
     "delete": "삭제…",
     "mergeThis": "{{branch}}에 병합…",
-    "ahead": "보낼 커밋 {{count}}개",
-    "behind": "받을 커밋 {{count}}개",
+    "ahead_one": "보낼 커밋 {{count}}개",
+    "ahead_other": "보낼 커밋 {{count}}개",
+    "behind_one": "받을 커밋 {{count}}개",
+    "behind_other": "받을 커밋 {{count}}개",
     "gone": "원격에서 삭제됨"
   },
   "switch": {

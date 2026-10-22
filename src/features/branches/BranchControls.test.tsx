@@ -93,7 +93,7 @@ describe("BranchControls", () => {
         .getAllByRole("button")
         .map((b) => b.textContent),
     ).toEqual([expect.stringContaining("main"), expect.stringContaining("feature")]);
-    expect(within(local).getByTitle("2 to push")).toBeVisible();
+    expect(within(local).getByText("2 commits to push")).toBeVisible();
     const remote = screen.getByRole("region", { name: "Remote branches" });
     expect(within(remote).getByText("origin/review")).toBeVisible();
     expect(within(remote).queryByText("origin/main")).not.toBeInTheDocument();

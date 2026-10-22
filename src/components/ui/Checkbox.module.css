@@ -11,7 +11,6 @@
   border: 1.5px solid var(--color-ink-faint);
   border-radius: 3px;
   background: var(--color-surface);
-  cursor: pointer;
 }
 
 .checkbox::before {
@@ -40,7 +39,6 @@
 
 .checkbox:disabled {
   opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .checkbox:focus-visible {

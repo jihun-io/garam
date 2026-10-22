@@ -3,6 +3,7 @@
     "title_one": "변경된 파일 {{count}}개",
     "title_other": "변경된 파일 {{count}}개",
     "selectAll": "모든 파일을 커밋에 포함",
+    "more": "다른 작업",
     "include": "커밋에 {{path}} 포함",
     "discardAll": "모든 변경 취소…"
   },

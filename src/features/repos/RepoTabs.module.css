@@ -19,7 +19,6 @@
   background: none;
   color: var(--color-ink-muted);
   font-weight: 550;
-  cursor: pointer;
 }
 
 .tab:hover {

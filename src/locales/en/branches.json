@@ -11,8 +11,10 @@
     "rename": "Rename…",
     "delete": "Delete…",
     "mergeThis": "Merge into {{branch}}…",
-    "ahead": "{{count}} to push",
-    "behind": "{{count}} to pull",
+    "ahead_one": "{{count}} commit to push",
+    "ahead_other": "{{count}} commits to push",
+    "behind_one": "{{count}} commit to pull",
+    "behind_other": "{{count}} commits to pull",
     "gone": "Deleted on remote"
   },
   "switch": {

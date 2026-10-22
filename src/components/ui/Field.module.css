@@ -23,11 +23,6 @@
   user-select: text;
 }
 
-.input:focus-visible {
-  outline-offset: 0;
-  border-color: var(--color-focus);
-}
-
 .hint {
   color: var(--color-ink-muted);
   font-size: var(--text-sm);

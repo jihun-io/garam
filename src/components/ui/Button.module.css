@@ -9,12 +9,10 @@
   border-radius: var(--radius-md);
   font-weight: 550;
   white-space: nowrap;
-  cursor: pointer;
 }
 
 .button:disabled {
   opacity: 0.55;
-  cursor: not-allowed;
 }
 
 .primary {

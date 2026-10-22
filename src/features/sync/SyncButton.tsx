@@ -6,6 +6,7 @@ import menu from "../../components/ui/Menu.module.css";
 import { toAppError } from "../../ipc";
 import { relativeTime } from "../../lib/time";
 import { useBranches } from "../branches/api";
+import { CommitCounts } from "../branches/CommitCounts";
 import { useStatus } from "../changes/api";
 import { useNotify } from "../notify/notifyStore";
 import { useRemoteInfo, useSyncActions, type SyncResult } from "./api";
@@ -13,13 +14,8 @@ import { hasUpstream, primaryAction } from "./primaryAction";
 import styles from "./SyncButton.module.css";
 import { useSyncStore, type SyncAction } from "./syncStore";
 import { useBackgroundFetch } from "./useBackgroundFetch";
-
-const ICONS: Record<SyncAction, string> = {
-  fetch: "⟳",
-  pull: "↓",
-  push: "↑",
-  publish: "⇡",
-};
+import { Icon } from "../../components/Icon";
+import { Tooltip } from "../../components/ui/Tooltip";
 
 /** Re-renders every `ms` so relative times stay current. */
 function useTick(ms: number) {
@@ -114,35 +110,32 @@ export function SyncButton({ repo }: { repo: string }) {
             aria-valuenow={percent}
           />
         )}
-        <span className={styles.icon} aria-hidden>
-          {ICONS[shown]}
-        </span>
+        <Icon name={shown} className={styles.icon} />
         <span className={styles.text}>
           <span className={styles.label}>{label}</span>
           <span className={styles.detail}>{detail}</span>
         </span>
-        {tracked && (branch.behind > 0 || branch.ahead > 0) && (
+        {tracked && (
           <span className={styles.counts}>
-            {branch.behind > 0 && (
-              <span title={t("behind", { count: branch.behind })}>↓{branch.behind}</span>
-            )}
-            {branch.ahead > 0 && (
-              <span title={t("ahead", { count: branch.ahead })}>↑{branch.ahead}</span>
-            )}
+            <CommitCounts ahead={branch.ahead} behind={branch.behind} />
           </span>
         )}
       </button>
       {busy ? (
-        <button type="button" className={styles.side} onClick={cancel} aria-label={t("cancel")}>
-          ✕
-        </button>
+        <Tooltip content={t("cancel")}>
+          <button type="button" className={styles.side} onClick={cancel} aria-label={t("cancel")}>
+            <Icon name="close" size={14} />
+          </button>
+        </Tooltip>
       ) : (
         <DropdownMenu.Root>
-          <DropdownMenu.Trigger asChild>
-            <button type="button" className={styles.side} aria-label={t("more")}>
-              ▾
-            </button>
-          </DropdownMenu.Trigger>
+          <Tooltip content={t("more")}>
+            <DropdownMenu.Trigger asChild>
+              <button type="button" className={styles.side} aria-label={t("more")}>
+                <Icon name="dropdown" size={12} />
+              </button>
+            </DropdownMenu.Trigger>
+          </Tooltip>
           <DropdownMenu.Portal>
             <DropdownMenu.Content className={menu.content} align="end" sideOffset={4}>
               <DropdownMenu.Item

@@ -9,7 +9,6 @@
   border-radius: var(--radius-md);
   background: none;
   font-weight: 650;
-  cursor: pointer;
 }
 
 .trigger:hover,
@@ -65,7 +64,6 @@
   border-radius: var(--radius-sm);
   background: none;
   text-align: start;
-  cursor: pointer;
 }
 
 .item:hover,

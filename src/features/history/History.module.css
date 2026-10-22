@@ -103,7 +103,6 @@
   color: var(--color-ink);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  cursor: pointer;
 }
 
 .hash:hover {

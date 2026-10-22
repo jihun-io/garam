@@ -3,6 +3,7 @@
     "title_one": "{{count}} changed file",
     "title_other": "{{count}} changed files",
     "selectAll": "Include all files in the commit",
+    "more": "More actions",
     "include": "Include {{path}} in the commit",
     "discardAll": "Discard all changes…"
   },

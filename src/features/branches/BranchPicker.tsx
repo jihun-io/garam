@@ -8,7 +8,9 @@ import type { Branch, BranchStatus } from "../../ipc";
 import { relativeTime } from "../../lib/time";
 import { useBranches } from "./api";
 import { useBranchDialog } from "./branchDialogStore";
+import { CommitCounts } from "./CommitCounts";
 import styles from "./branches.module.css";
+import { Icon } from "../../components/Icon";
 
 /** Toolbar button showing the current branch, with a searchable list. */
 export function BranchPicker({
@@ -83,12 +85,7 @@ export function BranchPicker({
             <span className={styles.itemName}>{branch.name}</span>
             <span className={styles.itemMeta}>
               {branch.upstreamGone && <span className={styles.gone}>{t("picker.gone")}</span>}
-              {branch.ahead > 0 && (
-                <span title={t("picker.ahead", { count: branch.ahead })}>↑{branch.ahead}</span>
-              )}
-              {branch.behind > 0 && (
-                <span title={t("picker.behind", { count: branch.behind })}>↓{branch.behind}</span>
-              )}
+              <CommitCounts ahead={branch.ahead} behind={branch.behind} />
               <span>{relativeTime(branch.committedAt, i18n.language)}</span>
             </span>
           </button>
@@ -138,27 +135,9 @@ export function BranchPicker({
           className={styles.trigger}
           aria-label={t("picker.label", { name: label })}
         >
-          <svg
-            width="12"
-            height="14"
-            viewBox="0 0 12 14"
-            aria-hidden="true"
-            className={styles.icon}
-          >
-            <circle cx="3" cy="2.5" r="1.6" fill="none" stroke="currentColor" strokeWidth="1.3" />
-            <circle cx="3" cy="11.5" r="1.6" fill="none" stroke="currentColor" strokeWidth="1.3" />
-            <circle cx="9" cy="4.5" r="1.6" fill="none" stroke="currentColor" strokeWidth="1.3" />
-            <path
-              d="M3 4.1v5.8M9 6.1c0 2.4-6 1.6-6 3.8"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.3"
-            />
-          </svg>
+          <Icon name="branch" className={styles.icon} />
           <span className={styles.triggerName}>{label}</span>
-          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-            <path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
+          <Icon name="dropdown" size={12} />
         </button>
       </Popover.Trigger>
       <Popover.Portal>

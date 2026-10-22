@@ -51,42 +51,8 @@
   --radius-md: 6px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --color-ink: #e1e8e4;
-    --color-ink-muted: #a3b0aa;
-    --color-ink-faint: #6f7d78;
-    --color-bg: #141a1d;
-    --color-surface: #1c2428;
-    --color-line: #2c373c;
-    --color-river: #5db3a0;
-    --color-river-strong: #84cbbb;
-    --color-link: #7fb1de;
-    --color-danger: #e58a72;
-    --color-danger-bg: #3a2420;
-    --color-focus: #5db3a0;
-    --color-hover: rgba(225, 232, 228, 0.07);
-    --color-added-ink: #7fcf92;
-    --color-added-bg: #1d3325;
-    --color-added-strong: #285a36;
-    --color-deleted-bg: #3a2420;
-    --color-deleted-strong: #5f3229;
-    --color-modified-ink: #e2b25c;
-    --color-hunk-bg: #1f2b33;
-    --color-added-ink: #7fcf92;
-    --color-added-bg: #1d3325;
-    --color-added-strong: #285a36;
-    --color-deleted-bg: #3a2420;
-    --color-deleted-strong: #5f3229;
-    --color-modified-ink: #e2b25c;
-    --color-hunk-bg: #1f2b33;
-    --color-selected: rgba(93, 179, 160, 0.16);
-    --color-scrim: rgba(0, 0, 0, 0.5);
-    --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
-  }
-}
-
+/* Dark theme. `src/lib/theme.ts` sets `data-theme` on <html>, also when
+   following the system, so this is the only place dark colors live. */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --color-ink: #e1e8e4;
@@ -102,6 +68,13 @@
   --color-danger-bg: #3a2420;
   --color-focus: #5db3a0;
   --color-hover: rgba(225, 232, 228, 0.07);
+  --color-added-ink: #7fcf92;
+  --color-added-bg: #1d3325;
+  --color-added-strong: #285a36;
+  --color-deleted-bg: #3a2420;
+  --color-deleted-strong: #5f3229;
+  --color-modified-ink: #e2b25c;
+  --color-hunk-bg: #1f2b33;
   --color-selected: rgba(93, 179, 160, 0.16);
   --color-scrim: rgba(0, 0, 0, 0.5);
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);

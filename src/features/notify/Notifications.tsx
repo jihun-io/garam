@@ -5,6 +5,8 @@ import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
 import styles from "./Notifications.module.css";
 import { useNotify } from "./notifyStore";
+import { Icon } from "../../components/Icon";
+import { Tooltip } from "../../components/ui/Tooltip";
 
 const INFO_TIMEOUT_MS = 4000;
 
@@ -29,9 +31,11 @@ export function Notifications() {
           {notice.message}
         </p>
       )}
-      <Button variant="ghost" onClick={dismiss} aria-label={t("notify.dismiss")}>
-        ✕
-      </Button>
+      <Tooltip content={t("notify.dismiss")}>
+        <Button variant="ghost" onClick={dismiss} aria-label={t("notify.dismiss")}>
+          <Icon name="close" />
+        </Button>
+      </Tooltip>
     </div>
   );
 }

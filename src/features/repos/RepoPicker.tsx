@@ -10,6 +10,7 @@ import { useNotify } from "../notify/notifyStore";
 import { useRepositoryActions } from "./api";
 import { useRepoDialog } from "./dialogStore";
 import styles from "./RepoPicker.module.css";
+import { Icon } from "../../components/Icon";
 
 export function RepoPicker({
   repositories,
@@ -73,9 +74,7 @@ export function RepoPicker({
           aria-label={selected ? t("picker.label", { name: selected.name }) : undefined}
         >
           <span className={styles.triggerName}>{selected?.name ?? t("picker.placeholder")}</span>
-          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-            <path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
+          <Icon name="dropdown" size={12} />
         </button>
       </Popover.Trigger>
       <Popover.Portal>

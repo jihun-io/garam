@@ -15,10 +15,6 @@
   "neverFetched": "Never fetched",
   "publishHint": "Push this branch to {{remote}} for the first time",
   "unbornHint": "Make a commit before publishing",
-  "ahead_one": "{{count}} commit to push",
-  "ahead_other": "{{count}} commits to push",
-  "behind_one": "{{count}} commit to pull",
-  "behind_other": "{{count}} commits to pull",
   "cancel": "Cancel",
   "more": "More sync actions",
   "menu": {

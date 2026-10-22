@@ -7,6 +7,7 @@
 - `docs/SPEC.md`: 제품 범위, MVP 기능, 화면 구성
 - `docs/ARCHITECTURE.md`: 구조, Git 실행 규칙, IPC, 오류·i18n 규칙
 - `docs/ROADMAP.md`: 마일스톤과 현재 진행 상황. 작업을 끝내면 체크박스를 갱신한다
+- `docs/UI.md`: UI 규칙(커서, 아이콘, 툴팁, 단축키 등)과 UI 개선 계획. 화면을 만들거나 고칠 때 따른다
 
 ## 구조
 

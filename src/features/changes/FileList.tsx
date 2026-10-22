@@ -9,18 +9,12 @@ import { commands, type FileChange } from "../../ipc";
 import { joinPath } from "../../lib/paths";
 import { currentPlatform } from "../../lib/platform";
 import { useNotify } from "../notify/notifyStore";
-import { checkState, displayKind, splitPath, type DisplayKind } from "./fileState";
+import { checkState, displayKind, splitPath } from "./fileState";
 import styles from "./FileList.module.css";
+import { Icon } from "../../components/Icon";
+import { Tooltip } from "../../components/ui/Tooltip";
 
 const ROW_HEIGHT = 28;
-
-const KIND_GLYPH: Record<DisplayKind, string> = {
-  added: "+",
-  modified: "•",
-  deleted: "−",
-  renamed: "→",
-  conflicted: "!",
-};
 
 export function FileList({
   repo,
@@ -111,13 +105,11 @@ export function FileList({
                     {dir && <span className={styles.dir}>{dir}</span>}
                     <span className={styles.name}>{name}</span>
                   </span>
-                  <span
-                    className={`${styles.kind} ${styles[kind]}`}
-                    title={t(`kind.${kind}`)}
-                    aria-label={t(`kind.${kind}`)}
-                  >
-                    {KIND_GLYPH[kind]}
-                  </span>
+                  <Tooltip content={t(`kind.${kind}`)} side="right">
+                    <span className={`${styles.kind} ${styles[kind]}`}>
+                      <Icon name={kind} label={t(`kind.${kind}`)} />
+                    </span>
+                  </Tooltip>
                 </div>
               </ContextMenu.Trigger>
               <ContextMenu.Portal>

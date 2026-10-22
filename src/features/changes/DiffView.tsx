@@ -16,6 +16,7 @@ import { useChangeActions, useDiff, useImages } from "./api";
 import { displayKind, isImage } from "./fileState";
 import styles from "./DiffView.module.css";
 import { useNotify } from "../notify/notifyStore";
+import { Icon } from "../../components/Icon";
 
 type Row = { type: "hunk"; hunk: Hunk } | { type: "line"; line: DiffLine };
 
@@ -326,9 +327,8 @@ function Line({ line, selection }: { line: DiffLine; selection?: Selection | "sp
       <span className={styles.text}>
         {line.text}
         {line.noNewline && (
-          <span className={styles.noNewline} aria-hidden="true">
-            {" "}
-            ⊘
+          <span className={styles.noNewline}>
+            <Icon name="noNewline" size={12} />
           </span>
         )}
       </span>

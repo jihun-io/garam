@@ -17,6 +17,8 @@ import { DiffView } from "./DiffView";
 import { DiscardDialog } from "./DiscardDialog";
 import { FileList } from "./FileList";
 import { checkState, combinedCheckState } from "./fileState";
+import { Icon } from "../../components/Icon";
+import { Tooltip } from "../../components/ui/Tooltip";
 
 /**
  * Changed files, the selected file's diff, and the commit form. `tabs` is
@@ -71,11 +73,13 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
           />
           <span className={styles.listTitle}>{t("list.title", { count: files.length })}</span>
           <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild disabled={files.length === 0}>
-              <button type="button" className={styles.more} aria-label={t("list.discardAll")}>
-                ⋯
-              </button>
-            </DropdownMenu.Trigger>
+            <Tooltip content={t("list.more")}>
+              <DropdownMenu.Trigger asChild disabled={files.length === 0}>
+                <button type="button" className={styles.more} aria-label={t("list.more")}>
+                  <Icon name="more" size={20} />
+                </button>
+              </DropdownMenu.Trigger>
+            </Tooltip>
             <DropdownMenu.Portal>
               <DropdownMenu.Content className={menu.content} align="end" sideOffset={4}>
                 <DropdownMenu.Item className={menu.item} onSelect={() => setDiscarding(files)}>

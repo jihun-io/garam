@@ -137,7 +137,7 @@ describe("ChangesView", () => {
   it("asks before discarding everything", async () => {
     const user = userEvent.setup();
     setup([change("a.txt", null, "modified")]);
-    await user.click(await screen.findByRole("button", { name: "Discard all changes…" }));
+    await user.click(await screen.findByRole("button", { name: "More actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Discard all changes…" }));
 
     const dialog = await screen.findByRole("dialog", { name: "Discard changes?" });

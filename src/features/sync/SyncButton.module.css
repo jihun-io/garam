@@ -20,7 +20,6 @@
   border-radius: var(--radius-md) 0 0 var(--radius-md);
   background: none;
   text-align: start;
-  cursor: pointer;
 }
 
 .button:hover:not(:disabled),
@@ -46,11 +45,7 @@
 }
 
 .icon {
-  flex: none;
-  width: 1em;
   color: var(--color-river);
-  font-size: 15px;
-  text-align: center;
 }
 
 .text {
@@ -76,12 +71,7 @@
 }
 
 .counts {
-  display: inline-flex;
   flex: none;
-  gap: var(--space-1);
-  color: var(--color-ink-muted);
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
 }
 
 .side {
@@ -92,5 +82,4 @@
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   background: none;
   color: var(--color-ink-muted);
-  cursor: pointer;
 }

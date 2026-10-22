@@ -27,12 +27,6 @@
   line-height: 1.45;
 }
 
-.summary:focus-visible,
-.description:focus-visible {
-  outline-offset: 0;
-  border-color: var(--color-focus);
-}
-
 .description[aria-invalid="true"] {
   border-color: var(--color-danger);
 }
@@ -62,7 +56,6 @@
   border: 0;
   background: none;
   color: var(--color-link);
-  cursor: pointer;
 }
 
 .submit {

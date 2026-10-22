@@ -18,6 +18,7 @@
     "bindings": "cargo test -p garam export_bindings"
   },
   "dependencies": {
+    "@phosphor-icons/react": "2.1.10",
     "@tanstack/react-query": "^5.104.5",
     "@tanstack/react-virtual": "^3.14.21",
     "@tauri-apps/api": "^2.12.4",

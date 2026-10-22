@@ -2,6 +2,7 @@
   position: fixed;
   inset: 0;
   background: var(--color-scrim);
+  animation: fade-in 140ms ease-out;
 }
 
 .content {
@@ -16,6 +17,20 @@
   border-radius: var(--radius-md);
   background: var(--color-bg);
   box-shadow: var(--shadow-popover);
+  animation: dialog-in 160ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.98);
+  }
 }
 
 /* Radix focuses the container as a fallback; the ring there means nothing. */

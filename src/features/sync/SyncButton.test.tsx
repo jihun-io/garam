@@ -126,7 +126,7 @@ describe("SyncButton", () => {
     setup({ ahead: 2 });
 
     const button = await screen.findByRole("button", { name: /Push origin/ });
-    expect(button).toHaveTextContent("↑2");
+    expect(button).toHaveTextContent("2 commits to push");
     await user.click(button);
     expect(await screen.findByText("Pushing…")).toBeVisible();
 
@@ -150,7 +150,7 @@ describe("SyncButton", () => {
     setup({ ahead: 1, behind: 3 });
 
     const button = await screen.findByRole("button", { name: /Pull origin/ });
-    expect(button).toHaveTextContent("↓3");
+    expect(button).toHaveTextContent("3 commits to pull");
     await user.click(button);
     expect(await screen.findByText("Pulled from origin/main.")).toBeVisible();
   });

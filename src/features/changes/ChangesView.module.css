@@ -36,7 +36,6 @@
   color: var(--color-ink-muted);
   font-size: var(--text-lg);
   line-height: 1;
-  cursor: pointer;
 }
 
 .more:hover:not(:disabled) {
