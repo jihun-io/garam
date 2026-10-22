@@ -264,7 +264,6 @@ describe("ChangesView", () => {
     setup([change("a.txt", null, "modified")]);
     await user.type(await screen.findByPlaceholderText("Summary (required)"), "Fix");
     expect(screen.getByRole("button", { name: "Commit to main" })).toBeDisabled();
-    expect(screen.getByText("Select files to include in the commit.")).toBeVisible();
   });
 
   it("prefills the last commit when amending", async () => {

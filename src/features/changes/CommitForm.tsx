@@ -241,7 +241,6 @@ export function CommitForm({
           <span className={styles.label}>{label}</span>
         </Button>
       </Tooltip>
-      {stagedCount === 0 && !amend && <p className={styles.hint}>{t("commit.nothingStaged")}</p>}
 
       {askIdentity && (
         <IdentityDialog

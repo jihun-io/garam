@@ -54,7 +54,6 @@
     "submit": "Commit to <branch>{{branch}}</branch>",
     "submitDetached": "Commit",
     "submitAmend": "Amend last commit",
-    "nothingStaged": "Select files to include in the commit.",
     "shortcut": "{{key}}+Enter to commit",
     "author": "Author",
     "authorMissing": "Not set",

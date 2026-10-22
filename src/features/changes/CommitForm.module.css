@@ -25,7 +25,8 @@
 }
 
 .description {
-  resize: vertical;
+  /* A fixed size keeps the commit area from pushing the file list around. */
+  resize: none;
   min-height: 3.5em;
   line-height: 1.45;
 }
