@@ -7,6 +7,7 @@ import { App, queryClient } from "./app/App";
 import { commands, unwrap } from "./ipc";
 import { preloadSettings, rememberLaunchLanguage, settingsKeys } from "./features/settings/api";
 import { resolveAccent } from "./features/settings/SettingsEffects";
+import { installContextMenuGuard } from "./lib/contextMenu";
 import { setSidebarWidth } from "./lib/layout";
 import { initTheme, setAppearance } from "./lib/theme";
 import { initWindowChrome } from "./lib/windowChrome";
@@ -15,6 +16,7 @@ import { initWindowChrome } from "./lib/windowChrome";
 async function start() {
   initWindowChrome();
   initTheme();
+  installContextMenuGuard();
 
   let settings = await preloadSettings(queryClient);
   // Versions before settings.json kept the language in the webview.

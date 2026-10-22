@@ -78,12 +78,14 @@
   font-size: var(--text-lg);
   font-weight: 650;
   overflow-wrap: anywhere;
+  -webkit-user-select: text;
   user-select: text;
 }
 
 .commitBody {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  -webkit-user-select: text;
   user-select: text;
 }
 

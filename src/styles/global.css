@@ -20,6 +20,7 @@ body {
   -webkit-font-smoothing: antialiased;
   /* Desktop app: text is not selectable unless a component opts in, and
      controls keep the arrow cursor (docs/UI.md 4.1). */
+  -webkit-user-select: none;
   user-select: none;
   cursor: default;
 }
@@ -100,6 +101,7 @@ select:focus-visible {
 code,
 pre {
   font-family: var(--font-mono);
+  -webkit-user-select: text;
   user-select: text;
 }
 

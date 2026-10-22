@@ -20,6 +20,7 @@
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+  -webkit-user-select: text;
   user-select: text;
 }
 
@@ -127,6 +128,7 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   tab-size: 4;
+  -webkit-user-select: text;
   user-select: text;
 }
 
