@@ -408,6 +408,71 @@ describe("ChangesView", () => {
     expect(boxes[1]).toHaveAttribute("aria-checked", "true");
   });
 
+  it("keeps a newly included line checked while the diff refreshes", async () => {
+    const user = userEvent.setup();
+    const { client } = setup([change("a.txt", "modified", "modified")]);
+    await screen.findByText(lineText("new line"));
+    // A tiny git with one added line, staged or not. Like the engine, the
+    // diff answers from the index whatever flags it is asked with.
+    let staged = true;
+    const flags = () => change("a.txt", staged ? "modified" : null, "modified");
+    vi.mocked(commands.statusGet).mockImplementation(async () =>
+      ok({
+        branch: { head: "main", oid: "abc", upstream: null, ahead: 0, behind: 0 },
+        files: [flags()],
+      }),
+    );
+    vi.mocked(commands.diffGet).mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return ok({
+        type: "text",
+        hunks: [
+          {
+            oldStart: 0,
+            oldLines: 0,
+            newStart: 1,
+            newLines: 1,
+            section: "",
+            lines: [
+              {
+                kind: "added",
+                text: "new line",
+                oldLine: null,
+                newLine: 1,
+                noNewline: false,
+                staged,
+              },
+            ],
+          },
+        ],
+        selectable: true,
+      });
+    });
+    vi.mocked(commands.changesStageLines).mockImplementation(async (_, __, selected) => {
+      staged = selected.length > 0;
+      return ok(null);
+    });
+
+    await client.invalidateQueries();
+    const box = () => screen.getByRole("checkbox", { name: LINE });
+    await waitFor(() => expect(box()).toHaveAttribute("aria-checked", "true"));
+    // Leave it out, so the diff for "partly staged" flags was last seen
+    // with the line unstaged.
+    await user.click(box());
+    await waitFor(() => expect(box()).toHaveAttribute("aria-checked", "false"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const seen: (string | null)[] = [];
+    const observer = new MutationObserver(() => seen.push(box().getAttribute("aria-checked")));
+    observer.observe(document.body, { subtree: true, attributes: true, childList: true });
+    await user.click(box());
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    observer.disconnect();
+
+    expect(box()).toHaveAttribute("aria-checked", "true");
+    expect(seen).not.toContain("false");
+  });
+
   it("has no accessibility violations", async () => {
     const { container } = setup([
       change("a.txt", null, "modified"),

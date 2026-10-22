@@ -74,29 +74,47 @@ pub(crate) fn mark_staged_lines(
         .flat_map(|h| h.lines.iter_mut())
         .filter(|l| l.kind != LineKind::Context);
 
-    match (file.staged, file.unstaged) {
-        (None, _) => changed.for_each(|l| l.staged = false),
-        (Some(_), None) => changed.for_each(|l| l.staged = true),
-        _ if !supports_line_staging(file) => {}
-        _ => {
-            let staged_deletions: HashSet<u32> =
-                changed_lines(git, repo, &file.path, true, LineKind::Deleted)?;
-            let unstaged_additions: HashSet<u32> =
-                changed_lines(git, repo, &file.path, false, LineKind::Added)?;
-            for line in changed {
-                line.staged = match line.kind {
-                    LineKind::Deleted => {
-                        line.old_line.is_some_and(|n| staged_deletions.contains(&n))
-                    }
-                    LineKind::Added => line
-                        .new_line
-                        .is_some_and(|n| !unstaged_additions.contains(&n)),
-                    LineKind::Context => false,
-                };
-            }
+    if !supports_line_staging(file) {
+        match (file.staged, file.unstaged) {
+            (None, _) => changed.for_each(|l| l.staged = false),
+            (Some(_), None) => changed.for_each(|l| l.staged = true),
+            _ => {}
         }
+        return Ok(());
+    }
+
+    // `file` comes from the caller's last status, which can be older than
+    // the index (a diff refreshed right after lines were staged), so the
+    // index is asked instead of trusting its staged/unstaged flags.
+    if file.unstaged == Some(ChangeKind::Untracked) && !in_index(git, repo, &file.path)? {
+        changed.for_each(|l| l.staged = false);
+        return Ok(());
+    }
+    let staged_deletions: HashSet<u32> =
+        changed_lines(git, repo, &file.path, true, LineKind::Deleted)?;
+    let unstaged_additions: HashSet<u32> =
+        changed_lines(git, repo, &file.path, false, LineKind::Added)?;
+    for line in changed {
+        line.staged = match line.kind {
+            LineKind::Deleted => line.old_line.is_some_and(|n| staged_deletions.contains(&n)),
+            LineKind::Added => line
+                .new_line
+                .is_some_and(|n| !unstaged_additions.contains(&n)),
+            LineKind::Context => false,
+        };
     }
     Ok(())
+}
+
+fn in_index(git: &Git, repo: &Path, path: &str) -> Result<bool, GitError> {
+    let output = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["ls-files", "--cached", "-z"])
+        .paths([path])
+        .run()?;
+    Ok(!output.stdout.is_empty())
 }
 
 /// Line numbers of `kind` lines in `git diff [--cached] -U0 -- path`.

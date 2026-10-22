@@ -34,6 +34,10 @@ export function useDiff(repo: string, file: FileChange | null) {
     queryKey: changesKeys.diff(repo, file),
     queryFn: () => unwrap(commands.diffGet(repo, file!)),
     enabled: file !== null,
+    // A diff kept under other staged/unstaged flags is from an older index:
+    // showing it when the file's flags come back to them would briefly
+    // flip the line selection back. Drop it as soon as nothing shows it.
+    gcTime: 0,
     placeholderData: (previous, previousQuery) =>
       // Keep showing the old diff while the same file refreshes.
       previousQuery?.queryKey[3] === file?.path ? previous : undefined,

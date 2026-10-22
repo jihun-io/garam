@@ -86,6 +86,38 @@ fn stages_some_lines_and_reports_them_as_staged() {
     assert_eq!(staged_texts(&repo, "a.txt"), ["-two", "+TWO"]);
 }
 
+/// The app refreshes a diff with the file as status last described it,
+/// which may be from before the lines were staged.
+#[test]
+fn reports_staged_lines_for_an_outdated_file_change() {
+    let repo = TestRepo::new();
+    repo.write("a.txt", "one\ntwo\n");
+    repo.commit_all("initial");
+    repo.write("a.txt", "one\nTWO\n");
+    repo.write("new.txt", "keep\nskip\n");
+    let modified = file(&repo, "a.txt");
+    let untracked = file(&repo, "new.txt");
+
+    stage(&repo, "a.txt", &["two"]);
+    stage(&repo, "new.txt", &["keep"]);
+
+    let staged = |file: &FileChange| -> Vec<String> {
+        let FileDiff::Text { hunks, .. } =
+            diff::file_diff(repo.git_handle(), repo.path(), file).unwrap()
+        else {
+            panic!("not a text diff");
+        };
+        hunks
+            .into_iter()
+            .flat_map(|h| h.lines)
+            .filter(|l| l.staged)
+            .map(|l| l.text)
+            .collect()
+    };
+    assert_eq!(staged(&modified), ["two"]);
+    assert_eq!(staged(&untracked), ["keep"]);
+}
+
 #[test]
 fn selecting_everything_or_nothing_uses_whole_file_staging() {
     let repo = TestRepo::new();
