@@ -34,7 +34,7 @@ UI 문자열을 번역할 때 이 표를 따른다. 새 용어가 생기면 먼�
 | changes                          | 변경 사항              |                                       |
 | diff                             | 차이 / diff            | 화면 제목은 "변경 내용"               |
 | hunk                             | 변경 묶음              |                                       |
-| history / log                    | 히스토리               |                                       |
+| history / log                    | 기록                   | "내역"은 쓰지 않는다(명세서 느낌)     |
 | remote                           | 원격 저장소            |                                       |
 | origin                           | origin                 | 이름이므로 번역하지 않음              |
 | upstream                         | 업스트림               |                                       |
