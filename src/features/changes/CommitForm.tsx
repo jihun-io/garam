@@ -5,12 +5,13 @@ import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
 import { Checkbox } from "../../components/ui/Checkbox";
 import { Tooltip } from "../../components/ui/Tooltip";
-import { toAppError, type AppError, type BranchStatus } from "../../ipc";
+import { toAppError, type AppError, type BranchStatus, type Identity } from "../../ipc";
 import { currentPlatform } from "../../lib/platform";
 import { useChangeActions, useHeadCommit, useIdentity } from "./api";
 import styles from "./CommitForm.module.css";
 import { parseCoAuthors } from "./fileState";
 import { IdentityDialog } from "./IdentityDialog";
+import { formatIdentity, RepoIdentityDialog } from "./RepoIdentityDialog";
 
 const LONG_SUMMARY = 72;
 
@@ -35,6 +36,7 @@ export function CommitForm({
   const [prefill, setPrefill] = useState<{ summary: string; description: string } | null>(null);
   const [error, setError] = useState<AppError>();
   const [askIdentity, setAskIdentity] = useState(false);
+  const [editRepoIdentity, setEditRepoIdentity] = useState(false);
   const head = useHeadCommit(repo, amend);
   const canAmend = branch.oid !== null;
 
@@ -75,7 +77,7 @@ export function CommitForm({
   // saved, before the identity query has refetched.
   const submit = (identityConfirmed = false) => {
     if (!ready || !coAuthors.ok) return;
-    if (!identityConfirmed && identity.data && !(identity.data.name && identity.data.email)) {
+    if (!identityConfirmed && identity.data && !isComplete(identity.data.effective)) {
       setAskIdentity(true);
       return;
     }
@@ -200,6 +202,14 @@ export function CommitForm({
         </button>
       </div>
 
+      {identity.data && (
+        <AuthorLine
+          author={formatIdentity(identity.data.effective)}
+          overridden={identity.data.local.name !== null || identity.data.local.email !== null}
+          onEdit={() => setEditRepoIdentity(true)}
+        />
+      )}
+
       {error && <ErrorMessage error={error} />}
       <Tooltip
         content={
@@ -220,7 +230,7 @@ export function CommitForm({
       {askIdentity && (
         <IdentityDialog
           repo={repo}
-          current={identity.data}
+          current={identity.data?.effective}
           onClose={() => setAskIdentity(false)}
           onSaved={() => {
             setAskIdentity(false);
@@ -228,6 +238,37 @@ export function CommitForm({
           }}
         />
       )}
+      {editRepoIdentity && identity.data && (
+        <RepoIdentityDialog
+          repo={repo}
+          identity={identity.data}
+          onClose={() => setEditRepoIdentity(false)}
+        />
+      )}
     </form>
+  );
+}
+
+const isComplete = (identity: Identity) => Boolean(identity.name && identity.email);
+
+/** Who the commit will be recorded as; opens the per-repository choice. */
+function AuthorLine({
+  author,
+  overridden,
+  onEdit,
+}: {
+  author: string | null;
+  overridden: boolean;
+  onEdit: () => void;
+}) {
+  const { t } = useTranslation("changes");
+  return (
+    <Tooltip content={t("commit.authorEdit")} side="top">
+      <button type="button" className={styles.author} onClick={onEdit}>
+        <span className={styles.authorLabel}>{t("commit.author")}</span>
+        <span className={styles.authorValue}>{author ?? t("commit.authorMissing")}</span>
+        {overridden && <span className={styles.authorScope}>{t("commit.authorRepo")}</span>}
+      </button>
+    </Tooltip>
   );
 }

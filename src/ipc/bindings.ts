@@ -50,8 +50,12 @@ export const commands = {
 	summary: string,
 	body: string,
 } | null, AppError>(__TAURI_INVOKE("commit_head", { repo })),
-	identityGet: (repo: string) => typedError<Identity, AppError>(__TAURI_INVOKE("identity_get", { repo })),
+	identityGet: (repo: string) => typedError<RepoIdentity, AppError>(__TAURI_INVOKE("identity_get", { repo })),
 	identitySet: (name: string, email: string) => typedError<null, AppError>(__TAURI_INVOKE("identity_set", { name, email })),
+	/**  Overrides the global identity in `repo`'s own config. */
+	identitySetLocal: (repo: string, name: string, email: string) => typedError<null, AppError>(__TAURI_INVOKE("identity_set_local", { repo, name, email })),
+	/**  Removes `repo`'s own identity so the global one applies again. */
+	identityClearLocal: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("identity_clear_local", { repo })),
 	branchList: (repo: string) => typedError<Branch[], AppError>(__TAURI_INVOKE("branch_list", { repo })),
 	/**  Creates a branch at `start` (default: HEAD) and switches to it. */
 	branchCreate: (repo: string, name: string, start: string | null) => typedError<null, AppError>(__TAURI_INVOKE("branch_create", { repo, name, start })),
@@ -449,6 +453,19 @@ export type RemoteInfo = {
 	defaultRemote: string | null,
 	/**  Seconds since the Unix epoch of the last fetch, if any. */
 	lastFetchedAt: number | null,
+};
+
+/**  Where a repository's identity comes from. */
+export type RepoIdentity = {
+	/**  What git uses for commits in the repository. */
+	effective: Identity,
+	/**  Values set in the repository's own config, which win over the rest. */
+	local: Identity,
+	/**
+	 *  What git would use without the repository's own values (global,
+	 *  system or included config).
+	 */
+	inherited: Identity,
 };
 
 export type RepoStatus = {

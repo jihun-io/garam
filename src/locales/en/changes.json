@@ -55,7 +55,11 @@
     "submitDetached": "Commit",
     "submitAmend": "Amend last commit",
     "nothingStaged": "Select files to include in the commit.",
-    "shortcut": "{{key}}+Enter to commit"
+    "shortcut": "{{key}}+Enter to commit",
+    "author": "Author",
+    "authorMissing": "Not set",
+    "authorRepo": "This repository",
+    "authorEdit": "Choose the author for this repository"
   },
   "discard": {
     "title": "Discard changes?",
@@ -72,6 +76,15 @@
     "name": "Name",
     "email": "Email",
     "save": "Save and commit",
+    "cancel": "Cancel"
+  },
+  "repoIdentity": {
+    "title": "Commit author for this repository",
+    "inherit": "Use my global Git settings",
+    "inheritMissing": "Not set yet",
+    "override": "Use a different author in this repository",
+    "overrideHint": "Saved in this repository's Git config, so commits from the command line use it too.",
+    "save": "Save",
     "cancel": "Cancel"
   }
 }

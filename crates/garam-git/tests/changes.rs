@@ -309,16 +309,60 @@ fn committing_nothing_is_a_clear_error() {
 fn reads_identity_with_repository_override() {
     let repo = TestRepo::new();
     let id = identity::get(repo.git_handle(), repo.path()).unwrap();
-    assert_eq!(id.name.as_deref(), Some("Garam Test"));
-    assert!(id.is_complete());
+    assert_eq!(id.effective.name.as_deref(), Some("Garam Test"));
+    assert!(id.effective.is_complete());
+    assert!(!id.is_overridden());
 
     repo.git(["config", "user.name", "Repo Local"]);
     let id = identity::get(repo.git_handle(), repo.path()).unwrap();
-    assert_eq!(id.name.as_deref(), Some("Repo Local"));
+    assert_eq!(id.effective.name.as_deref(), Some("Repo Local"));
+    assert_eq!(id.local.name.as_deref(), Some("Repo Local"));
+    assert_eq!(id.inherited.name.as_deref(), Some("Garam Test"));
+    assert!(id.is_overridden());
 
     identity::set_global(repo.git_handle(), "새 이름", "new@example.com").unwrap();
     repo.git(["config", "--unset", "user.name"]);
     let id = identity::get(repo.git_handle(), repo.path()).unwrap();
-    assert_eq!(id.name.as_deref(), Some("새 이름"));
-    assert_eq!(id.email.as_deref(), Some("new@example.com"));
+    assert_eq!(id.effective.name.as_deref(), Some("새 이름"));
+    assert_eq!(id.effective.email.as_deref(), Some("new@example.com"));
+}
+
+#[test]
+fn sets_and_clears_repository_identity() {
+    let repo = TestRepo::new();
+    let git = repo.git_handle();
+    identity::set_local(git, repo.path(), " 김지훈 ", "kim@example.com").unwrap();
+
+    let id = identity::get(git, repo.path()).unwrap();
+    assert_eq!(id.local.name.as_deref(), Some("김지훈"));
+    assert_eq!(id.local.email.as_deref(), Some("kim@example.com"));
+    assert_eq!(id.inherited.email.as_deref(), Some("test@garam.invalid"));
+
+    // Commits use the repository's identity, also from the command line.
+    repo.write("a.txt", "a");
+    repo.commit_all("first");
+    let author = repo.git(["log", "-1", "--format=%an <%ae>"]);
+    assert_eq!(author.stdout_str().trim(), "김지훈 <kim@example.com>");
+
+    identity::clear_local(git, repo.path()).unwrap();
+    // Clearing twice is fine.
+    identity::clear_local(git, repo.path()).unwrap();
+    let id = identity::get(git, repo.path()).unwrap();
+    assert!(!id.is_overridden());
+    assert_eq!(id.effective.email.as_deref(), Some("test@garam.invalid"));
+}
+
+#[test]
+fn one_off_overrides_are_not_repository_identity() {
+    let repo = TestRepo::new();
+    let git = repo
+        .git_handle()
+        .clone()
+        .with_env("GIT_CONFIG_COUNT", "1")
+        .with_env("GIT_CONFIG_KEY_0", "user.email")
+        .with_env("GIT_CONFIG_VALUE_0", "once@example.com");
+    let id = identity::get(&git, repo.path()).unwrap();
+    assert_eq!(id.effective.email.as_deref(), Some("once@example.com"));
+    assert_eq!(id.local.email, None);
+    assert_eq!(id.inherited.email.as_deref(), Some("test@garam.invalid"));
 }

@@ -2,10 +2,27 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { commands, type FileChange, type RepoStatus } from "../../ipc";
+import {
+  commands,
+  type FileChange,
+  type Identity,
+  type RepoIdentity,
+  type RepoStatus,
+} from "../../ipc";
 import { axeViolations } from "../../test/axe";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { ChangesView } from "./ChangesView";
+
+const GLOBAL: Identity = { name: "Garam", email: "garam@example.com" };
+const NONE: Identity = { name: null, email: null };
+
+function repoIdentity(inherited: Identity, local: Identity = NONE): RepoIdentity {
+  return {
+    effective: { name: local.name ?? inherited.name, email: local.email ?? inherited.email },
+    local,
+    inherited,
+  };
+}
 
 vi.mock("../../ipc/bindings", () => ({
   commands: {
@@ -20,6 +37,8 @@ vi.mock("../../ipc/bindings", () => ({
     commitHead: vi.fn(),
     identityGet: vi.fn(),
     identitySet: vi.fn(),
+    identitySetLocal: vi.fn(),
+    identityClearLocal: vi.fn(),
     externalReveal: vi.fn(),
   },
 }));
@@ -81,9 +100,7 @@ function setup(files: FileChange[]) {
       selectable: true,
     }),
   );
-  vi.mocked(commands.identityGet).mockResolvedValue(
-    ok({ name: "Garam", email: "garam@example.com" }),
-  );
+  vi.mocked(commands.identityGet).mockResolvedValue(ok(repoIdentity(GLOBAL)));
   vi.mocked(commands.commitHead).mockResolvedValue(
     ok({ oid: "abc", summary: "Previous summary", body: "Previous body" }),
   );
@@ -218,7 +235,7 @@ describe("ChangesView", () => {
   it("asks for an identity before the first commit", async () => {
     const user = userEvent.setup();
     setup([change("a.txt", "added", null)]);
-    vi.mocked(commands.identityGet).mockResolvedValue(ok({ name: null, email: null }));
+    vi.mocked(commands.identityGet).mockResolvedValue(ok(repoIdentity(NONE)));
     vi.mocked(commands.identitySet).mockResolvedValue(ok(null));
 
     await user.type(await screen.findByPlaceholderText("Summary (required)"), "First");
@@ -231,6 +248,45 @@ describe("ChangesView", () => {
 
     expect(commands.identitySet).toHaveBeenCalledWith("김가람", "garam@example.com");
     expect(commands.commitCreate).toHaveBeenCalledWith("/repo", "First", "", [], false);
+  });
+
+  it("shows the author and overrides it for this repository", async () => {
+    const user = userEvent.setup();
+    setup([change("a.txt", "added", null)]);
+    vi.mocked(commands.identitySetLocal).mockResolvedValue(ok(null));
+
+    await user.click(
+      await screen.findByRole("button", { name: /Author\s*Garam <garam@example.com>/ }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Commit author for this repository",
+    });
+    await user.click(
+      within(dialog).getByRole("radio", { name: /Use a different author in this repository/ }),
+    );
+    // The name starts from the global one; the email has to be typed.
+    expect(within(dialog).getByLabelText("Name")).toHaveValue("Garam");
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+    await user.type(within(dialog).getByLabelText("Email"), "kim@example.com");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(commands.identitySetLocal).toHaveBeenCalledWith("/repo", "Garam", "kim@example.com");
+  });
+
+  it("goes back to the global author", async () => {
+    const user = userEvent.setup();
+    setup([change("a.txt", "added", null)]);
+    vi.mocked(commands.identityGet).mockResolvedValue(
+      ok(repoIdentity(GLOBAL, { name: "Kim", email: "kim@example.com" })),
+    );
+    vi.mocked(commands.identityClearLocal).mockResolvedValue(ok(null));
+
+    await user.click(await screen.findByRole("button", { name: /This repository/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("radio", { name: /Use my global Git settings/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(commands.identityClearLocal).toHaveBeenCalledWith("/repo");
   });
 
   it("stages single lines from the margin, keeping lines already staged", async () => {

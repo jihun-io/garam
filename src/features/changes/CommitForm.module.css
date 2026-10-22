@@ -94,3 +94,40 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* "Author Name <email>  This repository" — a quiet row that opens the
+   per-repository author choice. */
+.author {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  text-align: left;
+}
+
+.author:hover .authorValue {
+  color: var(--color-ink);
+}
+
+.authorLabel {
+  flex: none;
+}
+
+.authorValue {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.authorScope {
+  flex: none;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+}

@@ -19,7 +19,11 @@ const responses: Record<string, unknown> = {
     defaultRemote: "origin",
     lastFetchedAt: Math.floor(Date.now() / 1000),
   },
-  identityGet: { name: "Me", email: "me@example.com" },
+  identityGet: {
+    effective: { name: "Me", email: "me@example.com" },
+    local: { name: null, email: null },
+    inherited: { name: "Me", email: "me@example.com" },
+  },
 };
 
 // Every command answers with its canned response, or null.

@@ -44,6 +44,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         changes::commit_head,
         changes::identity_get,
         changes::identity_set,
+        changes::identity_set_local,
+        changes::identity_clear_local,
         branches::branch_list,
         branches::branch_create,
         branches::branch_switch,

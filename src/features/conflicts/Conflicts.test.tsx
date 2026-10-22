@@ -37,7 +37,11 @@ function setup(state: ConflictState) {
     files: state.files.length > 0 ? [conflicted] : [],
   };
   responses.conflictState = state;
-  responses.identityGet = { name: "Me", email: "me@example.com" };
+  responses.identityGet = {
+    effective: { name: "Me", email: "me@example.com" },
+    local: { name: null, email: null },
+    inherited: { name: "Me", email: "me@example.com" },
+  };
   responses.diffGet = { type: "text", selectable: false, hunks: [] };
   return renderWithQuery(
     <>
