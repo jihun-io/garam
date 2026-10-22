@@ -100,7 +100,8 @@ UI 개선은 `docs/UI.md` 계획(1~6단계)을 따른다.
 - [ ] macOS 서명·공증, Windows 서명, Linux 패키지 (AppImage, deb)
   - 릴리스 워크플로(`.github/workflows/release.yml`): `v*` 태그를 푸시하면 세 OS를 빌드해 초안 Release에 올리고, 손으로 실행하면 Release 없이 설치 파일만 아티팩트로 남긴다. macOS는 유니버설(Apple Silicon + Intel) 빌드를 Developer ID로 서명하고 App Store Connect API 키로 공증한다. Linux는 AppImage와 deb(`git` 의존), Windows는 NSIS(프리릴리스가 아니면 MSI도)
   - Windows는 v0.1에서 서명하지 않는다(SmartScreen 경고를 README에서 안내). SignPath Foundation(오픈소스 무료 서명)을 신청하고, Microsoft Store(MSIX)는 askpass 동작을 확인한 뒤에 검토한다
-  - **남은 것**: 워크플로를 실제로 돌려 서명·공증 확인(Apple 개발자 약관 재동의가 먼저 필요), 업데이터 산출물(`.sig`, `latest.json`)은 업데이터 플러그인 설정과 함께 켠다
+  - 수동 실행으로 확인함: 앱은 서명·공증·스테이플되고 유니버설(x86_64, arm64)이며, DMG도 따로 공증·스테이플해 내려받은 파일(quarantine)을 Gatekeeper가 받아들인다. Tauri는 DMG 안의 앱만 공증하므로 DMG 공증 단계가 필요하다
+  - **남은 것**: 업데이터 산출물(`.sig`, `latest.json`)은 업데이터 플러그인 설정과 함께 켠다. 태그로 초안 Release를 만드는 흐름(DMG 교체 업로드 포함)은 첫 RC 태그에서 확인한다
 - [ ] 자동 업데이트
 - [ ] README (영어·한국어), 기여 가이드, 번역 기여 가이드
 
