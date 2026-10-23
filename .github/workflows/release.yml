@@ -89,10 +89,9 @@ jobs:
           - os: ubuntu-22.04
             args: --bundles appimage,deb
           - os: windows-latest
-            # WiX (msi) only accepts numeric versions, so prereleases ship
-            # the NSIS installer alone.
+            # NSIS only: the updater installs with it, and a second
+            # installer (MSI) would leave users unsure which to take.
             args: --bundles nsis
-            stable-args: --bundles nsis,msi
     runs-on: ${{ matrix.os }}
     # A Windows run without a Rust cache takes about 30 minutes.
     timeout-minutes: 60
@@ -157,20 +156,6 @@ jobs:
           printf '%s\n' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/notarize.p8"
           echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/notarize.p8" >> "$GITHUB_ENV"
 
-      - name: Choose bundles
-        id: bundles
-        shell: bash
-        env:
-          ARGS: ${{ matrix.args }}
-          STABLE_ARGS: ${{ matrix.stable-args }}
-          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
-        run: |
-          if [ "$PRERELEASE" = false ] && [ -n "$STABLE_ARGS" ]; then
-            echo "args=$STABLE_ARGS" >> "$GITHUB_OUTPUT"
-          else
-            echo "args=$ARGS" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Build and upload
         uses: tauri-apps/tauri-action@v0
         env:
@@ -185,7 +170,7 @@ jobs:
           tauriScript: pnpm tauri
           # Updater artifacts need the signing key, so local `tauri build`
           # leaves them off and only this workflow turns them on.
-          args: ${{ steps.bundles.outputs.args }} --config src-tauri/tauri.release.conf.json
+          args: ${{ matrix.args }} --config src-tauri/tauri.release.conf.json
           includeUpdaterJson: true
           # Windows users install with NSIS, so update them with it too.
           updaterJsonPreferNsis: true
