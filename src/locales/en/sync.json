@@ -27,7 +27,9 @@
     "upToDate": "{{branch}} is already up to date.",
     "pushed": "Pushed to {{upstream}}.",
     "published": "Published {{branch}} to {{remote}}.",
-    "pulledWithConflicts": "Pulled from {{upstream}}, but putting your stashed changes back conflicted. Resolve the conflicted files; the changes are still in the stash (autostash)."
+    "pulledWithConflicts": "Pulled from {{upstream}}, but putting your stashed changes back conflicted. Resolve the conflicted files; the changes are still in the stash (autostash).",
+    "tagsToo_one": "{{count}} tag went with it.",
+    "tagsToo_other": "{{count}} tags went with it."
   },
   "pullBlocked": {
     "title": "Can't Pull",

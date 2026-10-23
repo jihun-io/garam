@@ -38,6 +38,8 @@ pub enum ErrorKind {
     CherryPickEmpty,
     InvalidTagName,
     TagExists,
+    /// The remote already has a tag of that name on another commit.
+    RemoteTagExists,
     /// HEAD moved since the screen was drawn (e.g. a commit from a terminal).
     HeadMoved,
     /// The commits aren't consecutive on the current branch, or a merge
@@ -237,6 +239,10 @@ fn classify(stderr: &str) -> ErrorKind {
         ),
         ("[remote rejected]", ErrorKind::PushRejected),
         ("pre-receive hook declined", ErrorKind::PushRejected),
+        (
+            "because the tag already exists in the remote",
+            ErrorKind::RemoteTagExists,
+        ),
         ("updates were rejected because", ErrorKind::NonFastForward),
         ("(non-fast-forward)", ErrorKind::NonFastForward),
         ("(fetch first)", ErrorKind::NonFastForward),

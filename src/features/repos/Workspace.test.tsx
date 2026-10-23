@@ -10,6 +10,7 @@ const responses: Record<string, unknown> = {
   statusGet: {
     branch: { head: "main", oid: "abc", upstream: "origin/main", ahead: 1, behind: 0 },
     files: [],
+    unpushedTags: [],
   },
   branchList: [],
   remoteInfo: {

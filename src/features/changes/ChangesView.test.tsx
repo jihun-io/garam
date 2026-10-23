@@ -105,6 +105,7 @@ function setup(files: FileChange[]) {
   const status: RepoStatus = {
     branch: { head: "main", oid: "abc", upstream: null, ahead: 0, behind: 0 },
     files,
+    unpushedTags: [],
   };
   vi.mocked(commands.statusGet).mockResolvedValue(ok(status));
   vi.mocked(commands.diffGet).mockResolvedValue(
@@ -419,6 +420,7 @@ describe("ChangesView", () => {
       ok({
         branch: { head: "main", oid: "abc", upstream: null, ahead: 0, behind: 0 },
         files: [flags()],
+        unpushedTags: [],
       }),
     );
     vi.mocked(commands.diffGet).mockImplementation(async () => {

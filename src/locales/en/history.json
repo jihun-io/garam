@@ -31,7 +31,8 @@
     "squash_other": "Squash {{count}} Commits…",
     "cherryPickOnto": "Cherry-pick onto Another Branch…",
     "cherryPickOntoMany_one": "Cherry-pick {{count}} Commit onto Another Branch…",
-    "cherryPickOntoMany_other": "Cherry-pick {{count}} Commits onto Another Branch…"
+    "cherryPickOntoMany_other": "Cherry-pick {{count}} Commits onto Another Branch…",
+    "deleteTag": "Delete Tag {{name}}…"
   },
   "detail": {
     "select": "Select a commit to see its changes.",
@@ -111,7 +112,9 @@
     "squashed_other": "Squashed {{count}} commits into one.",
     "cherryPickedOnto_one": "Switched to {{branch}} and cherry-picked {{count}} commit.",
     "cherryPickedOnto_other": "Switched to {{branch}} and cherry-picked {{count}} commits.",
-    "reordered": "Reordered the commits."
+    "reordered": "Reordered the commits.",
+    "tagDeleted": "Deleted tag {{name}}.",
+    "tagDeletedEverywhere": "Deleted tag {{name}} here and on {{remote}}."
   },
   "reset": {
     "title": "Reset to This Commit",
@@ -147,6 +150,15 @@
     "messageHint": "With a message, the tag is annotated: it records who made it and when.",
     "cancel": "Cancel",
     "submit": "Create Tag"
+  },
+  "deleteTag": {
+    "title": "Delete tag {{name}}?",
+    "body": "The tag on “{{summary}}” ({{hash}}) is deleted from this computer. The commit stays.",
+    "bodyUnpushed": "The tag on “{{summary}}” ({{hash}}) was never pushed, so it exists only on this computer. The commit stays.",
+    "alsoRemote": "Also delete it on {{remote}}",
+    "alsoRemoteHint": "Otherwise the next fetch brings the tag back if {{remote}} has it.",
+    "cancel": "Cancel",
+    "submit": "Delete Tag"
   },
   "wip": {
     "title_one": "Uncommitted changes ({{count}} file)",

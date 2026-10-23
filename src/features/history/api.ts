@@ -15,7 +15,7 @@ import {
   type ResetMode,
 } from "../../ipc";
 import { changesKeys, indexScope } from "../changes/api";
-import { useRemoteInfo } from "../sync/api";
+import { deleteRemoteTag, useRemoteInfo } from "../sync/api";
 import { githubWebUrl } from "./message";
 
 export const PAGE_SIZE = 100;
@@ -249,6 +249,14 @@ export function useCommitActions(repo: string) {
     createTag: useMutation({
       mutationFn: ({ name, oid, message }: { name: string; oid: string; message: string }) =>
         unwrap(commands.tagCreate(repo, name, oid, message.trim() || null)),
+      onSettled,
+    }),
+    /** Deletes the tag here, and first on `remote` when one is given. */
+    deleteTag: useMutation({
+      mutationFn: async ({ name, remote }: { name: string; remote: string | null }) => {
+        if (remote !== null) await deleteRemoteTag(repo, remote, name);
+        await unwrap(commands.tagDelete(repo, name));
+      },
       onSettled,
     }),
   };

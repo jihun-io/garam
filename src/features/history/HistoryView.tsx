@@ -121,6 +121,9 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
     copyHash: (commit) => copyHash(commit.oid),
     createBranch: (commit) => openBranchDialog({ kind: "create", from: commit }),
     createTag: (commit) => openDialog({ kind: "tag", commit }),
+    deleteTag: (commit, tag) => openDialog({ kind: "deleteTag", commit, tag }),
+    tagsAt: (commit) =>
+      (marks.refs.get(commit.oid) ?? []).filter((r) => r.kind === "tag").map((r) => r.name),
     checkout: (commit) => openDialog({ kind: "checkout", commit }),
     reset: (commit) => openDialog({ kind: "reset", commit }),
     cherryPick: (commit) =>

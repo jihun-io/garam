@@ -7,14 +7,21 @@ export type PrimaryAction =
   /** `disabled` when there's no commit to publish yet. */
   | { action: "publish"; disabled: boolean };
 
-/** What the sync button does for the current branch. */
-export function primaryAction(branch: BranchStatus, upstreamGone: boolean): PrimaryAction {
+/**
+ * What the sync button does for the current branch. `unpushedTags` counts
+ * tags made in the app that the next push would carry.
+ */
+export function primaryAction(
+  branch: BranchStatus,
+  upstreamGone: boolean,
+  unpushedTags = 0,
+): PrimaryAction {
   if (branch.head === null) return { action: "fetch" };
   if (branch.upstream === null || upstreamGone) {
     return { action: "publish", disabled: branch.oid === null };
   }
   if (branch.behind > 0) return { action: "pull" };
-  if (branch.ahead > 0) return { action: "push" };
+  if (branch.ahead > 0 || unpushedTags > 0) return { action: "push" };
   return { action: "fetch" };
 }
 

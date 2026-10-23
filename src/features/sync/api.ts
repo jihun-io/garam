@@ -71,6 +71,15 @@ export async function runSync(
 }
 
 /**
+ * Deletes the tag `name` on `remote`. It shows no progress, but may ask for
+ * credentials like any network operation.
+ */
+export async function deleteRemoteTag(repo: string, remote: string, name: string): Promise<void> {
+  const channel = networkChannel(() => {});
+  await unwrap(commands.remoteTagDelete(crypto.randomUUID(), repo, remote, name, channel));
+}
+
+/**
  * Sync actions for `repo`. Pull rewrites HEAD and the index, so it queues
  * behind other index writes (commit, stage); the rest only touch refs.
  */

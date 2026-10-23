@@ -65,9 +65,13 @@ pub struct BranchStatus {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
 pub struct RepoStatus {
     pub branch: BranchStatus,
     pub files: Vec<FileChange>,
+    /// Tags made in the app that no push has sent yet; the next push
+    /// carries them.
+    pub unpushed_tags: Vec<String>,
 }
 
 pub fn status(git: &Git, repo: &Path) -> Result<RepoStatus, GitError> {
@@ -84,7 +88,9 @@ pub fn status(git: &Git, repo: &Path) -> Result<RepoStatus, GitError> {
             "--ignore-submodules=none",
         ])
         .run()?;
-    parse(&output.stdout_str())
+    let mut status = parse(&output.stdout_str())?;
+    status.unpushed_tags = crate::tag::unpushed(git, repo)?;
+    Ok(status)
 }
 
 /// Parses NUL-separated porcelain v2 output.

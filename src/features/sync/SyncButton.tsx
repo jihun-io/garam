@@ -50,10 +50,11 @@ export function SyncButton({ repo }: { repo: string }) {
   useTick(60 * 1000);
 
   const branch = status.data?.branch;
+  const tags = status.data?.unpushedTags.length ?? 0;
   const ready = !!branch && !!info.data && info.data.remotes.length > 0;
   const upstreamGone =
     branches.data?.some((b) => b.kind === "local" && b.isHead && b.upstreamGone) ?? false;
-  const primary = branch ? primaryAction(branch, upstreamGone) : null;
+  const primary = branch ? primaryAction(branch, upstreamGone, tags) : null;
   const tracked = branch ? hasUpstream(branch, upstreamGone) : false;
   const upstream = branch?.upstream ?? "";
   const head = branch?.head ?? "";
@@ -63,8 +64,10 @@ export function SyncButton({ repo }: { repo: string }) {
   const [blockedPull, setBlockedPull] = useState(false);
 
   const start = (action: SyncAction, autostash = false) => {
+    // Push and publish carry the tags waiting now.
+    const sentTags = action === "push" || action === "publish" ? tags : 0;
     run({ action, remote, autostash })
-      .then((result) => result && announce(action, result))
+      .then((result) => result && announce(action, result, sentTags))
       .catch((e: unknown) => {
         const kind = toAppError(e).kind;
         if (kind === "pull_blocked_by_local_changes") setBlockedPull(true);
@@ -72,7 +75,8 @@ export function SyncButton({ repo }: { repo: string }) {
       });
   };
 
-  const announce = (action: SyncAction, result: SyncResult) => {
+  const announce = (action: SyncAction, result: SyncResult, sentTags: number) => {
+    const withTags = sentTags > 0 ? ` ${t("done.tagsToo", { count: sentTags })}` : "";
     if (action === "pull") {
       showInfo(
         result === "up_to_date"
@@ -82,9 +86,9 @@ export function SyncButton({ repo }: { repo: string }) {
             : t("done.pulled", { upstream }),
       );
     } else if (action === "push") {
-      showInfo(t("done.pushed", { upstream }));
+      showInfo(t("done.pushed", { upstream }) + withTags);
     } else if (action === "publish") {
-      showInfo(t("done.published", { branch: head, remote: remote ?? "" }));
+      showInfo(t("done.published", { branch: head, remote: remote ?? "" }) + withTags);
     }
   };
 
@@ -95,7 +99,7 @@ export function SyncButton({ repo }: { repo: string }) {
   useCommand(
     "sync.push",
     () => start(tracked ? "push" : "publish"),
-    ready && !busy && (tracked ? (branch?.ahead ?? 0) > 0 : canPublish),
+    ready && !busy && (tracked ? (branch?.ahead ?? 0) > 0 || tags > 0 : canPublish),
   );
 
   // Hold the place while loading; without remotes there is nothing to sync.
@@ -156,7 +160,7 @@ export function SyncButton({ repo }: { repo: string }) {
                   aria-valuenow={percent}
                 />
               )}
-              {tracked && <CommitCounts ahead={branch.ahead} behind={branch.behind} />}
+              {tracked && <CommitCounts ahead={branch.ahead} behind={branch.behind} tags={tags} />}
             </>
           }
         />
@@ -194,7 +198,7 @@ export function SyncButton({ repo }: { repo: string }) {
               </DropdownMenu.Item>
               <DropdownMenu.Item
                 className={menu.item}
-                disabled={!tracked || branch.ahead === 0}
+                disabled={!tracked || (branch.ahead === 0 && tags === 0)}
                 onSelect={() => start("push")}
               >
                 {t("menu.push")}

@@ -35,6 +35,7 @@ function setup(state: ConflictState) {
   responses.statusGet = {
     branch: { head: "main", oid: "abc", upstream: null, ahead: 0, behind: 0 },
     files: state.files.length > 0 ? [conflicted] : [],
+    unpushedTags: [],
   };
   responses.conflictState = state;
   responses.identityGet = {

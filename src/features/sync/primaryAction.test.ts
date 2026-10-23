@@ -25,6 +25,11 @@ describe("primaryAction", () => {
     expect(primaryAction(status({ ahead: 1 }), false)).toEqual({ action: "push" });
   });
 
+  it("pushes when only tags are waiting", () => {
+    expect(primaryAction(status(), false, 1)).toEqual({ action: "push" });
+    expect(primaryAction(status({ behind: 1 }), false, 1)).toEqual({ action: "pull" });
+  });
+
   it("publishes branches without a live upstream", () => {
     expect(primaryAction(status({ upstream: null }), false)).toEqual({
       action: "publish",

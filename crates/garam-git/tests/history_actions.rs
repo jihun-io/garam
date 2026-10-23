@@ -183,6 +183,40 @@ fn creates_plain_and_annotated_tags() {
     }
 }
 
+#[test]
+fn remembers_unpushed_tags_until_deleted() {
+    let repo = branched_repo();
+    let base = rev(&repo, "HEAD~1");
+    let git = repo.git_handle();
+
+    tag::create(git, repo.path(), "v1.0", &base, None).unwrap();
+    tag::create(git, repo.path(), "v1.1", &base, Some("release")).unwrap();
+    // A tag made in a terminal isn't the app's to push.
+    repo.git(["tag", "outside", &base]);
+    assert_eq!(tag::unpushed(git, repo.path()).unwrap(), ["v1.0", "v1.1"]);
+    assert_eq!(
+        status::status(git, repo.path()).unwrap().unpushed_tags,
+        ["v1.0", "v1.1"]
+    );
+
+    tag::delete(git, repo.path(), "v1.0").unwrap();
+    assert!(
+        repo.git(["tag", "-l", "v1.0"])
+            .stdout_str()
+            .trim()
+            .is_empty()
+    );
+    assert_eq!(tag::unpushed(git, repo.path()).unwrap(), ["v1.1"]);
+
+    // Deleted in a terminal: drops out of the list too.
+    repo.git(["tag", "--delete", "v1.1"]);
+    assert!(tag::unpushed(git, repo.path()).unwrap().is_empty());
+
+    tag::delete(git, repo.path(), "outside").unwrap();
+    let err = tag::delete(git, repo.path(), "outside").unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::Unknown, "{err}");
+}
+
 /// main: base → one → two → three, each adding a file.
 fn linear() -> TestRepo {
     let repo = TestRepo::new();

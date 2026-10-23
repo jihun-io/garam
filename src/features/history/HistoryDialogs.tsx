@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
+import { Checkbox } from "../../components/ui/Checkbox";
 import { FormDialog } from "../../components/ui/Dialog";
 import { Field } from "../../components/ui/Field";
 import fieldStyles from "../../components/ui/Field.module.css";
@@ -22,6 +23,7 @@ import branchStyles from "../branches/branches.module.css";
 import { useBranchDialog } from "../branches/branchDialogStore";
 import { useStatus } from "../changes/api";
 import { useNotify } from "../notify/notifyStore";
+import { useRemoteInfo } from "../sync/api";
 import { useCommitActions, useHistoryMarkers, useLostCommits } from "./api";
 import { CommitTitle } from "./CommitTitle";
 import { CompareModeSwitch } from "./CompareView";
@@ -40,6 +42,10 @@ export function HistoryDialogs({ repo }: { repo: string }) {
       return <CheckoutDialog repo={repo} commit={dialog.commit} onClose={close} />;
     case "tag":
       return <TagDialog repo={repo} commit={dialog.commit} onClose={close} />;
+    case "deleteTag":
+      return (
+        <DeleteTagDialog repo={repo} commit={dialog.commit} tag={dialog.tag} onClose={close} />
+      );
     case "cherryPickOnto":
       return <CherryPickOntoDialog repo={repo} commits={dialog.commits} onClose={close} />;
     case "reorder":
@@ -229,6 +235,81 @@ function TagDialog({ repo, commit, onClose }: DialogProps) {
         value={message}
         onChange={(e) => setMessage(e.target.value)}
       />
+      {error && <ErrorMessage error={error} />}
+    </FormDialog>
+  );
+}
+
+/**
+ * Confirms deleting a tag. A tag that may be on the remote can go from
+ * there too; left there, the next fetch brings it back.
+ */
+function DeleteTagDialog({ repo, commit, tag, onClose }: DialogProps & { tag: string }) {
+  const { t } = useTranslation("history");
+  const id = useId();
+  const status = useStatus(repo);
+  const remote = useRemoteInfo(repo).data?.defaultRemote ?? null;
+  const { deleteTag } = useCommitActions(repo);
+  const showInfo = useNotify((s) => s.showInfo);
+  const [alsoRemote, setAlsoRemote] = useState(false);
+  // Tags made here and never pushed exist only on this computer.
+  const unpushed = status.data?.unpushedTags.includes(tag) ?? false;
+  const offerRemote = remote !== null && !unpushed;
+  const fromRemote = offerRemote && alsoRemote ? remote : null;
+  const { busy, error, submit } = useSubmit(
+    () => deleteTag.mutateAsync({ name: tag, remote: fromRemote }),
+    () => {
+      showInfo(
+        fromRemote
+          ? t("done.tagDeletedEverywhere", { name: tag, remote: fromRemote })
+          : t("done.tagDeleted", { name: tag }),
+      );
+      onClose();
+    },
+  );
+
+  return (
+    <FormDialog
+      open
+      onOpenChange={(open) => !open && !busy && onClose()}
+      title={t("deleteTag.title", { name: tag })}
+      onSubmit={submit}
+      dismissible={!busy}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={busy} autoFocus>
+            {t("deleteTag.cancel")}
+          </Button>
+          <Button type="submit" variant="danger" disabled={busy}>
+            {t("deleteTag.submit")}
+          </Button>
+        </>
+      }
+    >
+      <p>
+        {t(unpushed ? "deleteTag.bodyUnpushed" : "deleteTag.body", {
+          summary: commit.summary,
+          hash: shortHash(commit.oid),
+        })}
+      </p>
+      {offerRemote && (
+        <label className={branchStyles.option} htmlFor={id}>
+          <Checkbox
+            id={id}
+            state={alsoRemote ? "checked" : "unchecked"}
+            disabled={busy}
+            onChange={(e) => setAlsoRemote(e.target.checked)}
+          />
+          <span>
+            <span className={branchStyles.optionLabel}>
+              {t("deleteTag.alsoRemote", { remote })}
+            </span>
+            <span className={branchStyles.optionHint}>
+              {t("deleteTag.alsoRemoteHint", { remote })}
+            </span>
+          </span>
+        </label>
+      )}
       {error && <ErrorMessage error={error} />}
     </FormDialog>
   );

@@ -240,13 +240,14 @@ pub fn push(
         config_get(git, repo, &format!("branch.{branch}.merge"))?.ok_or(GitError::NoUpstream)?;
     // An explicit refspec pushes to the upstream even when its name
     // differs, whatever `push.default` says.
-    let command = git
-        .command()
-        .cwd(repo)
-        .args(["push", "--progress", "--"])
-        .arg(&remote)
-        .arg(format!("refs/heads/{branch}:{merge}"));
-    transfer(command, TransferKind::Push, cancel, on_progress)
+    push_with_tags(
+        git,
+        repo,
+        &remote,
+        &format!("refs/heads/{branch}:{merge}"),
+        cancel,
+        on_progress,
+    )
 }
 
 /// Pushes the current branch to a branch of the same name on `remote` and
@@ -262,13 +263,72 @@ pub fn publish(
     if !list(git, repo)?.iter().any(|r| r.name == remote) {
         return Err(GitError::NoRemote);
     }
+    // `--set-upstream` applies only to the branch; tags have no upstream.
     let command = git
         .command()
         .cwd(repo)
         .args(["push", "--progress", "--set-upstream", "--"])
         .arg(remote)
         .arg(format!("refs/heads/{branch}:refs/heads/{branch}"));
-    transfer(command, TransferKind::Push, cancel, on_progress)
+    let tags = crate::tag::unpushed(git, repo)?;
+    let command = command.args(tags.iter().map(|name| tag_refspec(name)));
+    transfer(command, TransferKind::Push, cancel, on_progress)?;
+    crate::tag::forget(git, repo, &tags)
+}
+
+/// Pushes `branch_refspec` to `remote` along with the tags made here that
+/// aren't pushed yet, then takes those tags off the unpushed list. Tags are
+/// named one by one, so lightweight tags go too and other local tags
+/// (fetched ones, or ones made in a terminal) stay put.
+fn push_with_tags(
+    git: &Git,
+    repo: &Path,
+    remote: &str,
+    branch_refspec: &str,
+    cancel: &CancelToken,
+    on_progress: impl FnMut(Progress),
+) -> Result<(), GitError> {
+    let tags = crate::tag::unpushed(git, repo)?;
+    let command = git
+        .command()
+        .cwd(repo)
+        .args(["push", "--progress", "--"])
+        .arg(remote)
+        .arg(branch_refspec)
+        .args(tags.iter().map(|name| tag_refspec(name)));
+    transfer(command, TransferKind::Push, cancel, on_progress)?;
+    crate::tag::forget(git, repo, &tags)
+}
+
+fn tag_refspec(name: &str) -> String {
+    format!("refs/tags/{name}:refs/tags/{name}")
+}
+
+/// Deletes the tag `name` on `remote`. A tag the remote doesn't have
+/// counts as deleted.
+pub fn delete_tag(
+    git: &Git,
+    repo: &Path,
+    remote: &str,
+    name: &str,
+    cancel: &CancelToken,
+) -> Result<(), GitError> {
+    let command = git
+        .command()
+        .cwd(repo)
+        .args(["push", "--progress", "--"])
+        .arg(remote)
+        .arg(format!(":refs/tags/{name}"));
+    match transfer(command, TransferKind::Push, cancel, |_| {}) {
+        Err(GitError::Failed { stderr, .. })
+            if stderr
+                .to_ascii_lowercase()
+                .contains("remote ref does not exist") =>
+        {
+            Ok(())
+        }
+        other => other,
+    }
 }
 
 fn transfer(

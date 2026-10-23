@@ -54,7 +54,11 @@ const branches = [
 
 function setup(files: FileChange[] = []) {
   vi.mocked(commands.statusGet).mockResolvedValue(
-    ok({ branch: { head: "main", oid: "abc", upstream: null, ahead: 0, behind: 0 }, files }),
+    ok({
+      branch: { head: "main", oid: "abc", upstream: null, ahead: 0, behind: 0 },
+      files,
+      unpushedTags: [],
+    }),
   );
   vi.mocked(commands.branchList).mockResolvedValue(ok(branches));
   for (const fn of [

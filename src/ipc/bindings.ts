@@ -162,6 +162,8 @@ export const commands = {
 	commitCheckout: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_checkout", { repo, oid })),
 	/**  Tags `oid`; annotated when `message` is given. */
 	tagCreate: (repo: string, name: string, oid: string, message: string | null) => typedError<null, AppError>(__TAURI_INVOKE("tag_create", { repo, name, oid, message })),
+	/**  Deletes the tag `name` from this repository only. */
+	tagDelete: (repo: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("tag_delete", { repo, name })),
 	/**  Compares two commits or branches (commit ids or full ref names). */
 	compareGet: (repo: string, base: string, target: string, mode: CompareMode) => typedError<Comparison, AppError>(__TAURI_INVOKE("compare_get", { repo, base, target, mode })),
 	/**  One file's diff in a comparison. */
@@ -180,6 +182,8 @@ export const commands = {
 	remotePush: (operationId: string, repo: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_push", { operationId, repo, onEvent })),
 	/**  Pushes the current branch to `remote` and sets it as the upstream. */
 	remotePublish: (operationId: string, repo: string, remote: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_publish", { operationId, repo, remote, onEvent })),
+	/**  Deletes the tag `name` on `remote`. */
+	remoteTagDelete: (operationId: string, repo: string, remote: string, name: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_tag_delete", { operationId, repo, remote, name, onEvent })),
 	/**
 	 *  Answers a credential prompt; `None` declines it and cancels the
 	 *  operation that asked.
@@ -479,6 +483,8 @@ export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "
 "pull_blocked_by_local_changes" | "merge_conflict" | "rebase_conflict" | "revert_conflict" | "cherry_pick_conflict" | 
 /**  The branch already has the commit's changes; nothing was picked. */
 "cherry_pick_empty" | "invalid_tag_name" | "tag_exists" | 
+/**  The remote already has a tag of that name on another commit. */
+"remote_tag_exists" | 
 /**  HEAD moved since the screen was drawn (e.g. a commit from a terminal). */
 "head_moved" | 
 /**
@@ -739,6 +745,11 @@ export type RepoIdentity = {
 export type RepoStatus = {
 	branch: BranchStatus,
 	files: FileChange[],
+	/**
+	 *  Tags made in the app that no push has sent yet; the next push
+	 *  carries them.
+	 */
+	unpushedTags: string[],
 };
 
 export type RepositoryEntry = {

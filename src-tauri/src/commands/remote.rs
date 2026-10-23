@@ -215,6 +215,28 @@ pub async fn remote_publish(
         .await
 }
 
+/// Deletes the tag `name` on `remote`.
+#[tauri::command]
+#[specta::specta]
+#[allow(clippy::too_many_arguments)]
+pub async fn remote_tag_delete(
+    operations: State<'_, Arc<Operations>>,
+    askpass: State<'_, Arc<Askpass>>,
+    repositories: State<'_, Arc<RepositoryStore>>,
+    accounts: State<'_, Arc<AccountStore>>,
+    operation_id: String,
+    repo: String,
+    remote: String,
+    name: String,
+    on_event: Channel<RemoteEvent>,
+) -> AppResult<()> {
+    let repo = PathBuf::from(repo);
+    NetworkContext::new(&operations, &askpass, operation_id, true, on_event)
+        .for_repo(&repositories, &accounts, &repo)
+        .run(move |git, cancel, _| remote::delete_tag(git, &repo, &remote, &name, cancel))
+        .await
+}
+
 /// Answers a credential prompt; `None` declines it and cancels the
 /// operation that asked.
 #[tauri::command]

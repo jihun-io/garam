@@ -15,6 +15,8 @@
     "ahead_other": "보낼 커밋 {{count}}개",
     "behind_one": "받을 커밋 {{count}}개",
     "behind_other": "받을 커밋 {{count}}개",
+    "tags_one": "보낼 태그 {{count}}개",
+    "tags_other": "보낼 태그 {{count}}개",
     "gone": "원격에서 삭제됨",
     "tooltip": "브랜치 바꾸기",
     "compareThis": "현재 브랜치({{branch}})와 비교",

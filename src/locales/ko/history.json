@@ -31,7 +31,8 @@
     "squash_other": "커밋 {{count}}개 스쿼시…",
     "cherryPickOnto": "다른 브랜치로 체리픽…",
     "cherryPickOntoMany_one": "커밋 {{count}}개를 다른 브랜치로 체리픽…",
-    "cherryPickOntoMany_other": "커밋 {{count}}개를 다른 브랜치로 체리픽…"
+    "cherryPickOntoMany_other": "커밋 {{count}}개를 다른 브랜치로 체리픽…",
+    "deleteTag": "{{name}} 태그 삭제…"
   },
   "detail": {
     "select": "커밋을 선택하면 변경 내용을 볼 수 있습니다.",
@@ -111,7 +112,9 @@
     "squashed_other": "커밋 {{count}}개를 하나로 합쳤습니다.",
     "cherryPickedOnto_one": "{{branch}} 브랜치로 전환해서 커밋 {{count}}개를 체리픽했습니다.",
     "cherryPickedOnto_other": "{{branch}} 브랜치로 전환해서 커밋 {{count}}개를 체리픽했습니다.",
-    "reordered": "커밋 순서를 바꿨습니다."
+    "reordered": "커밋 순서를 바꿨습니다.",
+    "tagDeleted": "{{name}} 태그를 삭제했습니다.",
+    "tagDeletedEverywhere": "{{name}} 태그를 여기와 {{remote}}에서 삭제했습니다."
   },
   "reset": {
     "title": "이 커밋으로 리셋",
@@ -147,6 +150,15 @@
     "messageHint": "메시지를 쓰면 만든 사람과 날짜를 함께 기록하는 태그(annotated)가 됩니다.",
     "cancel": "취소",
     "submit": "태그 만들기"
+  },
+  "deleteTag": {
+    "title": "{{name}} 태그를 삭제할까요?",
+    "body": "“{{summary}}”({{hash}}) 커밋에 붙은 태그를 이 컴퓨터에서 삭제합니다. 커밋은 그대로 남습니다.",
+    "bodyUnpushed": "“{{summary}}”({{hash}}) 커밋에 붙은 이 태그는 아직 푸시하지 않아 이 컴퓨터에만 있습니다. 커밋은 그대로 남습니다.",
+    "alsoRemote": "{{remote}}에서도 삭제",
+    "alsoRemoteHint": "삭제하지 않으면 {{remote}}에 이 태그가 있을 때 다음 가져오기에서 다시 생깁니다.",
+    "cancel": "취소",
+    "submit": "태그 삭제"
   },
   "wip": {
     "title_one": "커밋하지 않은 변경 사항 (파일 {{count}}개)",

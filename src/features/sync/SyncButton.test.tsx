@@ -49,11 +49,13 @@ function setup(
   info: Partial<RemoteInfo> = {},
   // Recently fetched, so the background fetch stays quiet.
   lastFetchedAt = Math.floor(Date.now() / 1000) - 60,
+  unpushedTags: string[] = [],
 ) {
   vi.mocked(commands.statusGet).mockResolvedValue(
     ok({
       branch: { head: "main", oid: "abc", upstream: "origin/main", ahead: 0, behind: 0, ...branch },
       files: [],
+      unpushedTags,
     }),
   );
   vi.mocked(commands.branchList).mockResolvedValue(ok([]));
@@ -143,6 +145,17 @@ describe("SyncButton", () => {
 
     await act(async () => result.resolve(ok(null)));
     expect(await screen.findByText("Pushed to origin/main.")).toBeVisible();
+  });
+
+  it("pushes tags made in the app even with no commits to push", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.remotePush).mockResolvedValue(ok(null));
+    setup({}, {}, undefined, ["v1.0"]);
+
+    const button = await screen.findByRole("button", { name: /Push origin/ });
+    expect(button).toHaveTextContent("1 tag to push");
+    await user.click(button);
+    expect(await screen.findByText("Pushed to origin/main. 1 tag went with it.")).toBeVisible();
   });
 
   it("pulls first when the remote has new commits", async () => {

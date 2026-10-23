@@ -1,6 +1,6 @@
 use garam_git::remote::{self, PullOutcome};
 use garam_git::testing::TestRepo;
-use garam_git::{CancelToken, ErrorKind, status};
+use garam_git::{CancelToken, ErrorKind, status, tag};
 
 /// A bare remote with one commit on `main`, plus a clone of it.
 struct Setup {
@@ -243,12 +243,83 @@ fn push_is_rejected_when_remote_has_new_commits() {
     assert_eq!(err.kind(), ErrorKind::NonFastForward, "{err}");
 }
 
+fn tag_on(repo: &TestRepo, name: &str) -> Option<String> {
+    let output = repo.git(["tag", "--list", "--format=%(objectname)", name]);
+    let oid = output.stdout_str().trim().to_owned();
+    (!oid.is_empty()).then_some(oid)
+}
+
+#[test]
+fn push_carries_tags_made_in_the_app() {
+    let s = Setup::new();
+    let git = s.local.git_handle();
+    s.local.write("mine.txt", "mine\n");
+    let commit = s.local.commit_all("local work");
+    tag::create(git, s.local.path(), "v1.0", &commit, None).unwrap();
+    s.local.git(["tag", "outside", &commit]);
+
+    push(&s.local).unwrap();
+    assert_eq!(remote_head(&s.remote, "main"), commit);
+    assert_eq!(tag_on(&s.remote, "v1.0").as_deref(), Some(commit.as_str()));
+    assert_eq!(tag_on(&s.remote, "outside"), None, "only the app's tags go");
+    assert!(tag::unpushed(git, s.local.path()).unwrap().is_empty());
+}
+
+#[test]
+fn push_sends_tags_when_the_branch_is_already_pushed() {
+    let s = Setup::new();
+    let git = s.local.git_handle();
+    let commit = head(&s.local);
+    tag::create(git, s.local.path(), "v1.0", &commit, Some("release")).unwrap();
+    assert_eq!(ahead_behind(&s.local), (0, 0));
+
+    push(&s.local).unwrap();
+    assert!(tag_on(&s.remote, "v1.0").is_some());
+    assert!(tag::unpushed(git, s.local.path()).unwrap().is_empty());
+}
+
+#[test]
+fn push_keeps_tags_the_remote_refuses() {
+    let s = Setup::new();
+    let git = s.local.git_handle();
+    // Someone pushed a v1.0 tag on a commit only they have.
+    let other = TestRepo::clone_of(&s.remote);
+    other.write("theirs.txt", "theirs\n");
+    other.commit_all("their work");
+    other.git(["tag", "v1.0"]);
+    other.git(["push", "--quiet", "origin", "v1.0"]);
+
+    let commit = head(&s.local);
+    tag::create(git, s.local.path(), "v1.0", &commit, None).unwrap();
+    let err = push(&s.local).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::RemoteTagExists, "{err}");
+    assert_eq!(tag::unpushed(git, s.local.path()).unwrap(), ["v1.0"]);
+}
+
+#[test]
+fn deletes_tags_on_the_remote() {
+    let s = Setup::new();
+    let git = s.local.git_handle();
+    let commit = head(&s.local);
+    tag::create(git, s.local.path(), "v1.0", &commit, None).unwrap();
+    push(&s.local).unwrap();
+    assert!(tag_on(&s.remote, "v1.0").is_some());
+
+    let cancel = CancelToken::new();
+    remote::delete_tag(git, s.local.path(), "origin", "v1.0", &cancel).unwrap();
+    assert_eq!(tag_on(&s.remote, "v1.0"), None);
+    // Already gone: nothing to do.
+    remote::delete_tag(git, s.local.path(), "origin", "v1.0", &cancel).unwrap();
+}
+
 #[test]
 fn publish_creates_remote_branch_and_upstream() {
     let s = Setup::new();
     s.local.git(["switch", "--quiet", "-c", "feature/한글"]);
     s.local.write("mine.txt", "mine\n");
     let commit = s.local.commit_all("feature work");
+
+    tag::create(s.local.git_handle(), s.local.path(), "v2.0", &commit, None).unwrap();
 
     remote::publish(
         s.local.git_handle(),
@@ -259,6 +330,7 @@ fn publish_creates_remote_branch_and_upstream() {
     )
     .unwrap();
     assert_eq!(remote_head(&s.remote, "feature/한글"), commit);
+    assert_eq!(tag_on(&s.remote, "v2.0").as_deref(), Some(commit.as_str()));
     let upstream = status::status(s.local.git_handle(), s.local.path())
         .unwrap()
         .branch

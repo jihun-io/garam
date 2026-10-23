@@ -26,6 +26,11 @@ import { HistoryView } from "./HistoryView";
 
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => {}) }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ save: vi.fn() }));
+vi.mock("@tauri-apps/api/core", () => ({
+  Channel: class {
+    onmessage = () => {};
+  },
+}));
 vi.mock("../../ipc/bindings", () => ({
   commands: {
     statusGet: vi.fn(),
@@ -43,6 +48,8 @@ vi.mock("../../ipc/bindings", () => ({
     commitUndo: vi.fn(),
     commitCheckout: vi.fn(),
     tagCreate: vi.fn(),
+    tagDelete: vi.fn(),
+    remoteTagDelete: vi.fn(),
     commitImages: vi.fn(),
     commitSignature: vi.fn(),
     commitPatch: vi.fn(),
@@ -99,6 +106,7 @@ function setup(historyMarkers: HistoryMarkers = markers, files: FileChange[] = [
     ok({
       branch: { head: "main", oid: commits[0].oid, upstream: null, ahead: 0, behind: 0 },
       files,
+      unpushedTags: [],
     }),
   );
   vi.mocked(commands.historyList).mockResolvedValue(ok(commits));
@@ -533,6 +541,7 @@ describe("HistoryView", () => {
             isSubmodule: false,
           },
         ],
+        unpushedTags: [],
       }),
     );
     const menu = await openMenu(user, "Commit number 2");
@@ -601,6 +610,51 @@ describe("HistoryView", () => {
 
     await user.click(submit);
     expect(await screen.findByText("Created tag v1.0.")).toBeVisible();
+  });
+
+  it("deletes a tag here, and on the remote when asked", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.tagDelete).mockResolvedValue(ok(null));
+    vi.mocked(commands.remoteTagDelete).mockResolvedValue(ok(null));
+    setup();
+    let menu = await openMenu(user, "Commit number 2");
+    await user.click(within(menu).getByRole("menuitem", { name: "Delete Tag v1…" }));
+    let dialog = await screen.findByRole("dialog", { name: "Delete tag v1?" });
+    await user.click(within(dialog).getByRole("button", { name: "Delete Tag" }));
+    expect(await screen.findByText("Deleted tag v1.")).toBeVisible();
+    expect(commands.tagDelete).toHaveBeenLastCalledWith("/repo", "v1");
+    expect(commands.remoteTagDelete).not.toHaveBeenCalled();
+
+    menu = await openMenu(user, "Commit number 2");
+    await user.click(within(menu).getByRole("menuitem", { name: "Delete Tag v1…" }));
+    dialog = await screen.findByRole("dialog", { name: "Delete tag v1?" });
+    await user.click(within(dialog).getByRole("checkbox", { name: /Also delete it on origin/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Delete Tag" }));
+    expect(await screen.findByText("Deleted tag v1 here and on origin.")).toBeVisible();
+    expect(commands.remoteTagDelete).toHaveBeenCalledWith(
+      expect.any(String),
+      "/repo",
+      "origin",
+      "v1",
+      expect.anything(),
+    );
+  });
+
+  it("doesn't offer the remote for a tag that was never pushed", async () => {
+    const user = userEvent.setup();
+    setup();
+    vi.mocked(commands.statusGet).mockResolvedValue(
+      ok({
+        branch: { head: "main", oid: commits[0].oid, upstream: null, ahead: 0, behind: 0 },
+        files: [],
+        unpushedTags: ["v1"],
+      }),
+    );
+    const menu = await openMenu(user, "Commit number 2");
+    await user.click(within(menu).getByRole("menuitem", { name: "Delete Tag v1…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete tag v1?" });
+    expect(within(dialog).getByText(/was never pushed/)).toBeVisible();
+    expect(within(dialog).queryByRole("checkbox")).toBeNull();
   });
 
   it("draws the graph with uncommitted changes and stashes, but not for a search", async () => {
@@ -1200,7 +1254,11 @@ describe("HistoryView", () => {
     setup();
     vi.mocked(commands.historyList).mockResolvedValue(ok([]));
     vi.mocked(commands.statusGet).mockResolvedValue(
-      ok({ branch: { head: "main", oid: null, upstream: null, ahead: 0, behind: 0 }, files: [] }),
+      ok({
+        branch: { head: "main", oid: null, upstream: null, ahead: 0, behind: 0 },
+        files: [],
+        unpushedTags: [],
+      }),
     );
     expect(await screen.findByText("No commits yet.")).toBeVisible();
   });

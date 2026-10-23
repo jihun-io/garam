@@ -33,6 +33,9 @@ export type CommitActions = {
   copyHash: Action;
   createBranch: Action;
   createTag: Action;
+  deleteTag: (commit: CommitSummary, tag: string) => void;
+  /** Tags at the commit, for the menu. */
+  tagsAt: (commit: CommitSummary) => string[];
   checkout: Action;
   cherryPick: Action;
   cherryPickOnto: Action;
@@ -346,6 +349,15 @@ function CommitMenu({ commit, actions }: { commit: CommitSummary; actions: Commi
       <ContextMenu.Separator className={menu.separator} />
       {item(t("menu.createBranch"), actions.createBranch)}
       {item(t("menu.createTag"), actions.createTag)}
+      {actions.tagsAt(commit).map((tag) => (
+        <ContextMenu.Item
+          key={tag}
+          className={menu.item}
+          onSelect={() => actions.deleteTag(commit, tag)}
+        >
+          {t("menu.deleteTag", { name: tag })}
+        </ContextMenu.Item>
+      ))}
       {item(t("menu.checkout"), actions.checkout)}
       <ContextMenu.Separator className={menu.separator} />
       {can.cherryPick && item(t("menu.cherryPick"), actions.cherryPick)}

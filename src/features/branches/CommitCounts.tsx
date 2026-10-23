@@ -4,15 +4,27 @@ import { Icon } from "../../components/Icon";
 import styles from "./CommitCounts.module.css";
 import { Tooltip } from "../../components/ui/Tooltip";
 
-/** Commits to pull (behind) and to push (ahead), shown only when non-zero. */
-export function CommitCounts({ ahead, behind }: { ahead: number; behind: number }) {
+/**
+ * Commits to pull (behind) and to push (ahead), and tags to push, shown
+ * only when non-zero.
+ */
+export function CommitCounts({
+  ahead,
+  behind,
+  tags = 0,
+}: {
+  ahead: number;
+  behind: number;
+  tags?: number;
+}) {
   const { t } = useTranslation("branches");
-  if (ahead === 0 && behind === 0) return null;
+  if (ahead === 0 && behind === 0 && tags === 0) return null;
   const labels = [
     behind > 0 ? t("picker.behind", { count: behind }) : null,
     ahead > 0 ? t("picker.ahead", { count: ahead }) : null,
+    tags > 0 ? t("picker.tags", { count: tags }) : null,
   ];
-  const count = (n: number, icon: "pull" | "push", label: string) => (
+  const count = (n: number, icon: "pull" | "push" | "tag", label: string) => (
     <Tooltip content={label}>
       <span className={styles.count} aria-hidden="true">
         <Icon name={icon} size={12} />
@@ -26,6 +38,7 @@ export function CommitCounts({ ahead, behind }: { ahead: number; behind: number 
       <span className="sr-only">{labels.filter(Boolean).join(", ")}</span>
       {labels[0] && count(behind, "pull", labels[0])}
       {labels[1] && count(ahead, "push", labels[1])}
+      {labels[2] && count(tags, "tag", labels[2])}
     </span>
   );
 }

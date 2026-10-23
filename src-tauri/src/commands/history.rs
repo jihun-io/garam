@@ -276,6 +276,13 @@ pub async fn tag_create(
     .await
 }
 
+/// Deletes the tag `name` from this repository only.
+#[tauri::command]
+#[specta::specta]
+pub async fn tag_delete(repo: String, name: String) -> AppResult<()> {
+    blocking(move || Ok(tag::delete(&Git::locate()?, Path::new(&repo), &name)?)).await
+}
+
 /// Compares two commits or branches (commit ids or full ref names).
 #[tauri::command]
 #[specta::specta]
