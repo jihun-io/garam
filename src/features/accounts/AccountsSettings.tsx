@@ -5,9 +5,9 @@ import { Trans, useTranslation } from "react-i18next";
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
 import { Loading } from "../../components/ui/Loading";
-import { commands, toAppError, type Account, type SignInCode } from "../../ipc";
+import { commands, toAppError, type Account, type SavedLogin, type SignInCode } from "../../ipc";
 import { useNotify } from "../notify/notifyStore";
-import { useAccounts, useSignIn, useSignOut } from "./api";
+import { useAccounts, useForgetLogin, useSavedLogins, useSignIn, useSignOut } from "./api";
 import styles from "./AccountsSettings.module.css";
 
 /** Signed-in GitHub accounts, and signing in another one. */
@@ -45,7 +45,56 @@ export function AccountsSettings() {
           }}
         />
       </p>
+      <SavedLogins />
     </>
+  );
+}
+
+/**
+ * Logins remembered from the sign-in prompt ("Remember on this computer").
+ * Shown only when there are some.
+ */
+function SavedLogins() {
+  const { t } = useTranslation("settings");
+  const logins = useSavedLogins().data ?? [];
+  if (logins.length === 0) return null;
+  return (
+    <section className={styles.saved} aria-labelledby="saved-logins">
+      <h3 id="saved-logins" className={styles.subheading}>
+        {t("accounts.saved.title")}
+      </h3>
+      <p className={styles.hint}>{t("accounts.saved.hint")}</p>
+      <ul className={styles.list} aria-labelledby="saved-logins">
+        {logins.map((login) => (
+          <SavedLoginRow
+            key={`${login.protocol}://${login.username}@${login.host}`}
+            login={login}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function SavedLoginRow({ login }: { login: SavedLogin }) {
+  const { t } = useTranslation("settings");
+  const forget = useForgetLogin();
+  const showError = useNotify((s) => s.showError);
+  const where = `${login.protocol}://${login.host}`;
+  return (
+    <li className={styles.account}>
+      <span className={styles.names}>
+        <span className={styles.name}>{login.username}</span>
+        <span className={styles.login}>{where}</span>
+      </span>
+      <Button
+        disabled={forget.isPending}
+        aria-label={t("accounts.saved.forgetLabel", { username: login.username, where })}
+        onClick={() => forget.mutate(login, { onError: showError })}
+      >
+        {t("accounts.saved.forget")}
+      </Button>
+    </li>
   );
 }
 

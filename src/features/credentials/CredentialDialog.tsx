@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "../../components/ui/Button";
+import { Checkbox } from "../../components/ui/Checkbox";
 import { FormDialog } from "../../components/ui/Dialog";
 import { Field } from "../../components/ui/Field";
 import { Icon } from "../../components/Icon";
@@ -19,6 +20,9 @@ function Prompt({ request }: { request: PendingCredential }) {
   const { t } = useTranslation("credentials");
   const respond = useCredentials((s) => s.respond);
   const [answer, setAnswer] = useState("");
+  // Without a credential helper git forgets every login; offered only then.
+  const [remember, setRemember] = useState(true);
+  const rememberId = useId();
   const { kind, target, fingerprint, text } = request.prompt;
   const values = { target: target ?? t("unknownTarget") };
   const hostKey = kind === "host_key";
@@ -33,7 +37,8 @@ function Prompt({ request }: { request: PendingCredential }) {
         : null;
 
   const cancel = () => respond(request.requestId, null);
-  const submit = () => respond(request.requestId, hostKey ? "yes" : answer);
+  const submit = () =>
+    respond(request.requestId, hostKey ? "yes" : answer, request.canRemember && remember);
 
   return (
     <FormDialog
@@ -74,7 +79,21 @@ function Prompt({ request }: { request: PendingCredential }) {
             hint={kind === "password" ? t("password.hint") : undefined}
             autoFocus
           />
-          {note && <p className={styles.note}>{note}</p>}
+          {request.canRemember ? (
+            <label className={styles.remember} htmlFor={rememberId}>
+              <Checkbox
+                id={rememberId}
+                state={remember ? "checked" : "unchecked"}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              <span>
+                <span>{t("remember.label")}</span>
+                <span className={styles.note}>{t("remember.hint")}</span>
+              </span>
+            </label>
+          ) : (
+            note && <p className={styles.note}>{note}</p>
+          )}
         </>
       )}
     </FormDialog>

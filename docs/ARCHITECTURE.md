@@ -154,7 +154,8 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - 사용자가 프롬프트를 취소하면 그 작업을 취소한다. 작업이 끝나거나 취소되면 대기 중인 프롬프트도 모두 거절한다. 답을 기다리는 시간은 최대 10분이다.
 - `SSH_ASKPASS_REQUIRE=force`로 터미널이 있어도 askpass를 쓰게 하고, 오래된 ssh를 위해 `DISPLAY`가 없으면 채운다.
 - 프롬프트 문장(`LC_ALL=C`라 영어)은 `credential.rs`가 종류(사용자 이름, 암호, SSH 키 암호, SSH 암호, 호스트 키 확인, 기타)와 대상으로 나눈다. 문장은 프론트가 번역한다.
-- 사용자가 입력한 자격 증명은 앱이 저장하지 않는다. 인증에 성공하면 git이 설정된 credential helper(OS 키체인 등)에 저장한다. 예외는 앱이 발급받은 GitHub 토큰이다(2.10).
+- 사용자에게 credential helper가 있으면(macOS git의 `osxkeychain`, Git for Windows의 Git Credential Manager 등) 입력한 자격 증명은 앱이 저장하지 않는다. 인증에 성공하면 git이 그 helper에 저장한다. 예외는 앱이 발급받은 GitHub 토큰이다(2.10).
+- **helper가 없을 때(Linux에서 흔함) 기억하기**: 모든 호스트에 쓰는 `credential.helper`가 없으면(빈 값은 그 앞의 helper를 지운 것으로 친다, `credential::has_helper`) 앱 실행 파일을 `-c credential.helper=…`로 덧붙이고, 암호 입력 창에 "이 컴퓨터에 기억"(기본 켬)을 보여 준다. 저장은 git의 helper 프로토콜을 그대로 따른다. git은 인증에 성공한 뒤에만 `store`를 보내므로 틀린 토큰은 저장되지 않고, 사용자가 기억을 골랐을 때만 저장한다. 인증이 거부되면 git이 보내는 `erase`로, 거부된 값이 저장된 값과 같을 때 지운다. 다음부터는 `get`에 저장된 값으로 답하므로 백그라운드 가져오기도 동작한다. 호스트·사용자 이름은 `logins.json`(설정 > 계정의 "이 컴퓨터에 기억한 로그인"에서 지움), 암호·토큰은 OS 키체인(서비스 `io.jihun.garam.git`)에 둔다. 계정 토큰을 내주는 호스트에서는 계정 helper가 이 helper를 지우므로 계정 토큰이 로그인 목록에 섞이지 않는다
 
 **프론트**
 
@@ -275,8 +276,8 @@ struct AppError {
 ## 7. 보안
 
 - Tauri capability는 필요한 권한만 연다. 프론트엔드에서 임의 셸 실행 권한(shell plugin의 execute)은 열지 않는다. git 실행은 Rust 명령으로만 한다.
-- 사용자가 입력한 자격 증명은 앱이 저장하지 않는다. git credential helper(OS 키체인)에 맡긴다.
-- 앱이 발급받은 GitHub 토큰만 OS 키체인에 저장한다. 파일·로그·프론트로 보내지 않는다.
+- 사용자가 입력한 자격 증명은 사용자의 git credential helper가 있으면 거기에 맡기고 앱은 저장하지 않는다. helper가 없을 때는 사용자가 "이 컴퓨터에 기억"을 고르고 인증에 성공한 값만 OS 키체인에 저장한다(2.7).
+- 앱이 OS 키체인에 저장하는 것은 앱이 발급받은 GitHub 토큰과, 위처럼 사용자가 기억을 고른 로그인뿐이다. 둘 다 파일·로그·프론트로 보내지 않는다. 파일(`accounts.json`, `logins.json`)에는 비밀이 아닌 정보(계정·호스트·사용자 이름)만 둔다.
 - 저장소의 `.git/config`(`core.fsmonitor`, `core.sshCommand`, 훅 등)가 실행하는 프로그램은 git 자체의 신뢰 범위라 막지 않는다. 이런 프로그램은 네트워크 작업 중 askpass 소켓에 물어 그 작업의 토큰을 받을 수 있지만, osxkeychain 같은 일반 credential helper에서 `git credential fill`로 받는 것과 같은 수준이다. 토큰을 작업당 한 번만 내주면 git-lfs처럼 한 작업에서 여러 번 묻는 경우가 깨지므로 그렇게 하지 않는다. 토큰은 작업이 끝나면 더 내주지 않고, 요청한 호스트가 계정 호스트와 같을 때만 내준다.
 - 외부 링크는 시스템 브라우저로 연다.
 

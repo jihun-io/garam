@@ -1,14 +1,32 @@
 import { Channel } from "@tauri-apps/api/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { commands, unwrap, type Account, type SignInCode } from "../../ipc";
+import { commands, unwrap, type Account, type SavedLogin, type SignInCode } from "../../ipc";
 import { useRepositories } from "../repos/api";
 import { useRemoteInfo } from "../sync/api";
 import { parseRemote, suggestAccount, type GitHubRemote } from "./repoAccount";
 
 export const accountKeys = {
   all: ["accounts"] as const,
+  logins: ["logins"] as const,
 };
+
+/** Logins remembered on this computer for remotes without a credential helper. */
+export function useSavedLogins() {
+  return useQuery({
+    queryKey: accountKeys.logins,
+    queryFn: () => commands.loginsList(),
+  });
+}
+
+export function useForgetLogin() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (login: SavedLogin) =>
+      unwrap(commands.loginForget(login.protocol, login.host, login.username)),
+    onSettled: () => client.invalidateQueries({ queryKey: accountKeys.logins }),
+  });
+}
 
 export function useAccounts() {
   return useQuery({

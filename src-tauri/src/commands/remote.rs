@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use garam_git::credential;
 use garam_git::remote::{self, PullOutcome, RemoteInfo};
 use garam_git::{CancelToken, Git, GitError, Progress};
 use serde::Serialize;
@@ -10,6 +11,7 @@ use tauri::ipc::Channel;
 use crate::accounts::AccountStore;
 use crate::askpass::{Askpass, CredentialRequest, HostCredential};
 use crate::error::{AppResult, blocking};
+use crate::logins::{LoginStore, SavedLogin};
 use crate::operations::Operations;
 use crate::repositories::RepositoryStore;
 
@@ -114,9 +116,20 @@ impl NetworkContext {
             let _provision = credential
                 .clone()
                 .map(|c| self.askpass.provide(&self.operation_id, c));
+            let git = Git::locate()?;
+            // Without a helper of the user's, git would forget every login
+            // and ask each time; Garam remembers the ones the user chooses.
+            // A clone has no repository yet, so only the user's settings count.
+            let dir = match &self.account {
+                Some(source) => PathBuf::from(&source.repo),
+                None => std::env::temp_dir(),
+            };
+            let remember = !credential::has_helper(&git, &dir).unwrap_or(true);
+            let _remembering = (remember && self.interactive)
+                .then(|| self.askpass.remember_logins(&self.operation_id));
             let git = self
                 .askpass
-                .git_for(Git::locate()?, &self.operation_id, credential.as_ref());
+                .git_for(git, &self.operation_id, credential.as_ref(), remember);
             let on_event = self.on_event.clone();
             let mut on_progress = move |p: Progress| {
                 let _ = on_event.send(RemoteEvent::Progress(p));
@@ -246,11 +259,32 @@ pub fn credential_respond(
     askpass: State<'_, Arc<Askpass>>,
     request_id: String,
     answer: Option<String>,
+    remember: bool,
 ) {
     let declined = answer.is_none();
-    if let Some(operation) = askpass.respond(&request_id, answer)
+    if let Some(operation) = askpass.respond(&request_id, answer, remember)
         && declined
     {
         operations.cancel(&operation);
     }
+}
+
+/// Logins remembered on this computer, newest first.
+#[tauri::command]
+#[specta::specta]
+pub fn logins_list(logins: State<'_, Arc<LoginStore>>) -> Vec<SavedLogin> {
+    logins.list()
+}
+
+/// Forgets a remembered login; git asks for it again next time.
+#[tauri::command]
+#[specta::specta]
+pub async fn login_forget(
+    logins: State<'_, Arc<LoginStore>>,
+    protocol: String,
+    host: String,
+    username: String,
+) -> AppResult<()> {
+    let logins = Arc::clone(&logins);
+    blocking(move || logins.forget(&protocol, &host, &username)).await
 }

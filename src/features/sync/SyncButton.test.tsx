@@ -248,6 +248,7 @@ describe("SyncButton", () => {
       channels[0].onmessage({
         type: "credential",
         requestId: "7",
+        canRemember: false,
         prompt: {
           kind: "password",
           target: "https://me@example.com",
@@ -263,7 +264,7 @@ describe("SyncButton", () => {
     const field = screen.getByLabelText("Password or token");
     expect(field).toHaveAttribute("type", "password");
     await user.type(field, "s3cret{enter}");
-    expect(commands.credentialRespond).toHaveBeenCalledWith("7", "s3cret");
+    expect(commands.credentialRespond).toHaveBeenCalledWith("7", "s3cret", false);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
@@ -274,6 +275,7 @@ describe("SyncButton", () => {
       useCredentials.getState().add({
         requestId: "8",
         retry: false,
+        canRemember: false,
         prompt: {
           kind: "ssh_passphrase",
           target: "/Users/me/.ssh/id_ed25519",
@@ -284,6 +286,45 @@ describe("SyncButton", () => {
     );
     expect(await screen.findByText(/added to an SSH agent/)).toBeVisible();
     expect(screen.queryByText(/credential helper/)).toBeNull();
+  });
+
+  it("offers to remember a password where git has no credential helper", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.remotePush).mockReturnValue(new Promise(() => {}));
+    vi.mocked(commands.credentialRespond).mockResolvedValue();
+    setup({ ahead: 1 });
+    await user.click(await screen.findByRole("button", { name: /Push origin/ }));
+    const ask = (requestId: string, canRemember: boolean) =>
+      act(() =>
+        channels[0].onmessage({
+          type: "credential",
+          requestId,
+          canRemember,
+          prompt: {
+            kind: "password",
+            target: "https://me@example.com",
+            fingerprint: null,
+            text: "Password for 'https://me@example.com': ",
+          },
+        }),
+      );
+
+    ask("1", true);
+    const remember = await screen.findByRole("checkbox", { name: /Remember on this computer/ });
+    expect(remember).toBeChecked();
+    expect(screen.queryByText(/credential helper/)).toBeNull();
+    await user.type(screen.getByLabelText("Password or token"), "s3cret{enter}");
+    expect(commands.credentialRespond).toHaveBeenLastCalledWith("1", "s3cret", true);
+
+    ask("2", true);
+    await user.click(await screen.findByRole("checkbox", { name: /Remember on this computer/ }));
+    await user.type(screen.getByLabelText("Password or token"), "s3cret{enter}");
+    expect(commands.credentialRespond).toHaveBeenLastCalledWith("2", "s3cret", false);
+
+    // A helper of the user's remembers it instead; no box then.
+    ask("3", false);
+    await screen.findByText(/credential helper/);
+    expect(screen.queryByRole("checkbox")).toBeNull();
   });
 
   it("says the passphrase was wrong when ssh asks again", async () => {
@@ -297,6 +338,7 @@ describe("SyncButton", () => {
         channels[0].onmessage({
           type: "credential",
           requestId,
+          canRemember: false,
           prompt: {
             kind: "ssh_passphrase",
             target: "/Users/me/.ssh/id_ed25519",
@@ -329,6 +371,7 @@ describe("SyncButton", () => {
       useCredentials.getState().add({
         requestId: "9",
         retry: false,
+        canRemember: false,
         prompt: {
           kind: "host_key",
           target: "example.com",
@@ -339,7 +382,7 @@ describe("SyncButton", () => {
     );
     expect(await screen.findByText("ED25519 SHA256:abc")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(commands.credentialRespond).toHaveBeenCalledWith("9", null);
+    expect(commands.credentialRespond).toHaveBeenCalledWith("9", null, false);
 
     await user.click(screen.getByRole("button", { name: /Fetch origin/ }));
     await vi.waitFor(() => expect(commands.remoteFetch).toHaveBeenCalled());
@@ -355,10 +398,11 @@ describe("SyncButton", () => {
       useCredentials.getState().add({
         requestId: "3",
         retry: false,
+        canRemember: false,
         prompt: { kind: "host_key", target: "example.com", fingerprint: null, text: "..." },
       }),
     );
     await user.click(await screen.findByRole("button", { name: "Trust and connect" }));
-    expect(commands.credentialRespond).toHaveBeenCalledWith("3", "yes");
+    expect(commands.credentialRespond).toHaveBeenCalledWith("3", "yes", false);
   });
 });

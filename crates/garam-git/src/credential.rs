@@ -7,6 +7,8 @@ use std::path::Path;
 
 use serde::Serialize;
 
+use crate::{Git, GitError};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
@@ -81,6 +83,8 @@ pub struct HelperRequest {
     pub host: Option<String>,
     pub path: Option<String>,
     pub username: Option<String>,
+    /// Sent with `store` and `erase`.
+    pub password: Option<String>,
 }
 
 /// Reads the `key=value` lines git sends to a helper, up to a blank line.
@@ -99,10 +103,40 @@ pub fn parse_helper_request(input: &str) -> HelperRequest {
             "host" => request.host = value,
             "path" => request.path = value,
             "username" => request.username = value,
+            "password" => request.password = value,
             _ => {}
         }
     }
     request
+}
+
+/// Whether the user has a credential helper for every host
+/// (`credential.helper`), which then remembers logins on its own. An empty
+/// value clears the ones before it, as git reads them. Helpers for one URL
+/// only (`credential.<url>.helper`) don't count: other hosts have none.
+pub fn has_helper(git: &Git, repo: &Path) -> Result<bool, GitError> {
+    let output = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["config", "-z", "--get-all", "credential.helper"])
+        .run_unchecked()?;
+    // Exit 1: the key isn't set anywhere.
+    if !output.success() {
+        return Ok(false);
+    }
+    let stdout = output.stdout_str();
+    // Each value ends with NUL; an empty value is a reset, not a separator.
+    let values: Vec<&str> = stdout
+        .strip_suffix('\0')
+        .unwrap_or(&stdout)
+        .split('\0')
+        .collect();
+    let after_reset = match values.iter().rposition(|v| v.trim().is_empty()) {
+        Some(i) => &values[i + 1..],
+        None => &values[..],
+    };
+    Ok(after_reset.iter().any(|v| !v.trim().is_empty()))
 }
 
 /// The answer a helper writes back to git.

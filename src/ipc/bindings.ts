@@ -184,11 +184,15 @@ export const commands = {
 	remotePublish: (operationId: string, repo: string, remote: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_publish", { operationId, repo, remote, onEvent })),
 	/**  Deletes the tag `name` on `remote`. */
 	remoteTagDelete: (operationId: string, repo: string, remote: string, name: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_tag_delete", { operationId, repo, remote, name, onEvent })),
+	/**  Logins remembered on this computer, newest first. */
+	loginsList: () => __TAURI_INVOKE<SavedLogin[]>("logins_list"),
+	/**  Forgets a remembered login; git asks for it again next time. */
+	loginForget: (protocol: string, host: string, username: string) => typedError<null, AppError>(__TAURI_INVOKE("login_forget", { protocol, host, username })),
 	/**
 	 *  Answers a credential prompt; `None` declines it and cancels the
 	 *  operation that asked.
 	 */
-	credentialRespond: (requestId: string, answer: string | null) => __TAURI_INVOKE<void>("credential_respond", { requestId, answer }),
+	credentialRespond: (requestId: string, answer: string | null, remember: boolean) => __TAURI_INVOKE<void>("credential_respond", { requestId, answer, remember }),
 	githubAccounts: () => __TAURI_INVOKE<AccountList>("github_accounts"),
 	/**
 	 *  Signs in to github.com with the device flow: sends the code to
@@ -447,6 +451,11 @@ export type CredentialPrompt = {
 export type CredentialRequest = {
 	requestId: string,
 	prompt: CredentialPrompt,
+	/**
+	 *  The answer can be remembered on this computer: it's a password and
+	 *  git has no credential helper to remember it.
+	 */
+	canRemember: boolean,
 };
 
 export type DiffFontSize = "small" | "medium" | "large";
@@ -781,6 +790,16 @@ export type ResetMode =
 "mixed" | 
 /**  Discard them, and any uncommitted changes to tracked files. */
 "hard";
+
+export type SavedLogin = {
+	/**  `https` or `http`. */
+	protocol: string,
+	/**  With the port when there is one, e.g. `git.example.com:8443`. */
+	host: string,
+	username: string,
+	/**  Milliseconds since the Unix epoch. */
+	savedAt: number | null,
+};
 
 /**  What a history search looks at. */
 export type SearchField = 

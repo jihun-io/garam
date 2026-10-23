@@ -17,7 +17,12 @@ export function networkChannel(onProgress: (progress: Progress) => void): Channe
       const key = [kind, target, text].join("\n");
       const retry = asked.has(key);
       asked.add(key);
-      useCredentials.getState().add({ requestId: event.requestId, prompt: event.prompt, retry });
+      useCredentials.getState().add({
+        requestId: event.requestId,
+        prompt: event.prompt,
+        canRemember: event.canRemember,
+        retry,
+      });
     } else {
       onProgress({
         phase: event.phase,

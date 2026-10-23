@@ -19,6 +19,8 @@ vi.mock("../../ipc/bindings", () => ({
     githubAccounts: vi.fn(),
     githubSignIn: vi.fn(),
     githubSignOut: vi.fn(),
+    loginsList: vi.fn(),
+    loginForget: vi.fn(),
     operationCancel: vi.fn(async () => null),
   },
 }));
@@ -64,6 +66,32 @@ describe("AccountsSettings", () => {
       accounts: [account(2, "cw-jihun-io", "김지훈")],
       authorizationSettingsUrl: SETTINGS_URL,
     });
+    vi.mocked(commands.loginsList).mockResolvedValue([]);
+  });
+
+  it("lists logins remembered on this computer and forgets one", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.loginsList).mockResolvedValue([
+      { protocol: "https", host: "git.example.com", username: "kim", savedAt: 1 },
+    ]);
+    vi.mocked(commands.loginForget).mockResolvedValue(ok(null));
+    const { container } = renderWithQuery(<AccountsSettings />);
+
+    const list = await screen.findByRole("list", { name: "Logins remembered on this computer" });
+    expect(within(list).getByText("https://git.example.com")).toBeVisible();
+    expect(await axeViolations(container)).toEqual([]);
+    vi.mocked(commands.loginsList).mockResolvedValue([]);
+    await user.click(screen.getByRole("button", { name: "Forget kim at https://git.example.com" }));
+    expect(commands.loginForget).toHaveBeenCalledWith("https", "git.example.com", "kim");
+    await vi.waitFor(() =>
+      expect(screen.queryByRole("list", { name: "Logins remembered on this computer" })).toBeNull(),
+    );
+  });
+
+  it("hides the remembered logins when there are none", async () => {
+    renderWithQuery(<AccountsSettings />);
+    await screen.findByRole("list", { name: "Signed-in accounts" });
+    expect(screen.queryByText("Logins remembered on this computer")).toBeNull();
   });
 
   it("lists accounts and signs out", async () => {

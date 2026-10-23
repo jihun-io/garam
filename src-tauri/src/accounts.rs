@@ -14,7 +14,7 @@ use crate::error::{AppError, AppErrorKind, AppResult};
 use crate::storage;
 
 /// Keychain service name for Garam's GitHub tokens.
-const KEYCHAIN_SERVICE: &str = "io.jihun.garam.github";
+pub const KEYCHAIN_SERVICE: &str = "io.jihun.garam.github";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -59,23 +59,22 @@ pub trait TokenVault: Send + Sync {
     fn delete(&self, key: &str) -> AppResult<()>;
 }
 
-pub struct Keychain;
+/// The OS keychain, under one service name.
+pub struct Keychain(pub &'static str);
 
 impl Keychain {
-    fn entry(key: &str) -> AppResult<keyring::Entry> {
-        keyring::Entry::new(KEYCHAIN_SERVICE, key).map_err(keychain_error)
+    fn entry(&self, key: &str) -> AppResult<keyring::Entry> {
+        keyring::Entry::new(self.0, key).map_err(keychain_error)
     }
 }
 
 impl TokenVault for Keychain {
     fn set(&self, key: &str, token: &str) -> AppResult<()> {
-        Self::entry(key)?
-            .set_password(token)
-            .map_err(keychain_error)
+        self.entry(key)?.set_password(token).map_err(keychain_error)
     }
 
     fn get(&self, key: &str) -> AppResult<Option<String>> {
-        match Self::entry(key)?.get_password() {
+        match self.entry(key)?.get_password() {
             Ok(token) => Ok(Some(token)),
             Err(keyring::Error::NoEntry) => Ok(None),
             Err(e) => Err(keychain_error(e)),
@@ -83,7 +82,7 @@ impl TokenVault for Keychain {
     }
 
     fn delete(&self, key: &str) -> AppResult<()> {
-        match Self::entry(key)?.delete_credential() {
+        match self.entry(key)?.delete_credential() {
             Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
             Err(e) => Err(keychain_error(e)),
         }

@@ -4,6 +4,7 @@ mod commands;
 mod error;
 mod external;
 mod locale;
+mod logins;
 mod operations;
 mod repositories;
 mod settings;
@@ -101,6 +102,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         remote::remote_push,
         remote::remote_publish,
         remote::remote_tag_delete,
+        remote::logins_list,
+        remote::login_forget,
         remote::credential_respond,
         github::github_accounts,
         github::github_sign_in,
@@ -168,13 +171,18 @@ pub fn run() {
             )));
             app.manage(Arc::new(accounts::AccountStore::load(
                 data_dir.join("accounts.json"),
-                Box::new(accounts::Keychain),
+                Box::new(accounts::Keychain(accounts::KEYCHAIN_SERVICE)),
             )));
             app.manage(Arc::new(settings::SettingsStore::load(
                 data_dir.join("settings.json"),
             )));
             app.manage(Arc::new(Operations::default()));
-            app.manage(Arc::new(askpass::Askpass::start()));
+            let logins = Arc::new(logins::LoginStore::load(
+                data_dir.join("logins.json"),
+                Box::new(accounts::Keychain(logins::KEYCHAIN_SERVICE)),
+            ));
+            app.manage(Arc::clone(&logins));
+            app.manage(Arc::new(askpass::Askpass::start(logins)));
             app.manage(watcher::RepoWatcher::default());
             app.manage(Arc::new(windows::RepoWindows::default()));
             app.manage(Arc::new(updater::Updates::default()));

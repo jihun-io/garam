@@ -86,6 +86,12 @@
     "copyCode": "Copy code",
     "openBrowser": "Open browser again",
     "cancel": "Cancel",
-    "revokeHint": "Signing out removes the token from this computer. To also revoke Garam's access, go to <settings>GitHub settings</settings>."
+    "revokeHint": "Signing out removes the token from this computer. To also revoke Garam's access, go to <settings>GitHub settings</settings>.",
+    "saved": {
+      "title": "Logins remembered on this computer",
+      "hint": "For remotes signed in with a username and password or token, saved when you chose “Remember on this computer”. They're kept in the system keychain. Forget one and Git asks for it again.",
+      "forget": "Forget",
+      "forgetLabel": "Forget {{username}} at {{where}}"
+    }
   }
 }

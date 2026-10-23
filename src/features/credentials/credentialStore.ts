@@ -16,13 +16,16 @@ export type PendingCredential = CredentialRequest & { retry: boolean };
 export const useCredentials = create<{
   queue: PendingCredential[];
   add: (request: PendingCredential) => void;
-  /** Sends the answer; `null` declines and cancels the operation. */
-  respond: (requestId: string, answer: string | null) => void;
+  /**
+   * Sends the answer; `null` declines and cancels the operation.
+   * `remember` keeps a password on this computer once git says it worked.
+   */
+  respond: (requestId: string, answer: string | null, remember?: boolean) => void;
 }>((set) => ({
   queue: [],
   add: (request) => set((s) => ({ queue: [...s.queue, request] })),
-  respond: (requestId, answer) => {
+  respond: (requestId, answer, remember = false) => {
     set((s) => ({ queue: s.queue.filter((r) => r.requestId !== requestId) }));
-    void commands.credentialRespond(requestId, answer).catch(() => {});
+    void commands.credentialRespond(requestId, answer, remember).catch(() => {});
   },
 }));

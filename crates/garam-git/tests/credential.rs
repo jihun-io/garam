@@ -56,3 +56,30 @@ fn the_app_helper_replaces_the_users_helpers_for_its_host_only() {
     let answer = fill(&git, &repo, "https://gitlab.com/me/project.git");
     assert!(answer.contains("password=from-user-helper"), "{answer}");
 }
+
+#[test]
+fn tells_whether_a_helper_remembers_logins() {
+    let repo = TestRepo::new();
+    let has = || credential::has_helper(repo.git_handle(), repo.path()).unwrap();
+    assert!(!has(), "none configured");
+
+    repo.git(["config", "--global", "credential.helper", "osxkeychain"]);
+    assert!(has());
+
+    // An empty value clears the helpers before it, as in a repository that
+    // opts out of the user's helper.
+    repo.git(["config", "credential.helper", ""]);
+    assert!(!has());
+    repo.git(["config", "--add", "credential.helper", "cache"]);
+    assert!(has());
+
+    // A helper for one host only leaves the others without one.
+    let other = TestRepo::new();
+    other.git([
+        "config",
+        "--global",
+        "credential.https://github.com.helper",
+        "!gh auth git-credential",
+    ]);
+    assert!(!credential::has_helper(other.git_handle(), other.path()).unwrap());
+}
