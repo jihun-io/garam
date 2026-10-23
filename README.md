@@ -5,14 +5,15 @@
 Garam (from 가람, an old Korean word for "river") is a free, open-source Git client for macOS, Windows and Linux. It keeps the everyday flow of changes, commit and push on one screen, and it speaks your language: the whole interface, Git's own error messages included, is translated. Korean and English are available today.
 
 > [!NOTE]
-> Garam is in early development and hasn't had its first stable release yet. Expect rough edges, and please [report what you find](https://github.com/jihun-io/garam/issues).
+> Garam 0.1.0 is the first release. Expect rough edges; the Linux builds in particular have had less testing than macOS and Windows. Please [report what you find](https://github.com/jihun-io/garam/issues).
 
 ## Features
 
 - **Changes and commits**: stage whole files, hunks or single lines; discard changes to the trash rather than losing them; amend, co-authors, and a per-repository author.
 - **History**: commit graph, search by message, author, hash or code, filter by path or branch, compare any two commits or branches, and get lost commits back from the reflog.
 - **Rewriting with care**: cherry-pick by dragging commits onto a branch, reorder by dragging, squash, reset, revert and undo the last commit. Anything that can lose work asks first and warns about force pushes.
-- **Branches and sync**: create, switch (bring changes along or stash them), merge, fetch, pull and push with progress, plus background fetch.
+- **Branches and sync**: create, switch (bring changes along or stash them), merge, fetch, pull and push with progress, plus background fetch. Tags made in Garam go up with the next push, and tags can be deleted on the remote too.
+- **Sign-in inside the app**: HTTPS usernames and tokens, SSH key passphrases and first-time host keys are asked in Garam's own windows. Without a Git credential helper, Garam can remember a login in the system keychain.
 - **Conflicts**: a banner that follows merges, rebases, cherry-picks and reverts, with per-file "mine / theirs" and an external editor.
 - **GitHub accounts**: sign in with your browser, keep several accounts, and pick one per repository so the right account pushes and the right email authors.
 - **Your language**: Git's errors are explained in your language with the original output one click away. Korean input (IME) and Korean file names work as you'd expect.

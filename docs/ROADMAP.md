@@ -97,6 +97,8 @@
 
 ## M8. 마무리와 첫 릴리스 (v0.1.0)
 
+**v0.1.0 공개**(2026-10-23): `v0.1.0` 태그의 릴리스 워크플로가 세 OS 모두 성공했고, 초안을 공개해 GitHub의 최신 릴리스가 되었다. 올라간 파일은 macOS 유니버설 DMG와 업데이트용 `.app.tar.gz`, Windows NSIS 설치 파일, Linux AppImage·deb, 각각의 `.sig`, `latest.json`이다(MSI 없음). 업데이트 피드(`releases/latest/download/latest.json`)가 `0.1.0`과 세 OS 항목으로 응답한다.
+
 UI 개선은 `docs/UI.md` 계획(1~6단계)을 따른다.
 
 - [x] 설정 화면 (언어, 테마, Git 사용자 정보, 에디터·터미널, fetch 주기) — UI 3단계
@@ -120,10 +122,12 @@ UI 개선은 `docs/UI.md` 계획(1~6단계)을 따른다.
   - macOS에서 rc.2 DMG를 내려받아 설치함(2026-10-23): 내려받은 표시(quarantine)가 붙은 채로 Gatekeeper가 받아들였다(`spctl`: `Notarized Developer ID`). 스테이플 티켓이 유효하고(`stapler validate`) 실행 파일은 유니버설(`x86_64`, `arm64`)이다
   - rc.2의 `latest.json`에 세 OS가 하나로 합쳐진 것을 확인했다: `darwin-aarch64`·`darwin-x86_64`(유니버설 앱 하나), `linux-x86_64`(AppImage)·`linux-x86_64-deb`, `windows-x86_64`(NSIS). 주소는 `releases/latest/download/…`라 공개된 최신 릴리스의 파일을 가리킨다
   - 설치한 릴리스 빌드에서 원격 로그인을 확인했다(macOS rc.2, Windows는 손으로 실행한 워크플로 빌드, M5 참고)
+  - `v0.1.0`(2026-10-23): MSI를 뺀 뒤 첫 정식 릴리스 빌드. 정식 릴리스에서만 돌던 단계가 없어져 rc.2와 같은 경로로 빌드됐다
   - **남은 확인**: Linux에서 AppImage·deb를 설치해 본다(설정 창·정보 창, 로그인 포함).
 - [ ] 자동 업데이트
   - Rust가 확인·설치 상태를 하나로 들고 모든 창에 알린다(ARCHITECTURE.md 2.11). 시작 10초 뒤와 6시간마다 확인(설정에서 끔), 메뉴 "업데이트 확인…", 오른쪽 아래 알림(업데이트 / 새로운 기능 / 나중에 → 내려받는 중 % → 지금 다시 시작). 릴리스 워크플로가 `latest.json`과 서명된 업데이트 파일을 올린다(Windows는 NSIS 기준)
-  - **남은 것**: 실제 업데이트는 공개된 릴리스가 두 개 있어야 확인할 수 있다. v0.1.0을 낸 뒤 v0.1.1(또는 시험용 버전)을 내서 세 OS에서 설치된 앱이 업데이트되는지 본다. 첫 릴리스 전에는 피드가 없어(404) 메뉴의 확인이 "업데이트를 확인하지 못했습니다"로 끝난다. 피드 주소가 `releases/latest/download/latest.json`이고 GitHub의 latest는 초안·프리릴리스를 가리키지 않으므로, rc 버전으로는 업데이트를 시험할 수 없다
+  - v0.1.0을 공개해 피드가 생겼다. 피드 주소가 `releases/latest/download/latest.json`이고 GitHub의 latest는 초안·프리릴리스를 가리키지 않으므로, rc 버전을 올려서는 업데이트를 시험할 수 없었다
+  - **남은 것**: 설치된 앱이 실제로 업데이트되는지 세 OS에서 본다. 먼저 rc.2를 설치해 둔 Mac·Windows에서 v0.1.0으로 업데이트되는지(업데이터는 버전만 비교하므로 `0.1.0`을 `0.1.0-rc.2`보다 새 버전으로 본다), 그다음 v0.1.1을 내서 v0.1.0 설치본이 업데이트되는지 본다
 - [x] README (영어·한국어), 기여 가이드, 번역 기여 가이드 (`README.md`, `README.ko.md`, `CONTRIBUTING.md`, `TRANSLATING.md`)
 
 ## 이후 (v0.2+)
