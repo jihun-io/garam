@@ -3,10 +3,13 @@ import ReactDOM from "react-dom/client";
 
 import i18n, { resolveLanguage, takeLegacyLanguage } from "./i18n";
 import "./styles/global.css";
+import { AboutApp } from "./app/AboutApp";
 import { App, queryClient } from "./app/App";
 import { SettingsApp } from "./app/SettingsApp";
 import { commands, unwrap } from "./ipc";
+import { isAboutWindow } from "./features/about/AboutWindow";
 import { preloadSettings, settingsKeys } from "./features/settings/api";
+import { preloadAppVersion } from "./features/update/api";
 import { resolveAccent } from "./features/settings/SettingsEffects";
 import { isSettingsWindow } from "./features/settings/SettingsWindow";
 import { installContextMenuGuard } from "./lib/contextMenu";
@@ -40,10 +43,20 @@ async function start() {
   });
   setSidebarWidth(settings.sidebarWidth);
   await i18n.changeLanguage(resolveLanguage(settings.language));
+  // The About window is centered around the version line; don't let it
+  // arrive after the first frame and push everything up.
+  if (isAboutWindow()) await preloadAppVersion(queryClient);
 
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-    <React.StrictMode>{isSettingsWindow() ? <SettingsApp /> : <App />}</React.StrictMode>,
+    <React.StrictMode>{root()}</React.StrictMode>,
   );
+}
+
+/** What this window shows, by its label. */
+function root() {
+  if (isSettingsWindow()) return <SettingsApp />;
+  if (isAboutWindow()) return <AboutApp />;
+  return <App />;
 }
 
 void start();

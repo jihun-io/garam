@@ -82,7 +82,7 @@ export function SettingsWindow() {
 }
 
 /** Names the window for the Window menu, the Dock and the taskbar. */
-function useWindowTitle(title: string) {
+export function useWindowTitle(title: string) {
   useEffect(() => {
     try {
       void getCurrentWindow()

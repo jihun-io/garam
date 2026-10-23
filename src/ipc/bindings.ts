@@ -63,6 +63,11 @@ export const commands = {
 	 *  WebView2 on Windows: the window appears but its page never loads.
 	 */
 	windowOpenSettings: () => typedError<null, AppError>(__TAURI_INVOKE("window_open_settings")),
+	/**
+	 *  Opens the About window, or brings it forward if it is already open.
+	 *  Async for the same reason as `window_open_settings`.
+	 */
+	windowOpenAbout: () => typedError<null, AppError>(__TAURI_INVOKE("window_open_about")),
 	statusGet: (repo: string) => typedError<RepoStatus, AppError>(__TAURI_INVOKE("status_get", { repo })),
 	diffGet: (repo: string, file: FileChange) => typedError<FileDiff, AppError>(__TAURI_INVOKE("diff_get", { repo, file })),
 	diffImages: (repo: string, file: FileChange) => typedError<ImageVersions, AppError>(__TAURI_INVOKE("diff_images", { repo, file })),

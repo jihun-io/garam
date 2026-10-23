@@ -1,0 +1,45 @@
+.root {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  height: 100vh;
+  padding: var(--space-6);
+  background: var(--color-surface);
+  text-align: center;
+}
+
+/* The window buttons sit in a title bar band inside the page on macOS;
+   center the content in the space below it, not in the whole window. */
+:global(:root[data-platform="macos"]) .root {
+  padding-top: var(--space-12);
+}
+
+.icon {
+  margin-bottom: var(--space-2);
+}
+
+.name {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 650;
+}
+
+.version {
+  margin: 0;
+  color: var(--color-ink-muted);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.links {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.copyright {
+  margin: var(--space-2) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}

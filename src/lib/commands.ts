@@ -32,6 +32,7 @@ export const SHORTCUTS = {
   "help.shortcuts": "CmdOrCtrl+/",
   "help.report": null,
   "app.checkUpdates": null,
+  "app.about": null,
 } as const satisfies Record<string, string | null>;
 
 export type CommandId = keyof typeof SHORTCUTS;

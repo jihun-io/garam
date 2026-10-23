@@ -1,0 +1,7 @@
+{
+  "title": "About Garam",
+  "version": "Version {{version}}",
+  "website": "Website",
+  "license": "License",
+  "copyright": "Copyright © 2026 Garam contributors. Released under the MIT License."
+}

@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { getVersion } from "@tauri-apps/api/app";
 import { Channel } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -44,14 +44,20 @@ export function useUpdateStatus(): UpdateStatus {
   return query.data ?? NO_UPDATE;
 }
 
+const versionQuery = {
+  queryKey: updateKeys.version,
+  queryFn: () => getVersion(),
+  staleTime: Infinity,
+};
+
 /** This app's version, e.g. "0.1.0". */
 export function useAppVersion(): string | null {
-  const query = useQuery({
-    queryKey: updateKeys.version,
-    queryFn: () => getVersion(),
-    staleTime: Infinity,
-  });
-  return query.data ?? null;
+  return useQuery(versionQuery).data ?? null;
+}
+
+/** Loads the version before the first frame, for screens that lay out around it. */
+export function preloadAppVersion(client: QueryClient) {
+  return client.prefetchQuery(versionQuery);
 }
 
 export function checkForUpdates() {

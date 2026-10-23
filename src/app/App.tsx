@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+import { AboutCommand } from "../features/about/AboutWindow";
 import { CredentialDialog } from "../features/credentials/CredentialDialog";
 import { AppMenu } from "../features/menu/AppMenu";
 import { HelpCommands } from "../features/menu/HelpCommands";
@@ -32,6 +33,7 @@ export function App() {
         </Notifications>
         <CredentialDialog />
         <SettingsCommand />
+        <AboutCommand />
       </TooltipProvider>
     </QueryClientProvider>
   );

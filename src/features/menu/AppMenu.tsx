@@ -63,15 +63,13 @@ async function buildMenu(
   };
   const native = (item: Native, text?: string) => PredefinedMenuItem.new({ item, text });
   const separator = () => native("Separator");
-  const about = () =>
-    PredefinedMenuItem.new({ item: { About: null }, text: t("menu:native.about") });
   const submenu = async (text: string, children: Promise<unknown>[]) =>
     Submenu.new({ text, items: (await Promise.all(children)) as MenuItem[] });
 
   const app = mac
     ? [
         submenu(t("menu:menus.app"), [
-          about(),
+          command("app.about"),
           command("app.checkUpdates"),
           separator(),
           command("settings"),
@@ -149,7 +147,7 @@ async function buildMenu(
   const help = submenu(t("menu:menus.help"), [
     command("help.shortcuts"),
     command("help.report"),
-    ...(mac ? [] : [separator(), command("app.checkUpdates"), about()]),
+    ...(mac ? [] : [separator(), command("app.checkUpdates"), command("app.about")]),
   ]);
 
   const menus = await Promise.all([...app, file, edit, view, repository, branch, help]);

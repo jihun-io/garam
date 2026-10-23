@@ -45,11 +45,11 @@
       "search": "기록 검색"
     },
     "app": {
-      "checkUpdates": "업데이트 확인…"
+      "checkUpdates": "업데이트 확인…",
+      "about": "Garam에 관하여"
     }
   },
   "native": {
-    "about": "Garam에 관하여",
     "services": "서비스",
     "hide": "Garam 가리기",
     "hideOthers": "기타 가리기",

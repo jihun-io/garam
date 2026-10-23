@@ -1,6 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
+import enAbout from "../locales/en/about.json";
 import enBranches from "../locales/en/branches.json";
 import enChanges from "../locales/en/changes.json";
 import enCommon from "../locales/en/common.json";
@@ -14,6 +15,7 @@ import enSettings from "../locales/en/settings.json";
 import enStartup from "../locales/en/startup.json";
 import enSync from "../locales/en/sync.json";
 import enUpdate from "../locales/en/update.json";
+import koAbout from "../locales/ko/about.json";
 import koBranches from "../locales/ko/branches.json";
 import koChanges from "../locales/ko/changes.json";
 import koCommon from "../locales/ko/common.json";
@@ -30,6 +32,7 @@ import koUpdate from "../locales/ko/update.json";
 
 export const resources = {
   en: {
+    about: enAbout,
     branches: enBranches,
     changes: enChanges,
     common: enCommon,
@@ -45,6 +48,7 @@ export const resources = {
     update: enUpdate,
   },
   ko: {
+    about: koAbout,
     branches: koBranches,
     changes: koChanges,
     common: koCommon,

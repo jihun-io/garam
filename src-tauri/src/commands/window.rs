@@ -13,6 +13,9 @@ const CASCADE_OFFSET: f64 = 28.0;
 /// Label of the settings window; `capabilities/default.json` lists it.
 const SETTINGS_WINDOW: &str = "settings";
 
+/// Label of the About window; `capabilities/default.json` lists it.
+const ABOUT_WINDOW: &str = "about";
+
 /// Brings forward the window, other than the calling one, that shows
 /// `path`. Returns whether there was one.
 #[tauri::command]
@@ -62,12 +65,27 @@ pub async fn window_open(
 #[tauri::command]
 #[specta::specta]
 pub async fn window_open_settings(app: AppHandle) -> AppResult<()> {
-    if let Some(window) = app.get_webview_window(SETTINGS_WINDOW) {
+    open_single_window(&app, SETTINGS_WINDOW, 680.0, 480.0)
+}
+
+/// Opens the About window, or brings it forward if it is already open.
+/// Async for the same reason as `window_open_settings`.
+#[tauri::command]
+#[specta::specta]
+pub async fn window_open_about(app: AppHandle) -> AppResult<()> {
+    open_single_window(&app, ABOUT_WINDOW, 360.0, 340.0)
+}
+
+/// Brings forward the window labeled `label`, or makes it.
+fn open_single_window(app: &AppHandle, label: &str, width: f64, height: f64) -> AppResult<()> {
+    if let Some(window) = app.get_webview_window(label) {
+        // Still hidden if its page never got to show it.
+        let _ = window.show();
         let _ = window.unminimize();
         let _ = window.set_focus();
         return Ok(());
     }
-    build_settings_window(&app)
+    build_fixed_window(app, label, width, height)
         .map_err(|e| AppError::app(AppErrorKind::WindowFailed, Some(e.to_string())))
 }
 
@@ -108,8 +126,9 @@ fn build_window(app: &AppHandle, from: &WebviewWindow, label: &str) -> tauri::Re
 }
 
 /// A fixed-size window with the same title bar as the repository windows.
-/// The page tells it apart by its label.
-fn build_settings_window(app: &AppHandle) -> tauri::Result<()> {
+/// The page tells it apart by its label, and shows it once it has drawn
+/// its first frame so the webview's blank page never flashes.
+fn build_fixed_window(app: &AppHandle, label: &str, width: f64, height: f64) -> tauri::Result<()> {
     let mut config = app
         .config()
         .app
@@ -117,15 +136,16 @@ fn build_settings_window(app: &AppHandle) -> tauri::Result<()> {
         .first()
         .cloned()
         .unwrap_or_default();
-    config.label = SETTINGS_WINDOW.to_owned();
-    config.width = 680.0;
-    config.height = 480.0;
+    config.label = label.to_owned();
+    config.width = width;
+    config.height = height;
     config.min_width = None;
     config.min_height = None;
     config.resizable = false;
     config.maximizable = false;
     config.minimizable = false;
     config.center = true;
+    config.visible = false;
     WebviewWindowBuilder::from_config(app, &config)?.build()?;
     Ok(())
 }

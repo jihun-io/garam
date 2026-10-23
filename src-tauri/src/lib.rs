@@ -43,6 +43,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         window::window_focus_repo,
         window::window_open,
         window::window_open_settings,
+        window::window_open_about,
         changes::status_get,
         changes::diff_get,
         changes::diff_images,

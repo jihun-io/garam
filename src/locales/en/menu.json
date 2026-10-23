@@ -45,11 +45,11 @@
       "search": "Search History"
     },
     "app": {
-      "checkUpdates": "Check for Updates…"
+      "checkUpdates": "Check for Updates…",
+      "about": "About Garam"
     }
   },
   "native": {
-    "about": "About Garam",
     "services": "Services",
     "hide": "Hide Garam",
     "hideOthers": "Hide Others",
