@@ -97,14 +97,15 @@ UI 개선은 `docs/UI.md` 계획(1~6단계)을 따른다.
   - 검색: 메시지 검색은 일치하는 게 없으면 전체를 훑어 약 1.7초, 코드 내용 검색(`-S`)은 약 22초, 경로 필터는 첫 페이지 약 3.5초. 검색어나 필터를 바꾸면 이전 git 프로세스를 취소한다(300ms 안에 끝남)
   - **남은 것**: 실제 앱(웹뷰)에서 끝까지 걸리는 시간은 직접 재지 않았다. Windows·Linux 측정, 경로 필터를 빠르게 하는 changed-path 블룸 필터(만드는 데 약 25초), 새 커밋이 쌓이면 commit-graph를 다시 쓰는 일(지금은 없을 때만 만든다)
 - [x] 앱 아이콘 자산: macOS Icon Composer/ICNS, Windows ICO, Linux PNG 및 재생성 스크립트
-- [ ] macOS 서명·공증, Windows 서명, Linux 패키지 (AppImage, deb)
+- [x] macOS 서명·공증, Windows 서명, Linux 패키지 (AppImage, deb)
   - 릴리스 워크플로(`.github/workflows/release.yml`): `v*` 태그를 푸시하면 세 OS를 빌드해 초안 Release에 올리고, 손으로 실행하면 Release 없이 설치 파일만 아티팩트로 남긴다. macOS는 유니버설(Apple Silicon + Intel) 빌드를 Developer ID로 서명하고 App Store Connect API 키로 공증한다. Linux는 AppImage와 deb(`git` 의존), Windows는 NSIS(프리릴리스가 아니면 MSI도)
   - Windows는 v0.1에서 서명하지 않는다(SmartScreen 경고를 README에서 안내). SignPath Foundation(오픈소스 무료 서명)을 신청하고, Microsoft Store(MSIX)는 askpass 동작을 확인한 뒤에 검토한다
   - 수동 실행으로 확인함: 앱은 서명·공증·스테이플되고 유니버설(x86_64, arm64)이며, DMG도 따로 공증·스테이플해 내려받은 파일(quarantine)을 Gatekeeper가 받아들인다. Tauri는 DMG 안의 앱만 공증하므로 DMG 공증 단계가 필요하다
-  - **남은 것**: 업데이터 산출물(`.sig`, `latest.json`)은 업데이터 플러그인 설정과 함께 켠다. 태그로 초안 Release를 만드는 흐름(DMG 교체 업로드 포함)은 첫 RC 태그에서 확인한다
+  - `v0.1.0-rc.1` 태그로 확인함(2026-10-22): 세 OS 빌드가 모두 성공해 초안 프리릴리스에 올라갔다. macOS 앱은 공증 Accepted, DMG는 스테이플 후 Gatekeeper가 `Notarized Developer ID`로 받아들였고, 공증한 DMG로 교체 업로드(`--clobber`)도 지나갔다. 업데이터 산출물(`.sig`, `latest.json`)도 함께 올라간다
+  - **남은 확인**: 초안 Release에서 `latest.json` 하나에 세 OS(macOS 유니버설, Linux AppImage, Windows NSIS)가 모두 합쳐졌는지 본다. rc.1 설치 파일을 세 OS에서 직접 설치해 본다(macOS는 내려받은 DMG, Windows는 SmartScreen 경고, Linux는 AppImage·deb)
 - [ ] 자동 업데이트
   - Rust가 확인·설치 상태를 하나로 들고 모든 창에 알린다(ARCHITECTURE.md 2.11). 시작 10초 뒤와 6시간마다 확인(설정에서 끔), 메뉴 "업데이트 확인…", 오른쪽 아래 알림(업데이트 / 새로운 기능 / 나중에 → 내려받는 중 % → 지금 다시 시작). 릴리스 워크플로가 `latest.json`과 서명된 업데이트 파일을 올린다(Windows는 NSIS 기준)
-  - **남은 것**: 실제 업데이트는 공개된 릴리스가 두 개 있어야 확인할 수 있다. v0.1.0을 낸 뒤 v0.1.1(또는 시험용 버전)을 내서 세 OS에서 설치된 앱이 업데이트되는지 본다. 첫 릴리스 전에는 피드가 없어(404) 메뉴의 확인이 "업데이트를 확인하지 못했습니다"로 끝난다
+  - **남은 것**: 실제 업데이트는 공개된 릴리스가 두 개 있어야 확인할 수 있다. v0.1.0을 낸 뒤 v0.1.1(또는 시험용 버전)을 내서 세 OS에서 설치된 앱이 업데이트되는지 본다. 첫 릴리스 전에는 피드가 없어(404) 메뉴의 확인이 "업데이트를 확인하지 못했습니다"로 끝난다. 피드 주소가 `releases/latest/download/latest.json`이고 GitHub의 latest는 초안·프리릴리스를 가리키지 않으므로, rc 버전으로는 업데이트를 시험할 수 없다
 - [x] README (영어·한국어), 기여 가이드, 번역 기여 가이드 (`README.md`, `README.ko.md`, `CONTRIBUTING.md`, `TRANSLATING.md`)
 
 ## 이후 (v0.2+)
