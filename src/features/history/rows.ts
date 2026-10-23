@@ -1,13 +1,11 @@
-import type { TFunction } from "i18next";
-
-import type { CommitSummary, StashEntry } from "../../ipc";
+import type { CommitSummary, Stash } from "../../ipc";
 import type { GraphNode } from "./graph";
 
 /** A row of the history list. */
 export type HistoryRow =
   | { kind: "wip"; id: typeof WIP_ID; count: number }
   | { kind: "commit"; id: string; commit: CommitSummary }
-  | { kind: "stash"; id: string; commit: CommitSummary; stash: StashEntry };
+  | { kind: "stash"; id: string; commit: CommitSummary; stash: Stash };
 
 /** Not a commit id (those are hex), so it can't collide with one. */
 export const WIP_ID = "wip";
@@ -27,7 +25,7 @@ export function buildRows({
 }: {
   own: CommitSummary[];
   incoming: CommitSummary[];
-  stashes: StashEntry[];
+  stashes: Stash[];
   changedFiles: number;
   head: string | null;
   extras: boolean;
@@ -46,7 +44,7 @@ export function buildRows({
   // were incoming are already on HEAD.
   const onHead = new Set(own.map((c) => c.oid));
   rows.push(...incoming.filter((c) => !onHead.has(c.oid)).map(commitRow));
-  const byBase = new Map<string, StashEntry[]>();
+  const byBase = new Map<string, Stash[]>();
   for (const stash of stashes) byBase.set(stash.base, [...(byBase.get(stash.base) ?? []), stash]);
   for (const commit of own) {
     for (const stash of byBase.get(commit.oid) ?? []) {
@@ -57,10 +55,10 @@ export function buildRows({
         commit: {
           oid: stash.oid,
           parents: [stash.base],
-          authorName: stash.authorName,
+          authorName: "",
           authorEmail: "",
           authoredAt: stash.createdAt,
-          summary: stash.message,
+          summary: stash.message ?? "",
         },
       });
     }
@@ -84,34 +82,4 @@ export function graphNodes(rows: HistoryRow[], head: string | null): GraphNode[]
       ? { id: row.id, parents: head ? [head] : [], dashed: true }
       : { id: row.id, parents: row.commit.parents, dashed: row.kind === "stash" },
   );
-}
-
-const STASH_MESSAGE = /^(WIP on|On) ([^:]+): (.*)$/s;
-const AUTO_STASH = "garam-auto-stash:";
-
-/** git's stash description, split into what it says. */
-export function describeStash(
-  message: string,
-):
-  | { kind: "auto"; branch: string }
-  | { kind: "named"; text: string }
-  | { kind: "untitled"; branch: string } {
-  const match = STASH_MESSAGE.exec(message);
-  if (!match) return { kind: "named", text: message };
-  const [, prefix, branch, rest] = match;
-  if (rest.startsWith(AUTO_STASH)) return { kind: "auto", branch: rest.slice(AUTO_STASH.length) };
-  return prefix === "On" ? { kind: "named", text: rest } : { kind: "untitled", branch };
-}
-
-/** A stash's title in the user's language. */
-export function stashTitle(t: TFunction<"history">, message: string): string {
-  const stash = describeStash(message);
-  switch (stash.kind) {
-    case "auto":
-      return t("stash.auto", { branch: stash.branch });
-    case "untitled":
-      return t("stash.untitled", { branch: stash.branch });
-    case "named":
-      return stash.text;
-  }
 }

@@ -24,6 +24,7 @@ export const SHORTCUTS = {
   "repo.openEditor": "CmdOrCtrl+Shift+A",
   "repo.openTerminal": "Ctrl+`",
   "repo.reveal": "CmdOrCtrl+Shift+F",
+  "repo.stash": "CmdOrCtrl+Shift+S",
   "branch.create": "CmdOrCtrl+Shift+N",
   "branch.rename": "CmdOrCtrl+Shift+R",
   "branch.merge": "CmdOrCtrl+Shift+M",

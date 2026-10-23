@@ -122,6 +122,8 @@ async function buildMenu(
     command("sync.pull"),
     command("sync.push"),
     separator(),
+    command("repo.stash"),
+    separator(),
     command("repo.openEditor"),
     command("repo.openTerminal"),
     command("repo.reveal"),

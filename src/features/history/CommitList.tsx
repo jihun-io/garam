@@ -17,7 +17,8 @@ import { GraphCell, type NodeShape } from "./GraphCell";
 import styles from "./History.module.css";
 import { RefBadges, SyncMark } from "./RefBadges";
 import type { HistoryMarks } from "./refs";
-import { stashTitle, type HistoryRow } from "./rows";
+import { stashTitle } from "../stashes/api";
+import type { HistoryRow } from "./rows";
 
 export type SelectHow = "single" | "toggle" | "range";
 
@@ -297,6 +298,7 @@ function DragGhost({ drag }: { drag: CommitDrag }) {
 
 function RowText({ row, marks }: { row: HistoryRow; marks: HistoryMarks }) {
   const { t } = useTranslation("history");
+  const { t: tStash } = useTranslation("stashes");
   const relativeTime = useRelativeTime();
   if (row.kind === "wip") {
     return (
@@ -308,7 +310,7 @@ function RowText({ row, marks }: { row: HistoryRow; marks: HistoryMarks }) {
   }
   const commit = row.commit;
   const sync = marks.sync.get(commit.oid);
-  const title = row.kind === "stash" ? stashTitle(t, row.stash.message) : commit.summary;
+  const title = row.kind === "stash" ? stashTitle(tStash, row.stash) : commit.summary;
   return (
     <span className={styles.rowText}>
       <span className={styles.titleLine}>
@@ -324,7 +326,7 @@ function RowText({ row, marks }: { row: HistoryRow; marks: HistoryMarks }) {
       <span className={styles.meta}>
         {sync && <SyncMark state={sync} />}
         {sync && " "}
-        {row.kind === "stash" ? `${t("stash.label")} · ` : `${commit.authorName} · `}
+        {row.kind === "stash" ? `${tStash("label")} · ` : `${commit.authorName} · `}
         {relativeTime(commit.authoredAt)}
       </span>
     </span>

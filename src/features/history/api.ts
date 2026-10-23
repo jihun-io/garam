@@ -127,10 +127,39 @@ export function useCommitDetail(repo: string, oid: string | null) {
 
 /** Where a file's diff comes from: one commit, or the ends of a comparison. */
 export type DiffSource =
-  { kind: "commit"; oid: string } | { kind: "compare"; from: string; target: string };
+  | { kind: "commit"; oid: string }
+  | { kind: "compare"; from: string; target: string }
+  | { kind: "stash"; oid: string };
 
 const sourceKey = (source: DiffSource) =>
-  source.kind === "commit" ? source.oid : `${source.from}..${source.target}`;
+  source.kind === "compare" ? `${source.from}..${source.target}` : `${source.kind}:${source.oid}`;
+
+function diffCommand(
+  repo: string,
+  source: DiffSource,
+  file: CommitFile,
+  ignoreWhitespace: boolean,
+) {
+  switch (source.kind) {
+    case "commit":
+      return commands.commitFileDiff(repo, source.oid, file, ignoreWhitespace);
+    case "compare":
+      return commands.compareFileDiff(repo, source.from, source.target, file, ignoreWhitespace);
+    case "stash":
+      return commands.stashFileDiff(repo, source.oid, file, ignoreWhitespace);
+  }
+}
+
+function imagesCommand(repo: string, source: DiffSource, file: CommitFile) {
+  switch (source.kind) {
+    case "commit":
+      return commands.commitImages(repo, source.oid, file);
+    case "compare":
+      return commands.compareImages(repo, source.from, source.target, file);
+    case "stash":
+      return commands.stashImages(repo, source.oid, file);
+  }
+}
 
 export function useFileDiff(
   repo: string,
@@ -140,12 +169,7 @@ export function useFileDiff(
 ) {
   return useQuery({
     queryKey: historyKeys.diff(repo, sourceKey(source), file?.path ?? "", ignoreWhitespace),
-    queryFn: () =>
-      unwrap(
-        source.kind === "commit"
-          ? commands.commitFileDiff(repo, source.oid, file!, ignoreWhitespace)
-          : commands.compareFileDiff(repo, source.from, source.target, file!, ignoreWhitespace),
-      ),
+    queryFn: () => unwrap(diffCommand(repo, source, file!, ignoreWhitespace)),
     enabled: file !== null,
     staleTime: Infinity,
   });
@@ -159,12 +183,7 @@ export function useFileImages(
 ) {
   return useQuery({
     queryKey: historyKeys.images(repo, sourceKey(source), file.path),
-    queryFn: () =>
-      unwrap(
-        source.kind === "commit"
-          ? commands.commitImages(repo, source.oid, file)
-          : commands.compareImages(repo, source.from, source.target, file),
-      ),
+    queryFn: () => unwrap(imagesCommand(repo, source, file)),
     enabled,
     staleTime: Infinity,
   });

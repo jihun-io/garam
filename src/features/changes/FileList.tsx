@@ -23,6 +23,7 @@ export function FileList({
   onSelect,
   onToggle,
   onDiscard,
+  onStash,
 }: {
   repo: string;
   files: FileChange[];
@@ -30,6 +31,7 @@ export function FileList({
   onSelect: (path: string) => void;
   onToggle: (file: FileChange) => void;
   onDiscard: (files: FileChange[]) => void;
+  onStash: (files: FileChange[]) => void;
 }) {
   const { t } = useTranslation("changes");
   const showError = useNotify((s) => s.showError);
@@ -131,6 +133,13 @@ export function FileList({
                 <ContextMenu.Content className={menu.content}>
                   <ContextMenu.Item className={menu.item} onSelect={() => onDiscard([file])}>
                     {t("fileMenu.discard")}
+                  </ContextMenu.Item>
+                  <ContextMenu.Item
+                    className={menu.item}
+                    disabled={kind === "conflicted"}
+                    onSelect={() => onStash([file])}
+                  >
+                    {t("fileMenu.stash")}
                   </ContextMenu.Item>
                   <ContextMenu.Separator className={menu.separator} />
                   <ContextMenu.Item

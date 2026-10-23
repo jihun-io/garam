@@ -4,7 +4,8 @@
     "title_other": "변경된 파일 {{count}}개",
     "selectAll": "모든 파일을 커밋에 포함",
     "more": "다른 작업",
-    "discardAll": "모든 변경 취소…"
+    "discardAll": "모든 변경 취소…",
+    "stashAll": "모든 변경 사항 보관…"
   },
   "kind": {
     "added": "추가됨",
@@ -15,6 +16,7 @@
   },
   "fileMenu": {
     "discard": "변경 취소…",
+    "stash": "이 파일 보관…",
     "copyPath": "경로 복사",
     "reveal_macos": "Finder에서 보기",
     "reveal_windows": "탐색기에서 보기",

@@ -69,7 +69,7 @@
     "restore": "Restore changes",
     "discard": "Discard…",
     "discardTitle": "Discard the saved changes?",
-    "discardBody": "The changes you left on {{branch}} will be deleted. This can't be undone.",
+    "discardBody": "The changes you left on {{branch}} will be removed from the stash list. Right after, you can undo it from the notice.",
     "discardConfirm": "Discard saved changes",
     "keep": "Keep them"
   },

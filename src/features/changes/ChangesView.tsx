@@ -14,6 +14,12 @@ import { ConflictBanner, ConflictPanel } from "../conflicts/ConflictPanel";
 import { CommandList } from "../menu/CommandList";
 import { useNotify } from "../notify/notifyStore";
 import { SidebarSplitter } from "../settings/SidebarSplitter";
+import { useStashes } from "../stashes/api";
+import { StashConflictBanner } from "../stashes/StashConflictBanner";
+import { StashDetail } from "../stashes/StashDetail";
+import { StashDialog } from "../stashes/StashDialog";
+import { StashSection } from "../stashes/StashSection";
+import { useCommand } from "../../lib/commands";
 import { useChangeActions, useStatus } from "./api";
 import styles from "./ChangesView.module.css";
 import { CommitForm } from "./CommitForm";
@@ -25,17 +31,23 @@ import { Icon } from "../../components/Icon";
 import { Tooltip } from "../../components/ui/Tooltip";
 
 /**
- * Changed files, the selected file's diff, and the commit form. `tabs` is
- * shown at the top of the sidebar.
+ * Changed files, the selected file's diff, and the commit form, with the
+ * stashes below the files. `tabs` is shown at the top of the sidebar.
  */
 export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) {
   const { t } = useTranslation("changes");
   const status = useStatus(repo);
   const conflicts = useConflicts(repo);
+  const stashes = useStashes(repo).data ?? [];
   const { stage, unstage } = useChangeActions(repo);
   const showError = useNotify((s) => s.showError);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [selectedStash, setSelectedStash] = useState<string | null>(null);
   const [discarding, setDiscarding] = useState<FileChange[] | null>(null);
+  // Paths to stash; empty means all changes.
+  const [stashing, setStashing] = useState<string[] | null>(null);
+  const hasFiles = (status.data?.files.length ?? 0) > 0;
+  useCommand("repo.stash", () => setStashing([]), hasFiles);
 
   if (status.isError) {
     return (
@@ -70,6 +82,12 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
     if (allowed.length > 0) action.mutate(allowed, { onError: showError });
   };
   const operation = conflicts.data?.operation ?? null;
+  // Falls back to the files once the stash is popped or dropped.
+  const stash = stashes.find((s) => s.oid === selectedStash) ?? null;
+  const selectFile = (path: string) => {
+    setSelectedPath(path);
+    setSelectedStash(null);
+  };
 
   return (
     <div className={styles.root}>
@@ -77,6 +95,7 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
         {tabs}
         <AutoStashBanner repo={repo} branch={branch.head} />
         {conflicts.data && <ConflictBanner state={conflicts.data} />}
+        <StashConflictBanner repo={repo} conflicts={conflicts.data} />
         <div className={styles.listHeader}>
           <Checkbox
             state={allState}
@@ -95,6 +114,9 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
             </Tooltip>
             <DropdownMenu.Portal>
               <DropdownMenu.Content className={menu.content} align="end" sideOffset={4}>
+                <DropdownMenu.Item className={menu.item} onSelect={() => setStashing([])}>
+                  {t("list.stashAll")}
+                </DropdownMenu.Item>
                 <DropdownMenu.Item className={menu.item} onSelect={() => setDiscarding(files)}>
                   {t("list.discardAll")}
                 </DropdownMenu.Item>
@@ -106,14 +128,16 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
           <FileList
             repo={repo}
             files={files}
-            selectedPath={selected?.path ?? null}
-            onSelect={setSelectedPath}
+            selectedPath={stash ? null : (selected?.path ?? null)}
+            onSelect={selectFile}
             onToggle={(file) => toggle([file], checkState(file) !== "checked")}
             onDiscard={setDiscarding}
+            onStash={(targets) => setStashing(targets.map((f) => f.path))}
           />
         ) : (
           <div className={styles.listEmpty} />
         )}
+        <StashSection stashes={stashes} selected={stash?.oid ?? null} onSelect={setSelectedStash} />
         <SidebarSplitter />
         {operation && conflicts.data ? (
           <ConflictPanel repo={repo} state={conflicts.data} />
@@ -123,7 +147,9 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
       </aside>
 
       <div className={styles.main}>
-        {files.length > 0 ? (
+        {stash ? (
+          <StashDetail key={stash.oid} repo={repo} stash={stash} />
+        ) : files.length > 0 ? (
           <DiffView
             repo={repo}
             file={selected}
@@ -139,6 +165,7 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
       {discarding && (
         <DiscardDialog repo={repo} files={discarding} onClose={() => setDiscarding(null)} />
       )}
+      {stashing && <StashDialog repo={repo} paths={stashing} onClose={() => setStashing(null)} />}
     </div>
   );
 }

@@ -12,6 +12,7 @@ import enHistory from "../locales/en/history.json";
 import enMenu from "../locales/en/menu.json";
 import enRepos from "../locales/en/repos.json";
 import enSettings from "../locales/en/settings.json";
+import enStashes from "../locales/en/stashes.json";
 import enStartup from "../locales/en/startup.json";
 import enSync from "../locales/en/sync.json";
 import enUpdate from "../locales/en/update.json";
@@ -26,6 +27,7 @@ import koHistory from "../locales/ko/history.json";
 import koMenu from "../locales/ko/menu.json";
 import koRepos from "../locales/ko/repos.json";
 import koSettings from "../locales/ko/settings.json";
+import koStashes from "../locales/ko/stashes.json";
 import koStartup from "../locales/ko/startup.json";
 import koSync from "../locales/ko/sync.json";
 import koUpdate from "../locales/ko/update.json";
@@ -43,6 +45,7 @@ export const resources = {
     menu: enMenu,
     repos: enRepos,
     settings: enSettings,
+    stashes: enStashes,
     startup: enStartup,
     sync: enSync,
     update: enUpdate,
@@ -59,6 +62,7 @@ export const resources = {
     menu: koMenu,
     repos: koRepos,
     settings: koSettings,
+    stashes: koStashes,
     startup: koStartup,
     sync: koSync,
     update: koUpdate,

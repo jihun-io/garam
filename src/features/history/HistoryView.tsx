@@ -30,6 +30,7 @@ import {
   useRemoteWebUrl,
   useRevert,
 } from "./api";
+import { StashDetail } from "../stashes/StashDetail";
 import { CommitDetailView } from "./CommitDetailView";
 import { CompareView } from "./CompareView";
 import { CommitList, type CommitActions, type SelectHow } from "./CommitList";
@@ -386,6 +387,8 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
         <Button onClick={() => runCommand("view.changes")}>{t("wip.open")}</Button>
       </EmptyMessage>
     );
+  } else if (selected?.kind === "stash") {
+    main = <StashDetail key={selected.id} repo={repo} stash={selected.stash} />;
   } else if (selected) {
     main = (
       <CommitDetailView
@@ -393,7 +396,6 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
         oid={selected.id}
         badges={marks.refs.get(selected.id) ?? []}
         sync={marks.sync.get(selected.id)}
-        stash={selected.kind === "stash" ? selected.stash : undefined}
         onCopyHash={copyHash}
       />
     );

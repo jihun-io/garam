@@ -4,7 +4,8 @@
     "title_other": "{{count}} changed files",
     "selectAll": "Include all files in the commit",
     "more": "More actions",
-    "discardAll": "Discard all changes…"
+    "discardAll": "Discard all changes…",
+    "stashAll": "Stash All Changes…"
   },
   "kind": {
     "added": "Added",
@@ -15,6 +16,7 @@
   },
   "fileMenu": {
     "discard": "Discard changes…",
+    "stash": "Stash This File…",
     "copyPath": "Copy path",
     "reveal_macos": "Show in Finder",
     "reveal_windows": "Show in Explorer",

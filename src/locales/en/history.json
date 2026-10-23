@@ -167,12 +167,6 @@
     "body": "These changes aren't in any commit yet.",
     "open": "Show in Changes"
   },
-  "stash": {
-    "label": "Stashed changes",
-    "auto": "Changes left on {{branch}} when switching branches",
-    "untitled": "Changes stashed on {{branch}}",
-    "detail": "Changes stashed as {{name}}. Untracked files aren't shown here."
-  },
   "signature": {
     "good": "Verified signature",
     "goodHint": "Signed by {{signer}}.",

@@ -69,7 +69,7 @@
     "restore": "변경 사항 복원",
     "discard": "버리기…",
     "discardTitle": "보관한 변경 사항을 버릴까요?",
-    "discardBody": "{{branch}}에 보관해 둔 변경 사항이 삭제됩니다. 되돌릴 수 없습니다.",
+    "discardBody": "{{branch}}에 보관해 둔 변경 사항을 보관 목록에서 지웁니다. 버린 직후에는 알림에서 되돌릴 수 있습니다.",
     "discardConfirm": "보관한 변경 사항 버리기",
     "keep": "그대로 두기"
   },

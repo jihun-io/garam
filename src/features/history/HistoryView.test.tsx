@@ -59,6 +59,9 @@ vi.mock("../../ipc/bindings", () => ({
     compareGet: vi.fn(),
     compareFileDiff: vi.fn(),
     compareImages: vi.fn(),
+    stashFiles: vi.fn(),
+    stashFileDiff: vi.fn(),
+    stashApply: vi.fn(),
     lostCommits: vi.fn(),
     operationCancel: vi.fn(),
   },
@@ -669,8 +672,10 @@ describe("HistoryView", () => {
       oid: "s".repeat(40),
       base: commits[1].oid,
       name: "stash@{0}",
-      message: "On main: garam-auto-stash:main",
-      authorName: "김가람",
+      branch: "main",
+      message: "garam-auto-stash:main",
+      auto: true,
+      hasUntracked: false,
       createdAt: now,
     };
     const { container } = setup({ ...markers, stashes: [stashed] }, [
@@ -693,20 +698,25 @@ describe("HistoryView", () => {
     await user.click(within(list).getByText("Uncommitted changes (2 files)"));
     expect(await screen.findByRole("button", { name: "Show in Changes" })).toBeVisible();
 
-    vi.mocked(commands.commitDetail).mockImplementation(async (_repo, oid) =>
-      ok(
-        detail(
-          commits.find((c) => c.oid === oid) ??
-            commit(0, { oid, parents: [commits[1].oid, "i".repeat(40)], summary: "On main: x" }),
-        ),
-      ),
+    // A stash shows its files, untracked ones too, and the ways to restore it.
+    vi.mocked(commands.stashFiles).mockResolvedValue(
+      ok([
+        { path: "a.txt", origPath: null, kind: "modified" },
+        { path: "new.txt", origPath: null, kind: "untracked" },
+      ]),
     );
+    vi.mocked(commands.stashFileDiff).mockResolvedValue(
+      ok({ type: "text", hunks: [], selectable: false }),
+    );
+    vi.mocked(commands.stashApply).mockResolvedValue(ok("applied"));
     await user.click(within(list).getByText(/Changes left on main/));
     expect(
       await screen.findByRole("heading", { name: "Changes left on main when switching branches" }),
     ).toBeVisible();
-    expect(screen.getByText(/Untracked files aren't shown here/)).toBeVisible();
-    expect(screen.queryByText("Merge commit")).toBeNull();
+    expect(screen.getByText("Garam stashed these when you switched branches.")).toBeVisible();
+    expect(await screen.findByRole("button", { name: /new\.txt/ })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+    expect(commands.stashApply).toHaveBeenCalledWith("/repo", stashed.oid, true);
 
     vi.mocked(commands.historyList).mockResolvedValue(ok([commits[2]]));
     await user.type(screen.getByRole("searchbox"), "number");

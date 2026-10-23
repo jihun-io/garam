@@ -7,18 +7,24 @@ import { axeViolations } from "../../test/axe";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { ChangesView } from "../changes/ChangesView";
 import { Notifications } from "../notify/Notifications";
+import { DEFAULT_SETTINGS } from "../settings/api";
 import { useNotify } from "../notify/notifyStore";
 
 const responses: Record<string, unknown> = {};
 const fns: Record<string, ReturnType<typeof vi.fn>> = {};
 
 // Every command is a spy answering with its canned response, or null.
+// Settings come back as they are rather than as a Result.
 vi.mock("../../ipc/bindings", () => ({
   commands: new Proxy(
     {},
     {
       get: (_, name: string) =>
-        (fns[name] ??= vi.fn(async () => ({ status: "ok", data: responses[name] ?? null }))),
+        (fns[name] ??= vi.fn(async () =>
+          name === "settingsGet"
+            ? responses[name]
+            : { status: "ok", data: responses[name] ?? null },
+        )),
     },
   ),
 }));
@@ -32,6 +38,7 @@ const conflicted = {
 };
 
 function setup(state: ConflictState) {
+  responses.settingsGet = DEFAULT_SETTINGS;
   responses.statusGet = {
     branch: { head: "main", oid: "abc", upstream: null, ahead: 0, behind: 0 },
     files: state.files.length > 0 ? [conflicted] : [],

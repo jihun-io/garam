@@ -118,6 +118,8 @@ export const commands = {
 	stashBranch: (repo: string, oid: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_branch", { repo, oid, name })),
 	stashFiles: (repo: string, oid: string) => typedError<CommitFile[], AppError>(__TAURI_INVOKE("stash_files", { repo, oid })),
 	stashFileDiff: (repo: string, oid: string, file: CommitFile, ignoreWhitespace: boolean) => typedError<FileDiff, AppError>(__TAURI_INVOKE("stash_file_diff", { repo, oid, file, ignoreWhitespace })),
+	/**  An image file of a stash, before and after. */
+	stashImages: (repo: string, oid: string, file: CommitFile) => typedError<ImageVersions, AppError>(__TAURI_INVOKE("stash_images", { repo, oid, file })),
 	/**  The stash Garam made when the user last left `branch`, if any. */
 	stashFindAuto: (repo: string, branch: string) => typedError<{
 	/**  Commit id of the stash entry; stable while `stash@{n}` indexes shift. */
@@ -654,7 +656,7 @@ export type HistoryMarkers = {
 	/**  Commits on the upstream that HEAD doesn't have yet, newest first. */
 	incoming: CommitSummary[],
 	/**  Stashed changes, newest first. */
-	stashes: StashEntry[],
+	stashes: Stash[],
 };
 
 /**  Which commits the history walks. */
@@ -912,20 +914,6 @@ export type Stash = {
 	/**  Made by Garam when switching away from `branch`. */
 	auto: boolean,
 	hasUntracked: boolean,
-	/**  Seconds since the Unix epoch. */
-	createdAt: number,
-};
-
-/**  One entry of `git stash list`. */
-export type StashEntry = {
-	oid: string,
-	/**  The commit the changes were stashed on. */
-	base: string,
-	/**  `stash@{0}`. */
-	name: string,
-	/**  git's description, e.g. `On main: message` or `WIP on main: …`. */
-	message: string,
-	authorName: string,
 	/**  Seconds since the Unix epoch. */
 	createdAt: number,
 };

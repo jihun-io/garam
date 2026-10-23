@@ -50,3 +50,7 @@
     transform: translateY(6px);
   }
 }
+
+.action {
+  margin-top: var(--space-2);
+}

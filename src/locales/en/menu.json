@@ -16,6 +16,7 @@
       "clone": "Clone Repository…",
       "openEditor": "Open in Editor",
       "openTerminal": "Open in Terminal",
+      "stash": "Stash Changes…",
       "recover": "Recover Lost Commits…"
     },
     "settings": "Settings…",

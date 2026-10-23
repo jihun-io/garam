@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { CommitSummary, StashEntry } from "../../ipc";
-import { buildRows, describeStash, graphNodes } from "./rows";
+import type { CommitSummary, Stash } from "../../ipc";
+import { buildRows, graphNodes } from "./rows";
 
 const commit = (oid: string, parents: string[] = []): CommitSummary => ({
   oid,
@@ -12,12 +12,14 @@ const commit = (oid: string, parents: string[] = []): CommitSummary => ({
   summary: oid,
 });
 
-const stash = (oid: string, base: string): StashEntry => ({
+const stash = (oid: string, base: string): Stash => ({
   oid,
   base,
   name: "stash@{0}",
-  message: "On main: note",
-  authorName: "A",
+  branch: "main",
+  message: "note",
+  auto: false,
+  hasUntracked: false,
   createdAt: 0,
 });
 
@@ -63,20 +65,5 @@ describe("buildRows", () => {
     expect(buildRows({ ...base, changedFiles: 1, head: null, extras: true })[0].kind).toBe(
       "commit",
     );
-  });
-});
-
-describe("describeStash", () => {
-  it("reads git's stash descriptions", () => {
-    expect(describeStash("On main: half done")).toEqual({ kind: "named", text: "half done" });
-    expect(describeStash("WIP on feature/x: abc123 Subject")).toEqual({
-      kind: "untitled",
-      branch: "feature/x",
-    });
-    expect(describeStash("On main: garam-auto-stash:main")).toEqual({
-      kind: "auto",
-      branch: "main",
-    });
-    expect(describeStash("odd")).toEqual({ kind: "named", text: "odd" });
   });
 });

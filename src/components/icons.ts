@@ -10,6 +10,7 @@ import { ArrowUp } from "@phosphor-icons/react/dist/csr/ArrowUp";
 import { ArrowsLeftRight } from "@phosphor-icons/react/dist/csr/ArrowsLeftRight";
 import { ArrowsClockwise } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
 import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
+import { CaretRight } from "@phosphor-icons/react/dist/csr/CaretRight";
 import { Check } from "@phosphor-icons/react/dist/csr/Check";
 import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
 import { CircleNotch } from "@phosphor-icons/react/dist/csr/CircleNotch";
@@ -54,6 +55,8 @@ export const Icons = {
 
   // Controls
   dropdown: CaretDown,
+  /** A section that opens and closes; turned down while open. */
+  disclosure: CaretRight,
   more: DotsThree,
   close: X,
   check: Check,

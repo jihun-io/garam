@@ -4,7 +4,10 @@ use garam_git::Git;
 use garam_git::diff::FileDiff;
 use garam_git::log::CommitFile;
 use garam_git::stash::{self, ApplyOutcome, AutoStash, Stash};
+use garam_git::status::ChangeKind;
 
+use super::changes::ImageVersions;
+use super::history::images_between;
 use crate::error::{AppResult, blocking};
 
 #[tauri::command]
@@ -92,6 +95,19 @@ pub async fn stash_file_diff(
             &file,
             ignore_whitespace,
         )?)
+    })
+    .await
+}
+
+/// An image file of a stash, before and after.
+#[tauri::command]
+#[specta::specta]
+pub async fn stash_images(repo: String, oid: String, file: CommitFile) -> AppResult<ImageVersions> {
+    blocking(move || {
+        let (git, repo) = (Git::locate()?, Path::new(&repo));
+        let (from, to) = stash::diff_sides(&git, repo, &oid, &file)?;
+        let from = (file.kind != ChangeKind::Untracked).then_some(from.as_str());
+        images_between(&git, repo, from, &to, &file)
     })
     .await
 }

@@ -572,8 +572,8 @@ fn markers_list_stashes_with_their_base() {
     let stash = &markers.stashes[0];
     assert_eq!(stash.base, base);
     assert_eq!(stash.name, "stash@{0}");
-    assert_eq!(stash.message, "On main: half done");
-    assert_eq!(stash.author_name, "Garam Test");
+    assert_eq!(stash.message.as_deref(), Some("half done"));
+    assert_eq!(stash.branch.as_deref(), Some("main"));
 }
 
 #[test]

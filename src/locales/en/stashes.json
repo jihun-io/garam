@@ -1,0 +1,70 @@
+{
+  "label": "Stash",
+  "title": {
+    "auto": "Changes left on {{branch}} when switching branches",
+    "untitled": "Changes stashed on {{branch}}",
+    "detached": "Changes stashed on a detached HEAD"
+  },
+  "section": {
+    "title": "Stashed changes",
+    "count": "{{count}}",
+    "list": "Stashed changes"
+  },
+  "detail": {
+    "auto": "Garam stashed these when you switched branches.",
+    "when": "Stashed {{time}}",
+    "on": "On {{branch}}"
+  },
+  "actions": {
+    "pop": "Restore",
+    "popHint": "Bring the changes back and remove them from the stash list",
+    "apply": "Apply",
+    "applyHint": "Bring the changes back and keep them in the stash list",
+    "more": "More",
+    "branch": "Create Branch from Here…",
+    "drop": "Discard…"
+  },
+  "push": {
+    "title": "Stash Changes",
+    "titleFiles": "Stash Selected Files",
+    "body": "Put your uncommitted changes aside (stash them) and return the working folder to the last commit. You can bring them back any time.",
+    "bodyFiles_one": "Put aside only the changes to {{name}} and return that file to the last commit.",
+    "bodyFiles_other": "Put aside only the changes to {{count}} files and return those files to the last commit.",
+    "message": "Message",
+    "messagePlaceholder": "What were you working on? (optional)",
+    "untracked": "Stash untracked files too",
+    "submit": "Stash",
+    "cancel": "Cancel"
+  },
+  "drop": {
+    "title": "Discard stashed changes?",
+    "body": "“{{title}}” will be removed from the stash list. Right after, you can undo it from the notice.",
+    "confirm": "Discard",
+    "cancel": "Cancel"
+  },
+  "branch": {
+    "title": "Create a Branch from Stashed Changes",
+    "body": "Creates a branch at the commit the changes were stashed on, switches to it and restores the changes there. Nothing that changed since gets in the way, so there are no conflicts.",
+    "name": "Branch name",
+    "submit": "Create and Restore",
+    "cancel": "Cancel"
+  },
+  "done": {
+    "pushed": "Changes stashed.",
+    "popped": "Stashed changes restored.",
+    "applied": "Stashed changes applied. They're still in the stash list.",
+    "unstaged": "The changes are back, but which of them were included in the commit couldn't be restored. None are included now.",
+    "dropped": "Stashed changes discarded.",
+    "undo": "Undo",
+    "restored": "Discarded changes are back.",
+    "branched": "Created {{branch}} and restored the changes there."
+  },
+  "conflict": {
+    "title": "Restoring stashed changes ran into conflicts",
+    "body": "Resolve the conflicted files. The stashed changes are still in the stash list.",
+    "resolvedTitle": "All conflicts are resolved",
+    "resolvedBody": "“{{title}}” is still in the stash list. Discard it if you no longer need it.",
+    "drop": "Discard from Stash List",
+    "keep": "Keep"
+  }
+}

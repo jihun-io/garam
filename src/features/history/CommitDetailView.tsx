@@ -15,7 +15,6 @@ import {
   type CommitDetail,
   type CommitFile,
   type SignatureStatus,
-  type StashEntry,
 } from "../../ipc";
 import { shortHash } from "../../lib/hash";
 import { useRelativeTime } from "../../lib/time";
@@ -37,7 +36,6 @@ import styles from "./History.module.css";
 import { isBreaking, linkIssues, splitCoAuthors } from "./message";
 import { RefBadges } from "./RefBadges";
 import type { RefBadge, SyncState } from "./refs";
-import { stashTitle } from "./rows";
 
 function displayKind(kind: ChangeKind): DisplayKind {
   switch (kind) {
@@ -62,15 +60,12 @@ export function CommitDetailView({
   oid,
   badges,
   sync,
-  stash,
   onCopyHash,
 }: {
   repo: string;
   oid: string;
   badges: RefBadge[];
   sync: SyncState | undefined;
-  /** Shown as stashed changes rather than a commit. */
-  stash?: StashEntry;
   onCopyHash: (oid: string) => void;
 }) {
   const detail = useCommitDetail(repo, oid);
@@ -89,7 +84,6 @@ export function CommitDetailView({
       commit={detail.data}
       badges={badges}
       sync={sync}
-      stash={stash}
       onCopyHash={onCopyHash}
     />
   );
@@ -100,14 +94,12 @@ function Loaded({
   commit,
   badges,
   sync,
-  stash,
   onCopyHash,
 }: {
   repo: string;
   commit: CommitDetail;
   badges: RefBadge[];
   sync: SyncState | undefined;
-  stash?: StashEntry;
   onCopyHash: (oid: string) => void;
 }) {
   const { t, i18n } = useTranslation(["history", "changes"]);
@@ -122,16 +114,15 @@ function Loaded({
     <div className={styles.detail}>
       <header className={styles.commitHeader}>
         <h2 className={styles.commitSummary}>
-          {stash ? stashTitle(t, stash.message) : <CommitTitle summary={commit.summary} />}
+          <CommitTitle summary={commit.summary} />
         </h2>
-        {!stash && isBreaking(commit.summary, commit.body) && (
+        {isBreaking(commit.summary, commit.body) && (
           <p className={styles.breaking}>
             <Icon name="error" size={14} />
             {t("detail.breaking")}
           </p>
         )}
-        {stash && <p className={styles.commitBody}>{t("stash.detail", { name: stash.name })}</p>}
-        {!stash && body && (
+        {body && (
           <p className={styles.commitBody}>
             <MessageText text={body} webUrl={webUrl} />
           </p>
@@ -153,7 +144,7 @@ function Loaded({
           {commit.committerName !== commit.authorName && (
             <span>{t("detail.committedBy", { name: commit.committerName })}</span>
           )}
-          {!stash && commit.parents.length > 1 && <span>{t("detail.merge")}</span>}
+          {commit.parents.length > 1 && <span>{t("detail.merge")}</span>}
           {sync && (
             <span className={styles.syncNote}>
               <Icon name={sync === "unpushed" ? "push" : "pull"} size={12} />
@@ -161,7 +152,7 @@ function Loaded({
             </span>
           )}
           <RefBadges badges={badges} max={badges.length} />
-          {!stash && <SignatureBadge repo={repo} oid={commit.oid} />}
+          <SignatureBadge repo={repo} oid={commit.oid} />
           <Tooltip content={t("detail.copyHash", { hash })}>
             <button
               type="button"
@@ -173,7 +164,7 @@ function Loaded({
               <Icon name="copy" size={12} />
             </button>
           </Tooltip>
-          {!stash && webUrl && sync !== "unpushed" && (
+          {webUrl && sync !== "unpushed" && (
             <button
               type="button"
               className={styles.metaLink}

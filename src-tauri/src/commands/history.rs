@@ -133,7 +133,7 @@ pub async fn compare_images(
 }
 
 /// `file` in commit `from` (if any) and in `to`, as data URLs.
-fn images_between(
+pub(crate) fn images_between(
     git: &Git,
     repo: &Path,
     from: Option<&str>,

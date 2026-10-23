@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Icon } from "../../components/Icon";
+import { Button } from "../../components/ui/Button";
 import { IconButton } from "../../components/ui/IconButton";
 import styles from "./Notifications.module.css";
 import { useNotify } from "./notifyStore";
@@ -41,6 +42,17 @@ export function Notifications({ children }: { children?: ReactNode }) {
               <ErrorMessage error={notice.error} plain />
             ) : (
               <p role="status">{notice.message}</p>
+            )}
+            {notice.type === "info" && notice.action && (
+              <Button
+                className={styles.action}
+                onClick={() => {
+                  notice.action!.run();
+                  dismiss();
+                }}
+              >
+                {notice.action.label}
+              </Button>
             )}
           </div>
           <IconButton icon="close" size={16} label={t("notify.dismiss")} onClick={dismiss} />

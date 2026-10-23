@@ -16,6 +16,7 @@
       "clone": "저장소 복제…",
       "openEditor": "에디터에서 열기",
       "openTerminal": "터미널에서 열기",
+      "stash": "변경 사항 보관…",
       "recover": "잃어버린 커밋 복구…"
     },
     "settings": "설정…",

@@ -73,6 +73,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         stashes::stash_branch,
         stashes::stash_files,
         stashes::stash_file_diff,
+        stashes::stash_images,
         stashes::stash_find_auto,
         conflicts::conflict_state,
         conflicts::conflict_resolve,
