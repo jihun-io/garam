@@ -12,6 +12,7 @@ import {
 import { useComparison } from "../history/api";
 import { useRepositories } from "../repos/api";
 import { useRemoteInfo } from "../sync/api";
+import { AWAIT_CHECKS_POLL_MS, awaitingChecks, useAwaitingChecks } from "./awaitingChecks";
 import { sameRepo } from "./fill";
 import { pullRequestKeys } from "./keys";
 
@@ -73,9 +74,12 @@ export function usePullRequests(repo: string, current: string | null) {
     retry: false,
     refetchInterval: (query) => {
       const mine = query.state.data?.find((p) => p.branch === current)?.pullRequest;
-      return mine?.state === "open" && mine.checks?.state === "pending"
-        ? REFRESH_PENDING_MS
-        : REFRESH_MS;
+      if (mine?.state !== "open") return REFRESH_MS;
+      if (mine.checks?.state === "pending") return REFRESH_PENDING_MS;
+      // Right after a push or a new pull request GitHub hasn't queued the
+      // checks yet; "no checks" then means "not yet", so look again soon.
+      if (!mine.checks && awaitingChecks(repo)) return AWAIT_CHECKS_POLL_MS;
+      return REFRESH_MS;
     },
   });
 }
@@ -116,7 +120,11 @@ export function useCreatePullRequest(repo: string) {
       name: string;
       pullRequest: NewPullRequest;
     }) => unwrap(commands.pullRequestCreate(repo, owner, name, pullRequest)),
-    onSettled: () => client.invalidateQueries({ queryKey: pullRequestKeys.list(repo) }),
+    // Not returned: the caller shouldn't wait for GitHub to list it again.
+    onSettled: () => {
+      useAwaitingChecks.getState().expect(repo);
+      void client.invalidateQueries({ queryKey: pullRequestKeys.list(repo) });
+    },
   });
 }
 

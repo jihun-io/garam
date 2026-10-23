@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 
 import { CommandError, commands, unwrap, type PullOutcome } from "../../ipc";
 import { changesKeys, indexScope } from "../changes/api";
+import { useAwaitingChecks } from "../pullRequests/awaitingChecks";
 import { pullRequestKeys } from "../pullRequests/keys";
 import { tagKeys } from "../tags/keys";
 import { networkChannel } from "./networkChannel";
@@ -52,6 +53,8 @@ export async function runSync(
     }
     return remote;
   };
+  // GitHub queues checks for what was pushed only after a moment.
+  const pushes = action === "push" || action === "publish";
   try {
     switch (action) {
       case "fetch":
@@ -65,13 +68,18 @@ export async function runSync(
       case "publish":
         await unwrap(commands.remotePublish(operationId, repo, needRemote(), channel));
         return "done";
+      default:
+        return action satisfies never;
     }
   } finally {
     useSyncStore.getState().finish(repo, operationId);
+    if (pushes) useAwaitingChecks.getState().expect(repo);
     await client.invalidateQueries({ queryKey: changesKeys.all(repo) });
-    // Fetching and pushing are when the remote's tags change.
-    await client.invalidateQueries({ queryKey: tagKeys.states(repo) });
-    await client.invalidateQueries({ queryKey: pullRequestKeys.list(repo) });
+    // Fetching and pushing are when the remote's tags and pull requests
+    // change. Both are asked over the network (ls-remote, GitHub), so they
+    // refresh in the background rather than hold up the result.
+    void client.invalidateQueries({ queryKey: tagKeys.states(repo) });
+    void client.invalidateQueries({ queryKey: pullRequestKeys.list(repo) });
   }
 }
 
