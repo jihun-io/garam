@@ -60,12 +60,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        # Takes the id from the create response: listing releases right
+        # after creating one can miss the new draft, and an empty id makes
+        # every build skip its uploads without failing.
         run: |
-          flags=(--draft --generate-notes --title "Garam $GITHUB_REF_NAME" --verify-tag)
-          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
-          gh release create "$GITHUB_REF_NAME" "${flags[@]}"
-          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
-            --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\") | .id" | head -n1)
+          id=$(gh api --method POST "repos/$GITHUB_REPOSITORY/releases" \
+            -f tag_name="$GITHUB_REF_NAME" \
+            -f name="Garam $GITHUB_REF_NAME" \
+            -F draft=true \
+            -F prerelease="$PRERELEASE" \
+            -F generate_release_notes=true \
+            --jq .id)
+          if [ -z "$id" ]; then
+            echo "::error::Couldn't create the draft release for $GITHUB_REF_NAME"
+            exit 1
+          fi
+          echo "Created draft release $id"
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
   build:
