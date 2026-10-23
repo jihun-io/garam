@@ -8,11 +8,20 @@
   "remaining_one": "{{count}} conflicted file left. Resolve it to continue.",
   "remaining_other": "{{count}} conflicted files left. Resolve them to continue.",
   "ready": "All conflicts are resolved. You can continue.",
+  "empty": {
+    "rebase": "Your resolution leaves this commit with no changes. The branch already has them. Skip it to go on with the rest.",
+    "revert": "Your resolution leaves nothing to revert. The branch is already like this. Skip it to go on.",
+    "cherry_pick": "Your resolution leaves this commit with no changes. The branch already has them. Skip it to go on."
+  },
   "continue": {
     "merge": "Commit merge",
     "rebase": "Continue rebase",
     "revert": "Commit revert",
     "cherry_pick": "Continue cherry-pick"
+  },
+  "skip": {
+    "button": "Skip this commit",
+    "skipped": "Skipped the commit with no changes."
   },
   "abort": {
     "button": "Abort…",

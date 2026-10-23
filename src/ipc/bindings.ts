@@ -116,7 +116,16 @@ export const commands = {
 	conflictResolve: (repo: string, path: string, side: Side) => typedError<null, AppError>(__TAURI_INVOKE("conflict_resolve", { repo, path, side })),
 	/**  Marks a file resolved as it is in the working folder. */
 	conflictMarkResolved: (repo: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_mark_resolved", { repo, path })),
-	conflictContinue: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_continue", { repo })),
+	/**
+	 *  Returns whether the operation is done; a revert or cherry-pick of
+	 *  several commits may stop at one that would be empty.
+	 */
+	conflictContinue: (repo: string) => typedError<boolean, AppError>(__TAURI_INVOKE("conflict_continue", { repo })),
+	/**
+	 *  Leaves out a commit whose changes resolved to nothing and goes on.
+	 *  Returns whether the operation is done.
+	 */
+	conflictSkip: (repo: string) => typedError<boolean, AppError>(__TAURI_INVOKE("conflict_skip", { repo })),
 	conflictAbort: (repo: string) => typedError<null, AppError>(__TAURI_INVOKE("conflict_abort", { repo })),
 	/**
 	 *  A page of the history `filter` selects, newest first. Cancel with
@@ -435,6 +444,13 @@ export type ConflictState = {
 	operation: Operation | null,
 	/**  Files that still conflict. */
 	files: ConflictFile[],
+	/**
+	 *  Every conflict is resolved, but the commit being applied would
+	 *  change nothing, e.g. the branch already had its changes. git won't
+	 *  make an empty commit for a revert or cherry-pick, so the way on is
+	 *  [`skip`]. Never set for a merge, whose commit may be empty.
+	 */
+	empty: boolean,
 };
 
 export type CredentialPrompt = {

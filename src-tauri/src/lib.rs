@@ -72,6 +72,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         conflicts::conflict_resolve,
         conflicts::conflict_mark_resolved,
         conflicts::conflict_continue,
+        conflicts::conflict_skip,
         conflicts::conflict_abort,
         history::history_list,
         history::history_prepare,

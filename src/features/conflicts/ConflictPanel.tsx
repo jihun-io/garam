@@ -21,37 +21,59 @@ export function ConflictBanner({ state }: { state: ConflictState }) {
         <Icon name={remaining > 0 ? "conflicted" : "success"} className={styles.bannerIcon} />
         {t(`operation.${state.operation}`)}
       </p>
-      <p>{remaining > 0 ? t("remaining", { count: remaining }) : t("ready")}</p>
+      <p>
+        {remaining > 0
+          ? t("remaining", { count: remaining })
+          : state.empty && state.operation !== "merge"
+            ? t(`empty.${state.operation}`)
+            : t("ready")}
+      </p>
     </div>
   );
 }
 
-/** Takes the commit form's place: continue once resolved, or abort. */
+/**
+ * Takes the commit form's place: continue once resolved, or abort. A
+ * commit resolved to nothing is skipped instead, since git won't commit it.
+ */
 export function ConflictPanel({ repo, state }: { repo: string; state: ConflictState }) {
   const { t } = useTranslation("conflicts");
-  const { continueOperation } = useConflictActions(repo);
+  const { continueOperation, skip } = useConflictActions(repo);
   const { showError, showInfo } = useNotify();
   const [aborting, setAborting] = useState(false);
   const operation = state.operation;
   if (!operation) return null;
+  const busy = continueOperation.isPending || skip.isPending;
 
+  // Not finished means the next commit would be empty too; the banner says so.
   const finish = () =>
     continueOperation.mutate(undefined, {
-      onSuccess: () => showInfo(t(`done.${operation}`)),
+      onSuccess: (finished) => finished && showInfo(t(`done.${operation}`)),
+      onError: showError,
+    });
+  const skipCommit = () =>
+    skip.mutate(undefined, {
+      onSuccess: (finished) => showInfo(finished ? t(`done.${operation}`) : t("skip.skipped")),
       onError: showError,
     });
 
   return (
     <div className={styles.panel}>
-      <Button
-        variant="primary"
-        className={styles.continue}
-        disabled={state.files.length > 0 || continueOperation.isPending}
-        onClick={finish}
-      >
-        {t(`continue.${operation}`)}
-      </Button>
-      <Button onClick={() => setAborting(true)} disabled={continueOperation.isPending}>
+      {state.empty ? (
+        <Button variant="primary" className={styles.continue} disabled={busy} onClick={skipCommit}>
+          {t("skip.button")}
+        </Button>
+      ) : (
+        <Button
+          variant="primary"
+          className={styles.continue}
+          disabled={state.files.length > 0 || busy}
+          onClick={finish}
+        >
+          {t(`continue.${operation}`)}
+        </Button>
+      )}
+      <Button onClick={() => setAborting(true)} disabled={busy}>
         {t("abort.button")}
       </Button>
       {aborting && (

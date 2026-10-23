@@ -38,6 +38,11 @@ export function useConflictActions(repo: string) {
       onSettled,
       scope,
     }),
+    skip: useMutation({
+      mutationFn: () => unwrap(commands.conflictSkip(repo)),
+      onSettled,
+      scope,
+    }),
     abort: useMutation({
       mutationFn: () => unwrap(commands.conflictAbort(repo)),
       onSettled,

@@ -883,7 +883,7 @@ pub fn reorder(git: &Git, repo: &Path, order: &[String]) -> Result<(), GitError>
     result.map(|_| ())
 }
 
-fn has_tracked_changes(git: &Git, repo: &Path) -> Result<bool, GitError> {
+pub(crate) fn has_tracked_changes(git: &Git, repo: &Path) -> Result<bool, GitError> {
     let output = git
         .command()
         .cwd(repo)

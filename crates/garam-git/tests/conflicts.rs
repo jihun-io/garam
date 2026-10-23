@@ -201,3 +201,154 @@ fn continuing_needs_an_operation() {
     let err = conflict::continue_operation(repo.git_handle(), repo.path()).unwrap_err();
     assert_eq!(err.kind(), ErrorKind::NothingInProgress);
 }
+
+fn summaries(repo: &TestRepo, count: u32) -> Vec<String> {
+    log::list(
+        repo.git_handle(),
+        repo.path(),
+        &Default::default(),
+        0,
+        count,
+        &CancelToken::new(),
+    )
+    .unwrap()
+    .into_iter()
+    .map(|c| c.summary)
+    .collect()
+}
+
+/// `main` edits `a.txt`; `topic` edits it differently, then adds `b.txt`.
+fn diverged() -> TestRepo {
+    let repo = TestRepo::new();
+    repo.write("a.txt", "base\n");
+    repo.commit_all("base");
+    repo.git(["switch", "--quiet", "-c", "topic"]);
+    repo.write("a.txt", "topic\n");
+    repo.commit_all("topic edit");
+    repo.write("b.txt", "b\n");
+    repo.commit_all("add b");
+    repo.git(["switch", "--quiet", "main"]);
+    repo.write("a.txt", "main\n");
+    repo.commit_all("main edit");
+    repo
+}
+
+#[test]
+fn a_merge_resolved_to_nothing_is_not_empty() {
+    let repo = merge_conflict();
+    conflict::resolve(repo.git_handle(), repo.path(), "a.txt", Side::Mine).unwrap();
+    assert!(!state(&repo).empty, "a merge commit may be empty");
+}
+
+#[test]
+fn skips_a_cherry_pick_resolved_to_nothing() {
+    let repo = diverged();
+    let head = repo.git(["rev-parse", "HEAD"]).stdout_str().into_owned();
+    let pick = repo
+        .git(["rev-parse", "topic~1"])
+        .stdout_str()
+        .trim()
+        .to_owned();
+    let err = log::cherry_pick(repo.git_handle(), repo.path(), &pick).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::CherryPickConflict);
+    assert!(!state(&repo).empty, "conflicts remain");
+
+    conflict::resolve(repo.git_handle(), repo.path(), "a.txt", Side::Mine).unwrap();
+    let s = state(&repo);
+    assert_eq!(s.operation, Some(Operation::CherryPick));
+    assert!(s.empty);
+    // git won't make the empty commit, so continuing can't finish.
+    assert!(!conflict::continue_operation(repo.git_handle(), repo.path()).unwrap());
+    assert!(state(&repo).empty);
+
+    assert!(conflict::skip(repo.git_handle(), repo.path()).unwrap());
+    assert_eq!(state(&repo), conflict::ConflictState::default());
+    assert_eq!(repo.git(["rev-parse", "HEAD"]).stdout_str(), head);
+}
+
+#[test]
+fn skips_a_revert_resolved_to_nothing() {
+    let repo = TestRepo::new();
+    repo.write("a.txt", "one\n");
+    repo.commit_all("base");
+    repo.write("a.txt", "two\n");
+    let change = repo.commit_all("change");
+    repo.write("a.txt", "three\n");
+    repo.commit_all("later");
+    log::revert(repo.git_handle(), repo.path(), &change).unwrap_err();
+
+    conflict::resolve(repo.git_handle(), repo.path(), "a.txt", Side::Mine).unwrap();
+    assert!(state(&repo).empty);
+    assert!(conflict::skip(repo.git_handle(), repo.path()).unwrap());
+    assert_eq!(state(&repo), conflict::ConflictState::default());
+    assert_eq!(summaries(&repo, 1), ["later"]);
+}
+
+#[test]
+fn skipping_a_rebase_commit_goes_on_with_the_rest() {
+    let repo = diverged();
+    repo.git(["switch", "--quiet", "topic"]);
+    let out = repo
+        .git_handle()
+        .command()
+        .cwd(repo.path())
+        .args(["rebase", "main"])
+        .run_unchecked()
+        .unwrap();
+    assert!(!out.success());
+
+    // Keeping upstream's side leaves "topic edit" with nothing to add.
+    conflict::resolve(repo.git_handle(), repo.path(), "a.txt", Side::Theirs).unwrap();
+    assert!(state(&repo).empty);
+    assert!(conflict::skip(repo.git_handle(), repo.path()).unwrap());
+    assert_eq!(state(&repo).operation, None);
+    assert_eq!(summaries(&repo, 3), ["add b", "main edit", "base"]);
+}
+
+#[test]
+fn stops_again_at_a_later_commit_that_would_be_empty() {
+    let repo = diverged();
+    // main already has topic's second commit.
+    repo.write("b.txt", "b\n");
+    repo.commit_all("b on main");
+    let picks = [
+        repo.git(["rev-parse", "topic~1"])
+            .stdout_str()
+            .trim()
+            .to_owned(),
+        repo.git(["rev-parse", "topic"])
+            .stdout_str()
+            .trim()
+            .to_owned(),
+    ];
+    let err = log::cherry_pick_many(repo.git_handle(), repo.path(), &picks).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::CherryPickConflict);
+
+    conflict::resolve(repo.git_handle(), repo.path(), "a.txt", Side::Mine).unwrap();
+    assert!(!conflict::skip(repo.git_handle(), repo.path()).unwrap());
+    let s = state(&repo);
+    assert_eq!(s.operation, Some(Operation::CherryPick));
+    assert!(s.empty);
+
+    assert!(conflict::skip(repo.git_handle(), repo.path()).unwrap());
+    assert_eq!(state(&repo), conflict::ConflictState::default());
+    assert_eq!(summaries(&repo, 1), ["b on main"]);
+}
+
+#[test]
+fn skipping_keeps_uncommitted_changes() {
+    let repo = diverged();
+    let pick = repo
+        .git(["rev-parse", "topic~1"])
+        .stdout_str()
+        .trim()
+        .to_owned();
+    log::cherry_pick(repo.git_handle(), repo.path(), &pick).unwrap_err();
+    conflict::resolve(repo.git_handle(), repo.path(), "a.txt", Side::Mine).unwrap();
+    repo.write("a.txt", "edited after resolving\n");
+    assert!(!state(&repo).empty);
+
+    let err = conflict::skip(repo.git_handle(), repo.path()).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::UncommittedChanges);
+    assert_eq!(read(&repo, "a.txt"), "edited after resolving\n");
+}

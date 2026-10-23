@@ -59,6 +59,11 @@ pub struct ConflictState {
     pub operation: Option<Operation>,
     /// Files that still conflict.
     pub files: Vec<ConflictFile>,
+    /// Every conflict is resolved, but the commit being applied would
+    /// change nothing, e.g. the branch already had its changes. git won't
+    /// make an empty commit for a revert or cherry-pick, so the way on is
+    /// [`skip`]. Never set for a merge, whose commit may be empty.
+    pub empty: bool,
 }
 
 /// Which version to keep for a conflicted file.
@@ -73,7 +78,7 @@ pub enum Side {
 pub fn state(git: &Git, repo: &Path) -> Result<ConflictState, GitError> {
     let operation = operation(git, repo)?;
     let rebasing = operation == Some(Operation::Rebase);
-    let files = unmerged(git, repo)?
+    let files: Vec<_> = unmerged(git, repo)?
         .into_iter()
         .map(|(path, stages)| ConflictFile {
             kind: conflict_kind(&stages, rebasing),
@@ -81,7 +86,16 @@ pub fn state(git: &Git, repo: &Path) -> Result<ConflictState, GitError> {
             path,
         })
         .collect();
-    Ok(ConflictState { operation, files })
+    let empty = matches!(
+        operation,
+        Some(Operation::Rebase | Operation::Revert | Operation::CherryPick)
+    ) && files.is_empty()
+        && !crate::log::has_tracked_changes(git, repo)?;
+    Ok(ConflictState {
+        operation,
+        files,
+        empty,
+    })
 }
 
 fn git_dir(git: &Git, repo: &Path) -> Result<PathBuf, GitError> {
@@ -216,10 +230,12 @@ pub fn mark_resolved(git: &Git, repo: &Path, path: &str) -> Result<(), GitError>
     Ok(())
 }
 
-/// Finishes the stopped operation once every conflict is resolved. A
-/// rebase may stop again at a later commit with
-/// [`crate::ErrorKind::RebaseConflict`].
-pub fn continue_operation(git: &Git, repo: &Path) -> Result<(), GitError> {
+/// Finishes the stopped operation once every conflict is resolved, and
+/// returns whether it is done. A rebase may stop again at a later commit
+/// with [`crate::ErrorKind::RebaseConflict`]; a revert or cherry-pick of
+/// several commits stopping at one that would be empty returns `false`,
+/// with [`ConflictState::empty`] set.
+pub fn continue_operation(git: &Git, repo: &Path) -> Result<bool, GitError> {
     let operation = operation(git, repo)?.ok_or(GitError::NothingInProgress)?;
     if !unmerged(git, repo)?.is_empty() {
         return Err(GitError::ConflictsRemain);
@@ -232,8 +248,54 @@ pub fn continue_operation(git: &Git, repo: &Path) -> Result<(), GitError> {
         Operation::Revert => command.args(["revert", "--continue"]),
         Operation::CherryPick => command.args(["cherry-pick", "--continue"]),
     };
-    command.run()?;
-    Ok(())
+    finished(git, repo, command.run())
+}
+
+/// Leaves out the commit whose changes resolved to nothing and goes on
+/// with the rest, returning whether the operation is done. Only allowed
+/// when [`ConflictState::empty`] is set, so nothing uncommitted is lost.
+pub fn skip(git: &Git, repo: &Path) -> Result<bool, GitError> {
+    let state = state(git, repo)?;
+    let operation = state.operation.ok_or(GitError::NothingInProgress)?;
+    if !state.files.is_empty() {
+        return Err(GitError::ConflictsRemain);
+    }
+    if !state.empty {
+        return Err(GitError::UncommittedChanges);
+    }
+    let command = match operation {
+        Operation::Rebase => "rebase",
+        Operation::Revert => "revert",
+        Operation::CherryPick => "cherry-pick",
+        Operation::Merge => unreachable!("a merge is never empty"),
+    };
+    let result = git
+        .command()
+        .cwd(repo)
+        .env("GIT_EDITOR", "true")
+        .args([command, "--skip"])
+        .run();
+    finished(git, repo, result)
+}
+
+/// A sequence that stopped at another commit that would be empty isn't a
+/// failure: the banner offers to skip that one too.
+fn finished(
+    git: &Git,
+    repo: &Path,
+    result: Result<crate::GitOutput, GitError>,
+) -> Result<bool, GitError> {
+    match result {
+        Ok(_) => Ok(operation(git, repo)?.is_none()),
+        Err(err @ GitError::Failed { .. }) => {
+            if state(git, repo)?.empty {
+                Ok(false)
+            } else {
+                Err(err)
+            }
+        }
+        Err(err) => Err(err),
+    }
 }
 
 /// Stops the operation and returns to the state before it started.

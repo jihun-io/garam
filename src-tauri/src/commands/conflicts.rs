@@ -40,9 +40,11 @@ pub async fn conflict_mark_resolved(repo: String, path: String) -> AppResult<()>
     .await
 }
 
+/// Returns whether the operation is done; a revert or cherry-pick of
+/// several commits may stop at one that would be empty.
 #[tauri::command]
 #[specta::specta]
-pub async fn conflict_continue(repo: String) -> AppResult<()> {
+pub async fn conflict_continue(repo: String) -> AppResult<bool> {
     blocking(move || {
         Ok(conflict::continue_operation(
             &Git::locate()?,
@@ -50,6 +52,14 @@ pub async fn conflict_continue(repo: String) -> AppResult<()> {
         )?)
     })
     .await
+}
+
+/// Leaves out a commit whose changes resolved to nothing and goes on.
+/// Returns whether the operation is done.
+#[tauri::command]
+#[specta::specta]
+pub async fn conflict_skip(repo: String) -> AppResult<bool> {
+    blocking(move || Ok(conflict::skip(&Git::locate()?, Path::new(&repo))?)).await
 }
 
 #[tauri::command]
