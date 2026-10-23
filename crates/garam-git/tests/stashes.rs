@@ -97,24 +97,28 @@ fn says_when_there_is_nothing_to_stash() {
 #[test]
 fn stashes_only_the_chosen_files() {
     let repo = repo();
-    repo.write("b*.txt", "b\n");
+    // `[...]` is the one glob syntax Windows allows in file names. As a
+    // pattern, `b[x].txt` would match `bx.txt` and `u[1].txt` `u1.txt`.
+    repo.write("b[x].txt", "b\n");
+    repo.write("bx.txt", "bx\n");
     repo.commit_all("b");
     repo.write("a.txt", "a changed\n");
-    repo.write("b*.txt", "b changed\n");
+    repo.write("b[x].txt", "b changed\n");
+    repo.write("bx.txt", "bx changed\n");
     repo.write("u[1].txt", "untracked\n");
-    repo.write("u2.txt", "other untracked\n");
+    repo.write("u1.txt", "other untracked\n");
 
     // Names with glob characters mean only themselves.
-    let paths = ["b*.txt".to_owned(), "u[1].txt".to_owned()];
+    let paths = ["b[x].txt".to_owned(), "u[1].txt".to_owned()];
     let oid = stash::push(repo.git_handle(), repo.path(), Some("some"), true, &paths).unwrap();
-    assert_eq!(short_status(&repo), " M a.txt\n?? u2.txt\n");
+    assert_eq!(short_status(&repo), " M a.txt\n M bx.txt\n?? u1.txt\n");
 
     let files = stash::files(repo.git_handle(), repo.path(), &oid).unwrap();
     let names: Vec<_> = files.iter().map(|f| (f.path.as_str(), f.kind)).collect();
     assert_eq!(
         names,
         [
-            ("b*.txt", ChangeKind::Modified),
+            ("b[x].txt", ChangeKind::Modified),
             ("u[1].txt", ChangeKind::Untracked)
         ]
     );
