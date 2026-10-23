@@ -337,6 +337,11 @@ export type AppSettings = {
 	fetchIntervalMinutes: number,
 	/**  Width of the changes/history sidebar in CSS pixels. */
 	sidebarWidth: number,
+	/**
+	 *  Width of the file list beside the diff in commit, comparison and
+	 *  stash details, in CSS pixels.
+	 */
+	detailFilesWidth: number,
 	openRepositoryIn: OpenRepositoryIn,
 	/**  Look for a new version in the background. */
 	checkForUpdates: boolean,

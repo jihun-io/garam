@@ -95,6 +95,7 @@
      follows it too. Limits match lib/layout.ts. */
   --sidebar-width: 320px;
   --sidebar-actual: clamp(256px, var(--sidebar-width), max(256px, min(560px, 100vw - 480px)));
+  --detail-files-width: 260px;
 
   /* Space the macOS window buttons take inside the toolbar. */
   --titlebar-inset: 0px;

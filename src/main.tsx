@@ -13,7 +13,7 @@ import { preloadAppVersion } from "./features/update/api";
 import { resolveAccent } from "./features/settings/SettingsEffects";
 import { isSettingsWindow } from "./features/settings/SettingsWindow";
 import { installContextMenuGuard } from "./lib/contextMenu";
-import { setSidebarWidth } from "./lib/layout";
+import { setDetailFilesWidth, setSidebarWidth } from "./lib/layout";
 import { initTheme, setAppearance } from "./lib/theme";
 import { initWindowChrome } from "./lib/windowChrome";
 
@@ -42,6 +42,7 @@ async function start() {
     diffFontSize: settings.diffFontSize,
   });
   setSidebarWidth(settings.sidebarWidth);
+  setDetailFilesWidth(settings.detailFilesWidth);
   await i18n.changeLanguage(resolveLanguage(settings.language));
   // The About window is centered around the version line; don't let it
   // arrive after the first frame and push everything up.

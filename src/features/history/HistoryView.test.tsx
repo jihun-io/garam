@@ -37,6 +37,8 @@ vi.mock("../../ipc/bindings", () => ({
     historyList: vi.fn(),
     historyMarkers: vi.fn(),
     historyPreparePaths: vi.fn(),
+    settingsGet: vi.fn(),
+    settingsSet: vi.fn(),
     branchList: vi.fn(),
     commitDetail: vi.fn(),
     commitFileDiff: vi.fn(),
@@ -214,6 +216,22 @@ describe("HistoryView", () => {
     await screen.findByRole("listbox", { name: "Commits" });
     await screen.findByRole("region", { name: "Diff" });
     expect(await axeViolations(container)).toEqual([]);
+  });
+
+  it("resizes the file list beside the diff and remembers it", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.settingsSet).mockResolvedValue(ok(null));
+    // jsdom lays nothing out; give the split room for a wider list.
+    const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1000);
+    setup();
+    const handle = await screen.findByRole("separator", { name: "Resize file list" });
+    expect(handle).toHaveAttribute("aria-valuenow", "260");
+    expect(handle).toHaveAttribute("aria-valuemax", "560");
+    handle.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(vi.mocked(commands.settingsSet).mock.lastCall![0].detailFilesWidth).toBe(276);
+    expect(document.documentElement.style.getPropertyValue("--detail-files-width")).toBe("276px");
+    width.mockRestore();
   });
 
   it("lists commits and shows the newest one", async () => {

@@ -31,6 +31,7 @@ import {
   type DiffSource,
 } from "./api";
 import { CommitTitle } from "./CommitTitle";
+import { DetailFilesSplitter } from "./DetailFilesSplitter";
 import { useDiffOptions } from "./diffOptionsStore";
 import styles from "./History.module.css";
 import { isBreaking, linkIssues, splitCoAuthors } from "./message";
@@ -194,13 +195,15 @@ export function ChangedFiles({
 }) {
   const { t } = useTranslation(["history", "changes"]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const splitRef = useRef<HTMLDivElement>(null);
   const selected = files.find((f) => f.path === selectedPath) ?? files[0] ?? null;
   if (files.length === 0) return <p className={diffStyles.notice}>{t("detail.noFiles")}</p>;
   return (
-    <div className={styles.split}>
+    <div ref={splitRef} className={styles.split}>
       <nav className={styles.files} aria-label={t("detail.files", { count: files.length })}>
         <p className={styles.filesTitle}>{t("detail.files", { count: files.length })}</p>
         <FileList files={files} selected={selected} onSelect={setSelectedPath} />
+        <DetailFilesSplitter available={() => splitRef.current?.clientWidth ?? window.innerWidth} />
       </nav>
       {selected && <FileDiffPane repo={repo} source={source} file={selected} />}
     </div>

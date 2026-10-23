@@ -13,7 +13,8 @@
     "dismiss": "닫기"
   },
   "layout": {
-    "resizeSidebar": "사이드바 크기 조절"
+    "resizeSidebar": "사이드바 크기 조절",
+    "resizeFiles": "파일 목록 너비 조절"
   },
   "time": {
     "justNow": "방금 전"

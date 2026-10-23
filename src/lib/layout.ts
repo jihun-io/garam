@@ -24,3 +24,26 @@ export function clampSidebarWidth(width: number): number {
 export function setSidebarWidth(width: number) {
   document.documentElement.style.setProperty("--sidebar-width", `${width}px`);
 }
+
+/** Limits for the file list beside the diff in commit, comparison and stash details. */
+export const DETAIL_FILES = {
+  default: 260,
+  min: 160,
+  /** Room always left for the diff. */
+  minDiff: 320,
+  max: 560,
+};
+
+/** The widest the file list may be when the detail is `available` pixels wide. */
+export function maxDetailFilesWidth(available: number): number {
+  return Math.max(DETAIL_FILES.min, Math.min(DETAIL_FILES.max, available - DETAIL_FILES.minDiff));
+}
+
+export function clampDetailFilesWidth(width: number, available: number): number {
+  return Math.round(Math.min(maxDetailFilesWidth(available), Math.max(DETAIL_FILES.min, width)));
+}
+
+/** Sets the file list width every commit, comparison and stash detail follows. */
+export function setDetailFilesWidth(width: number) {
+  document.documentElement.style.setProperty("--detail-files-width", `${width}px`);
+}

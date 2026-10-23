@@ -13,7 +13,8 @@
     "dismiss": "Dismiss"
   },
   "layout": {
-    "resizeSidebar": "Resize sidebar"
+    "resizeSidebar": "Resize sidebar",
+    "resizeFiles": "Resize file list"
   },
   "time": {
     "justNow": "just now"

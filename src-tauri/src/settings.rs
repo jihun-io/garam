@@ -69,6 +69,9 @@ pub struct AppSettings {
     pub fetch_interval_minutes: u32,
     /// Width of the changes/history sidebar in CSS pixels.
     pub sidebar_width: u32,
+    /// Width of the file list beside the diff in commit, comparison and
+    /// stash details, in CSS pixels.
+    pub detail_files_width: u32,
     pub open_repository_in: OpenRepositoryIn,
     /// Look for a new version in the background.
     pub check_for_updates: bool,
@@ -85,6 +88,7 @@ impl Default for AppSettings {
             terminal: None,
             fetch_interval_minutes: 5,
             sidebar_width: 320,
+            detail_files_width: 260,
             open_repository_in: OpenRepositoryIn::default(),
             check_for_updates: true,
         }
@@ -157,6 +161,7 @@ mod tests {
             accent: Accent::Purple,
             fetch_interval_minutes: 0,
             sidebar_width: 400,
+            detail_files_width: 300,
             open_repository_in: OpenRepositoryIn::NewWindow,
             ..AppSettings::default()
         };

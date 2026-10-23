@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import type { AppSettings } from "../../ipc";
 import { ACCENT_PRESETS, accentPairFrom, type AccentPair } from "../../lib/accent";
-import { setSidebarWidth } from "../../lib/layout";
+import { setDetailFilesWidth, setSidebarWidth } from "../../lib/layout";
 import { setAppearance } from "../../lib/theme";
 import { resolveLanguage } from "../../i18n";
 import { settingsKeys, useSettings, useSystemAccent } from "./api";
@@ -63,6 +63,7 @@ export function SettingsEffects() {
   }, [i18n, language]);
 
   useEffect(() => setSidebarWidth(settings.sidebarWidth), [settings.sidebarWidth]);
+  useEffect(() => setDetailFilesWidth(settings.detailFilesWidth), [settings.detailFilesWidth]);
 
   // The native parts of the window (title bar, menus) follow the theme too.
   useEffect(() => {

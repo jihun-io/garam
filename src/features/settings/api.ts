@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   terminal: null,
   fetchIntervalMinutes: 5,
   sidebarWidth: 320,
+  detailFilesWidth: 260,
   openRepositoryIn: "ask",
   checkForUpdates: true,
 };
