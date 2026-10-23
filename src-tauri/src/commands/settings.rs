@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use garam_git::Git;
 use garam_git::config::{self, GlobalKey, GlobalSettings};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::error::{AppResult, blocking};
 use crate::settings::{AppSettings, SettingsStore};
+use crate::windows::RepoWindows;
 
 type Store<'a> = State<'a, Arc<SettingsStore>>;
 
@@ -52,6 +53,8 @@ pub const SETTINGS_CHANGED_EVENT: &str = "settings-changed";
 #[tauri::command]
 #[specta::specta]
 pub fn app_restart(app: AppHandle) {
+    // Restarting skips the exit event that saves the window layout.
+    app.state::<Arc<RepoWindows>>().flush();
     app.restart();
 }
 

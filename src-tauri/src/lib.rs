@@ -16,7 +16,7 @@ mod windows;
 
 use std::sync::Arc;
 
-use tauri::{Manager, WindowEvent};
+use tauri::{Manager, RunEvent, WindowEvent};
 use tauri_specta::{Builder, collect_commands};
 
 use crate::operations::Operations;
@@ -167,9 +167,8 @@ pub fn run() {
         .setup(move |app| {
             builder.mount_events(app);
             let data_dir = app.path().app_data_dir()?;
-            app.manage(Arc::new(RepositoryStore::load(
-                data_dir.join("repositories.json"),
-            )));
+            let repositories = Arc::new(RepositoryStore::load(data_dir.join("repositories.json")));
+            app.manage(Arc::clone(&repositories));
             app.manage(Arc::new(accounts::AccountStore::load(
                 data_dir.join("accounts.json"),
                 Box::new(accounts::Keychain(accounts::KEYCHAIN_SERVICE)),
@@ -185,21 +184,39 @@ pub fn run() {
             app.manage(Arc::clone(&logins));
             app.manage(Arc::new(askpass::Askpass::start(logins)));
             app.manage(watcher::RepoWatcher::default());
-            app.manage(Arc::new(windows::RepoWindows::default()));
+            let (windows, layout) = windows::RepoWindows::load(data_dir.join("windows.json"));
+            let windows = Arc::new(windows);
+            app.manage(Arc::clone(&windows));
+            commands::window::restore_layout(app.handle(), &windows, &repositories, layout);
             app.manage(Arc::new(updater::Updates::default()));
             updater::start_background_checks(app.handle().clone());
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let WindowEvent::Destroyed = event {
-                let app = window.app_handle();
-                let label = window.label();
-                app.state::<Arc<windows::RepoWindows>>().remove(label);
-                let _ = app.state::<watcher::RepoWatcher>().watch(app, label, None);
+            let app = window.app_handle();
+            let windows = app.state::<Arc<windows::RepoWindows>>();
+            let label = window.label();
+            match event {
+                WindowEvent::Moved(_) | WindowEvent::Resized(_) => {
+                    commands::window::record_placement(&windows, window);
+                }
+                WindowEvent::Focused(true) => windows.focus(label),
+                // Only a window the user closes; quitting destroys them all.
+                WindowEvent::CloseRequested { .. } => windows.close(label),
+                WindowEvent::Destroyed => {
+                    windows.remove(label);
+                    let _ = app.state::<watcher::RepoWatcher>().watch(app, label, None);
+                }
+                _ => {}
             }
         })
-        .run(context)
-        .expect("error while running tauri application");
+        .build(context)
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            if let RunEvent::Exit = event {
+                app.state::<Arc<windows::RepoWindows>>().flush();
+            }
+        });
 }
 
 #[cfg(test)]
