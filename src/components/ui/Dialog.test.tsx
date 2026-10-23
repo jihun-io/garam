@@ -84,4 +84,50 @@ describe("FormDialog", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(more).toHaveFocus());
   });
+
+  it("hides the ring on the button focused at opening until a key is pressed", async () => {
+    const user = userEvent.setup();
+    render(
+      <FormDialog
+        open
+        onOpenChange={() => {}}
+        title="Shortcuts"
+        onSubmit={() => {}}
+        footer={
+          <button type="submit" autoFocus>
+            Close
+          </button>
+        }
+      >
+        <p>Body</p>
+      </FormDialog>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Shortcuts" });
+    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+    expect(dialog).toHaveAttribute("data-quiet-focus");
+    await user.keyboard("{Shift}");
+    expect(dialog).not.toHaveAttribute("data-quiet-focus");
+  });
+
+  it("doesn't submit a form it was opened from", async () => {
+    const user = userEvent.setup();
+    const outer = vi.fn((e: React.FormEvent) => e.preventDefault());
+    const inner = vi.fn();
+    render(
+      <form onSubmit={outer}>
+        <FormDialog
+          open
+          onOpenChange={() => {}}
+          title="Inner"
+          onSubmit={inner}
+          footer={<button type="submit">OK</button>}
+        >
+          <p>Body</p>
+        </FormDialog>
+      </form>,
+    );
+    await user.click(screen.getByRole("button", { name: "OK" }));
+    expect(inner).toHaveBeenCalledTimes(1);
+    expect(outer).not.toHaveBeenCalled();
+  });
 });

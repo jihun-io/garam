@@ -1,5 +1,5 @@
 import { Dialog as RadixDialog } from "radix-ui";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { keepOpenWhenDraggingWindow, WindowDragArea } from "../WindowDragArea";
 import styles from "./Dialog.module.css";
@@ -24,12 +24,15 @@ export function FormDialog({
   onSubmit,
   children,
   footer,
+  description,
   dismissible = true,
   wide = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  /** A line under the title that stays in place while the body scrolls. */
+  description?: ReactNode;
   onSubmit: () => void;
   children: ReactNode;
   footer: ReactNode;
@@ -47,6 +50,10 @@ export function FormDialog({
   const { returnTo } = seen;
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    // React bubbles events through the portal to the dialog's React
+    // parents, so a dialog opened from inside another form (the commit
+    // form's checks) would submit that form too.
+    e.stopPropagation();
     onSubmit();
   };
   const block = (e: Event) => {
@@ -57,6 +64,15 @@ export function FormDialog({
     keepOpenWhenDraggingWindow(e);
   };
 
+  // State, not a ref: the portal mounts the body after this renders.
+  const [body, setBody] = useState<HTMLDivElement | null>(null);
+  const edges = useScrollEdges(body);
+  // The button focused as the dialog opens shows no ring until a key is
+  // pressed in the dialog: opening it with a shortcut (⌘/) counts as
+  // keyboard use, but the user hasn't moved focus anywhere yet.
+  const [quietFocus, setQuietFocus] = useState(true);
+  if (!open && !quietFocus) setQuietFocus(true);
+
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
@@ -64,10 +80,19 @@ export function FormDialog({
         <WindowDragArea overDialog />
         <RadixDialog.Content
           className={wide ? `${styles.content} ${styles.wide}` : styles.content}
-          aria-describedby={undefined}
+          {...(description ? {} : { "aria-describedby": undefined })}
           onEscapeKeyDown={block}
           onPointerDownOutside={outside}
           onInteractOutside={outside}
+          data-quiet-focus={quietFocus || undefined}
+          onKeyDownCapture={() => setQuietFocus(false)}
+          onOpenAutoFocus={() => {
+            // Focusing a footer button can still scroll the body in WebKit;
+            // a long body should start at the top unless focus is in it.
+            requestAnimationFrame(() => {
+              if (body && !body.contains(document.activeElement)) body.scrollTop = 0;
+            });
+          }}
           onCloseAutoFocus={(e) => {
             if (!returnTo?.isConnected) return;
             e.preventDefault();
@@ -75,12 +100,55 @@ export function FormDialog({
           }}
         >
           <form onSubmit={handleSubmit} className={styles.form}>
-            <RadixDialog.Title className={styles.title}>{title}</RadixDialog.Title>
-            <div className={styles.body}>{children}</div>
-            <div className={styles.footer}>{footer}</div>
+            <div className={styles.header} data-more={edges.above || undefined}>
+              <RadixDialog.Title className={styles.title}>{title}</RadixDialog.Title>
+              {description && (
+                <RadixDialog.Description className={styles.description}>
+                  {description}
+                </RadixDialog.Description>
+              )}
+            </div>
+            <div ref={setBody} className={styles.body}>
+              {children}
+            </div>
+            <div className={styles.footer} data-more={edges.below || undefined}>
+              {footer}
+            </div>
           </form>
         </RadixDialog.Content>
       </RadixDialog.Portal>
     </RadixDialog.Root>
   );
+}
+
+/**
+ * Whether `el` has content scrolled away above it and still to scroll to
+ * below it, so a line can mark the cut.
+ */
+function useScrollEdges(el: HTMLElement | null): { above: boolean; below: boolean } {
+  const [edges, setEdges] = useState({ above: false, below: false });
+  useEffect(() => {
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      // Below zero while WebKit bounces past the top; a pixel of slack for
+      // fractional heights.
+      const above = el.scrollTop > 0;
+      const below = el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+      setEdges((old) => (old.above === above && old.below === below ? old : { above, below }));
+    };
+    // The body keeps its size once it reaches the height limit, so its
+    // content is watched too: rows come and go while the dialog is open.
+    const resize = new ResizeObserver(measure);
+    resize.observe(el);
+    const mutation = new MutationObserver(measure);
+    mutation.observe(el, { childList: true, subtree: true, characterData: true });
+    el.addEventListener("scroll", measure, { passive: true });
+    measure();
+    return () => {
+      resize.disconnect();
+      mutation.disconnect();
+      el.removeEventListener("scroll", measure);
+    };
+  }, [el]);
+  return edges;
 }

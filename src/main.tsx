@@ -13,6 +13,7 @@ import { preloadAppVersion } from "./features/update/api";
 import { resolveAccent } from "./features/settings/SettingsEffects";
 import { isSettingsWindow } from "./features/settings/SettingsWindow";
 import { installContextMenuGuard } from "./lib/contextMenu";
+import { installLayerScrollBounce } from "./lib/scrollBounce";
 import { setDetailFilesWidth, setSidebarWidth } from "./lib/layout";
 import { initTheme, setAppearance } from "./lib/theme";
 import { initWindowChrome } from "./lib/windowChrome";
@@ -22,6 +23,7 @@ async function start() {
   initWindowChrome();
   initTheme();
   installContextMenuGuard();
+  installLayerScrollBounce();
 
   let settings = await preloadSettings(queryClient);
   // Versions before settings.json kept the language in the webview.
