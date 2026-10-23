@@ -9,9 +9,15 @@ import { useCredentials } from "../credentials/credentialStore";
  */
 export function networkChannel(onProgress: (progress: Progress) => void): Channel<RemoteEvent> {
   const channel = new Channel<RemoteEvent>();
+  // One channel per operation, so this remembers what this operation asked.
+  const asked = new Set<string>();
   channel.onmessage = (event) => {
     if (event.type === "credential") {
-      useCredentials.getState().add({ requestId: event.requestId, prompt: event.prompt });
+      const { kind, target, text } = event.prompt;
+      const key = [kind, target, text].join("\n");
+      const retry = asked.has(key);
+      asked.add(key);
+      useCredentials.getState().add({ requestId: event.requestId, prompt: event.prompt, retry });
     } else {
       onProgress({
         phase: event.phase,

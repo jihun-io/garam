@@ -259,11 +259,60 @@ describe("SyncButton", () => {
 
     expect(await screen.findByRole("dialog", { name: "Sign in" })).toBeVisible();
     expect(screen.getByText("Enter the password for https://me@example.com.")).toBeVisible();
+    expect(screen.getByText(/credential helper/)).toBeVisible();
     const field = screen.getByLabelText("Password or token");
     expect(field).toHaveAttribute("type", "password");
     await user.type(field, "s3cret{enter}");
     expect(commands.credentialRespond).toHaveBeenCalledWith("7", "s3cret");
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("tells an SSH key's passphrase apart from what a helper remembers", async () => {
+    setup();
+    await screen.findByRole("button", { name: /Fetch origin/ });
+    act(() =>
+      useCredentials.getState().add({
+        requestId: "8",
+        retry: false,
+        prompt: {
+          kind: "ssh_passphrase",
+          target: "/Users/me/.ssh/id_ed25519",
+          fingerprint: null,
+          text: "Enter passphrase for key '/Users/me/.ssh/id_ed25519': ",
+        },
+      }),
+    );
+    expect(await screen.findByText(/added to an SSH agent/)).toBeVisible();
+    expect(screen.queryByText(/credential helper/)).toBeNull();
+  });
+
+  it("says the passphrase was wrong when ssh asks again", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.remotePush).mockReturnValue(new Promise(() => {}));
+    vi.mocked(commands.credentialRespond).mockResolvedValue();
+    setup({ ahead: 1 });
+    await user.click(await screen.findByRole("button", { name: /Push origin/ }));
+    const ask = (requestId: string) =>
+      act(() =>
+        channels[0].onmessage({
+          type: "credential",
+          requestId,
+          prompt: {
+            kind: "ssh_passphrase",
+            target: "/Users/me/.ssh/id_ed25519",
+            fingerprint: null,
+            text: "Enter passphrase for key '/Users/me/.ssh/id_ed25519': ",
+          },
+        }),
+      );
+
+    ask("1");
+    await screen.findByRole("dialog", { name: "Unlock SSH key" });
+    expect(screen.queryByText(/is incorrect/)).toBeNull();
+    await user.type(screen.getByLabelText("Passphrase"), "wrong{enter}");
+
+    ask("2");
+    expect(await screen.findByText(/is incorrect/)).toBeVisible();
   });
 
   it("cancelling a prompt declines it quietly", async () => {
@@ -279,6 +328,7 @@ describe("SyncButton", () => {
     act(() =>
       useCredentials.getState().add({
         requestId: "9",
+        retry: false,
         prompt: {
           kind: "host_key",
           target: "example.com",
@@ -304,6 +354,7 @@ describe("SyncButton", () => {
     act(() =>
       useCredentials.getState().add({
         requestId: "3",
+        retry: false,
         prompt: { kind: "host_key", target: "example.com", fingerprint: null, text: "..." },
       }),
     );

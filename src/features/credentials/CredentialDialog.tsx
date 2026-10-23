@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../components/ui/Button";
 import { FormDialog } from "../../components/ui/Dialog";
 import { Field } from "../../components/ui/Field";
-import type { CredentialRequest } from "../../ipc";
+import { Icon } from "../../components/Icon";
 import styles from "./CredentialDialog.module.css";
-import { useCredentials } from "./credentialStore";
+import { useCredentials, type PendingCredential } from "./credentialStore";
 
 /** Asks for whatever git or ssh is waiting on, one prompt at a time. */
 export function CredentialDialog() {
@@ -15,7 +15,7 @@ export function CredentialDialog() {
   return request ? <Prompt key={request.requestId} request={request} /> : null;
 }
 
-function Prompt({ request }: { request: CredentialRequest }) {
+function Prompt({ request }: { request: PendingCredential }) {
   const { t } = useTranslation("credentials");
   const respond = useCredentials((s) => s.respond);
   const [answer, setAnswer] = useState("");
@@ -23,6 +23,14 @@ function Prompt({ request }: { request: CredentialRequest }) {
   const values = { target: target ?? t("unknownTarget") };
   const hostKey = kind === "host_key";
   const secret = kind !== "username" && !hostKey;
+  // A credential helper remembers what git asks for (HTTPS); ssh asks for
+  // a key's passphrase each time unless an agent holds the key.
+  const note =
+    kind === "username" || kind === "password"
+      ? t("saved")
+      : kind === "ssh_passphrase"
+        ? t("ssh_passphrase.note")
+        : null;
 
   const cancel = () => respond(request.requestId, null);
   const submit = () => respond(request.requestId, hostKey ? "yes" : answer);
@@ -51,6 +59,12 @@ function Prompt({ request }: { request: CredentialRequest }) {
         </div>
       ) : (
         <>
+          {request.retry && secret && (
+            <p className={styles.retry} role="alert">
+              <Icon name="error" size={14} />
+              {t("retry")}
+            </p>
+          )}
           <Field
             label={t(`${kind}.label`)}
             type={secret ? "password" : "text"}
@@ -60,7 +74,7 @@ function Prompt({ request }: { request: CredentialRequest }) {
             hint={kind === "password" ? t("password.hint") : undefined}
             autoFocus
           />
-          <p className={styles.note}>{t("saved")}</p>
+          {note && <p className={styles.note}>{note}</p>}
         </>
       )}
     </FormDialog>
