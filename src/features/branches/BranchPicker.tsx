@@ -121,6 +121,9 @@ export function BranchPicker({
     ]?.focus();
   };
 
+  // The current branch has nothing to compare with itself.
+  const canCompare = (branch: Branch) => !branch.isHead && !!status.oid;
+
   const row = (branch: Branch) => (
     <li key={branch.name}>
       <ContextMenu.Root>
@@ -147,7 +150,7 @@ export function BranchPicker({
         </ContextMenu.Trigger>
         <ContextMenu.Portal>
           <ContextMenu.Content className={menu.content}>
-            {!branch.isHead && status.oid && (
+            {canCompare(branch) && (
               <ContextMenu.Item
                 className={menu.item}
                 onSelect={() => fromPicker(() => compareWithCurrent(branch))}
@@ -157,7 +160,7 @@ export function BranchPicker({
             )}
             {branch.kind === "local" && (
               <>
-                <ContextMenu.Separator className={menu.separator} />
+                {canCompare(branch) && <ContextMenu.Separator className={menu.separator} />}
                 <ContextMenu.Item
                   className={menu.item}
                   onSelect={() => fromPicker(() => openDialog({ kind: "rename", branch }))}

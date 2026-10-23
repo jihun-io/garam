@@ -131,6 +131,8 @@ describe("BranchControls", () => {
     await user.pointer({ keys: "[MouseRight]", target: screen.getAllByText("main")[1] });
     const own = await screen.findByRole("menu");
     expect(within(own).queryByRole("menuitem", { name: /Compare with/ })).toBeNull();
+    // Without the compare item there is nothing to separate from.
+    expect(own.firstElementChild).toHaveRole("menuitem");
   });
 
   it("opens for dragged commits and takes them on local branches", async () => {
