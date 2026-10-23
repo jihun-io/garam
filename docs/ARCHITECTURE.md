@@ -92,7 +92,7 @@ garam-git/src/
 ├── remote.rs      # fetch/pull/push/publish, 원격 저장소 정보
 ├── credential.rs  # askpass로 들어온 git·ssh 프롬프트 분류
 ├── log.rs         # 히스토리 페이지 조회, 커밋 상세·diff, revert
-├── commit_graph.rs # commit-graph 파일이 없으면 만들기 (대형 저장소 히스토리 속도)
+├── commit_graph.rs # commit-graph 파일 만들기·새 커밋 덧붙이기 (대형 저장소 히스토리 속도)
 ├── stash.rs
 └── conflict.rs    # 충돌 상태 감지, ours/theirs 해결
 ```
@@ -170,7 +170,7 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - 프론트에서 받은 커밋 id는 16진수만 허용한다. `HEAD~1`이나 `-`로 시작하는 값이 옵션·리비전 식으로 해석되지 않게 하기 위해서다. 브랜치 시작점도 `-`로 시작하면 거부한다.
 - 히스토리 쿼리 키는 `["history", repo, ...]`로, 파일이 바뀔 때마다 무효화되는 `["repo", repo]` 아래에 두지 않는다. 목록 키에 HEAD 커밋 id를 넣어 HEAD가 움직일 때만 다시 불러오고, 커밋 상세와 diff는 바뀌지 않으므로 계속 캐시한다.
 - revert는 커밋을 만들므로 다른 index 쓰기와 같은 mutation scope에서 실행한다. 충돌하면 `revert_conflict`로 안내하고 해결은 M7에서 한다.
-- **commit-graph**: 저장소를 열면 `history_prepare`가 git의 commit-graph 파일(`.git/objects/info/commit-graph`)이 없을 때 한 번 만든다(`git commit-graph write --reachable`, `commit_graph.rs`). 이 파일이 없으면 `--topo-order`가 첫 커밋을 내기 전에 모든 커밋을 읽어서, 커밋 50만 개 저장소에서 페이지마다 약 1.5초가 걸린다(있으면 약 20ms). clone은 이 파일을 만들지 않고 `git gc`도 돌 때만 만든다. 캐시일 뿐이라 내용은 바뀌지 않는다. 이미 있으면(분리된 chain 포함) 건드리지 않고, `core.commitGraph=false`면 만들지 않는다. 경로 필터를 빠르게 하는 changed-path 블룸 필터(`--changed-paths`)는 만드는 데 약 10배가 걸려서 쓰지 않는다.
+- **commit-graph**: 저장소를 열면 `history_prepare`가 git의 commit-graph 파일(`.git/objects/info/commit-graph`)이 없을 때 한 번 만든다(`git commit-graph write --reachable`, `commit_graph.rs`). 이 파일이 없으면 `--topo-order`가 첫 커밋을 내기 전에 모든 커밋을 읽어서, 커밋 50만 개 저장소에서 페이지마다 약 1.5초가 걸린다(있으면 약 20ms). clone은 이 파일을 만들지 않고 `git gc`도 돌 때만 만든다. 캐시일 뿐이라 내용은 바뀌지 않는다. 이미 있으면 그 뒤에 생긴 커밋만 작은 층으로 덧붙인다(`--split`, git의 `fetch.writeCommitGraph`와 같은 방식). 저장소를 열 때와 가져오기·풀이 끝날 때 하고, 새 커밋이 없으면 파일을 건드리지 않는다. 그래프에 없는 커밋은 페이지마다 조금씩 비용이 들기 때문이다(50만 개 위에 2만 개면 10ms → 40ms). 덧붙이는 데는 2만 개에 약 60ms, 새 것이 없으면 약 10ms다. 단일 파일은 처음 덧붙일 때 chain으로 바뀌는데, git은 둘을 똑같이 읽는다. 가져오기 뒤의 덧붙이기가 실패해도(다른 git이 잠금을 쥔 경우 등) 무시한다. `core.commitGraph=false`면 만들지도 덧붙이지도 않는다. 경로 필터를 빠르게 하는 changed-path 블룸 필터(`--changed-paths`)는 만드는 데 약 10배가 걸려서 쓰지 않는다.
 - **검색 취소**: 검색어나 필터를 바꾸면 이전 페이지 요청은 더 필요 없다. `history_list`는 프론트가 만든 `operationId`를 받고, TanStack Query가 그 쿼리를 중단(`signal`)하면 `operation_cancel`로 git 프로세스를 끝낸다. 코드 내용 검색(`-S`)은 커밋 50만 개에서 20초 넘게 걸리기 때문이다.
 
 ### 2.9 충돌 해결

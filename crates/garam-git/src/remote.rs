@@ -108,7 +108,8 @@ fn last_fetched_at(git: &Git, repo: &Path) -> Result<Option<u32>, GitError> {
 }
 
 /// Downloads new commits and branches from `remote`, removing remote
-/// branches that were deleted there.
+/// branches that were deleted there, and adds the new commits to the
+/// commit-graph file if there is one.
 pub fn fetch(
     git: &Git,
     repo: &Path,
@@ -121,7 +122,11 @@ pub fn fetch(
         .cwd(repo)
         .args(["fetch", "--progress", "--prune", "--"])
         .arg(remote);
-    transfer(command, TransferKind::Fetch, cancel, on_progress)
+    transfer(command, TransferKind::Fetch, cancel, on_progress)?;
+    // Only a cache: a failure (e.g. another git holding its lock) costs
+    // a little speed until the next fetch.
+    let _ = crate::commit_graph::append(git, repo);
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

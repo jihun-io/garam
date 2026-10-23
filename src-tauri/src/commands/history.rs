@@ -43,12 +43,13 @@ pub async fn history_list(
     .await
 }
 
-/// Writes git's commit-graph file if the repository has none, so history
-/// pages of a large repository load quickly. Returns whether it wrote one.
+/// Writes git's commit-graph file if the repository has none, or adds the
+/// commits it is missing, so history pages of a large repository load
+/// quickly. Returns whether it wrote the file from scratch.
 #[tauri::command]
 #[specta::specta]
 pub async fn history_prepare(repo: String) -> AppResult<bool> {
-    blocking(move || Ok(commit_graph::ensure(&Git::locate()?, Path::new(&repo))?)).await
+    blocking(move || Ok(commit_graph::update(&Git::locate()?, Path::new(&repo))?)).await
 }
 
 /// Refs, unpushed and incoming commits, shown alongside the history.

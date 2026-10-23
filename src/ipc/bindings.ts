@@ -134,8 +134,9 @@ export const commands = {
 	 */
 	historyList: (operationId: string, repo: string, filter: HistoryFilter, skip: number, limit: number) => typedError<CommitSummary[], AppError>(__TAURI_INVOKE("history_list", { operationId, repo, filter, skip, limit })),
 	/**
-	 *  Writes git's commit-graph file if the repository has none, so history
-	 *  pages of a large repository load quickly. Returns whether it wrote one.
+	 *  Writes git's commit-graph file if the repository has none, or adds the
+	 *  commits it is missing, so history pages of a large repository load
+	 *  quickly. Returns whether it wrote the file from scratch.
 	 */
 	historyPrepare: (repo: string) => typedError<boolean, AppError>(__TAURI_INVOKE("history_prepare", { repo })),
 	/**  Refs, unpushed and incoming commits, shown alongside the history. */

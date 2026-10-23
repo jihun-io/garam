@@ -78,8 +78,9 @@ export function useHistory(
 }
 
 /**
- * Writes git's commit-graph file once if the repository has none. Without
- * it every history page of a large repository walks all of its commits.
+ * Writes git's commit-graph file if the repository has none, or adds the
+ * commits made since, once per opened repository. Without it every history
+ * page of a large repository walks all of its commits.
  */
 export function useHistoryPrepare(repo: string | null) {
   useQuery({
