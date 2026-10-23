@@ -69,6 +69,13 @@ fn keeps_my_version_and_continues_the_merge() {
     conflict::continue_operation(repo.git_handle(), repo.path()).unwrap();
     assert_eq!(state(&repo), conflict::ConflictState::default());
     assert_eq!(head_parents(&repo), 2, "merge commit");
+    // git's "# Conflicts:" notes are comments, not part of the message.
+    let message = repo
+        .git(["log", "-1", "--format=%B"])
+        .stdout_str()
+        .into_owned();
+    assert!(message.starts_with("Merge branch"), "{message}");
+    assert!(!message.contains('#'), "{message}");
 }
 
 #[test]

@@ -243,7 +243,9 @@ pub fn continue_operation(git: &Git, repo: &Path) -> Result<bool, GitError> {
     // Keep git's prepared message instead of opening an editor.
     let command = git.command().cwd(repo).env("GIT_EDITOR", "true");
     let command = match operation {
-        Operation::Merge => command.args(["commit", "--no-edit"]),
+        // Without an editor git keeps comment lines, so its "# Conflicts:"
+        // notes would end up in the message; strip them as the editor would.
+        Operation::Merge => command.args(["commit", "--no-edit", "--cleanup=strip"]),
         Operation::Rebase => command.args(["rebase", "--continue"]),
         Operation::Revert => command.args(["revert", "--continue"]),
         Operation::CherryPick => command.args(["cherry-pick", "--continue"]),
