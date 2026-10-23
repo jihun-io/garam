@@ -536,6 +536,87 @@ describe("ChangesView", () => {
     expect(vi.mocked(commands.changesStageLines).mock.calls[0][2]).toHaveLength(3);
   });
 
+  // jsdom reports a non-Mac platform, so Ctrl is the toggle and select-all key.
+  it("selects several files like a file manager and acts on them together", async () => {
+    const user = userEvent.setup();
+    const { container } = setup([
+      change("a.txt", null, "modified"),
+      change("b.txt", "modified", null),
+      change("c.txt", null, "modified"),
+      change("d.txt", null, "untracked"),
+    ]);
+    const list = await screen.findByRole("listbox");
+    expect(list).toHaveAttribute("aria-multiselectable", "true");
+    const row = (name: string) => screen.getByRole("option", { name: new RegExp(name) });
+    const selected = () =>
+      screen
+        .getAllByRole("option")
+        .filter((o) => o.getAttribute("aria-selected") === "true")
+        .map((o) => o.textContent?.match(/\w\.txt/)?.[0]);
+
+    await user.click(row("a.txt"));
+    await user.keyboard("{Shift>}");
+    await user.click(row("c.txt"));
+    await user.keyboard("{/Shift}");
+    expect(selected()).toEqual(["a.txt", "b.txt", "c.txt"]);
+    expect(await screen.findByRole("heading", { name: "3 files selected" })).toBeVisible();
+    expect(await axeViolations(container)).toEqual([]);
+
+    await user.keyboard("{Control>}");
+    await user.click(row("b.txt"));
+    await user.keyboard("{/Control}");
+    expect(selected()).toEqual(["a.txt", "c.txt"]);
+
+    // Space includes them all, since not all are included yet.
+    list.focus();
+    await user.keyboard(" ");
+    expect(vi.mocked(commands.changesStage).mock.calls[0][1].map((f) => f.path)).toEqual([
+      "a.txt",
+      "c.txt",
+    ]);
+
+    // The keyboard stays on the row just deselected; Shift+arrow extends
+    // from there.
+    await user.keyboard("{Shift>}{ArrowDown}{/Shift}");
+    expect(selected()).toEqual(["b.txt", "c.txt"]);
+
+    await user.keyboard("{Control>}a{/Control}");
+    expect(selected()).toEqual(["a.txt", "b.txt", "c.txt", "d.txt"]);
+
+    await user.keyboard("{Control>}{Backspace}{/Control}");
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/4/)).toBeVisible();
+  });
+
+  it("acts on the whole selection from a selected file's context menu", async () => {
+    const user = userEvent.setup();
+    setup([
+      change("a.txt", null, "modified"),
+      change("b.txt", null, "modified"),
+      change("c.txt", null, "modified"),
+    ]);
+    const list = await screen.findByRole("listbox");
+    list.focus();
+    await user.keyboard("{Control>}a{/Control}");
+    await user.pointer({
+      keys: "[MouseRight]",
+      target: screen.getByRole("option", { name: /b\.txt/ }),
+    });
+    expect(
+      await screen.findByRole("menuitem", { name: "Discard changes to 3 files…" }),
+    ).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Stash 3 files…" })).toBeVisible();
+    await user.keyboard("{Escape}");
+
+    // Outside the selection, it's just that file.
+    await user.click(screen.getByRole("option", { name: /a\.txt/ }));
+    await user.pointer({
+      keys: "[MouseRight]",
+      target: screen.getByRole("option", { name: /c\.txt/ }),
+    });
+    expect(await screen.findByRole("menuitem", { name: "Discard changes…" })).toBeVisible();
+  });
+
   it("shows an empty state when the working folder is clean", async () => {
     setup([]);
     expect(await screen.findByText("No local changes")).toBeVisible();

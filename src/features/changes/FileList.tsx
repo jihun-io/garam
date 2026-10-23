@@ -6,6 +6,12 @@ import { useTranslation } from "react-i18next";
 import { CheckMark } from "../../components/ui/Checkbox";
 import menu from "../../components/ui/Menu.module.css";
 import { commands, type FileChange } from "../../ipc";
+import {
+  isSelectAll,
+  selectHow,
+  type ListSelection,
+  type SelectHow,
+} from "../../lib/listSelection";
 import { joinPath } from "../../lib/paths";
 import { currentPlatform } from "../../lib/platform";
 import { useNotify } from "../notify/notifyStore";
@@ -16,20 +22,31 @@ import { Tooltip } from "../../components/ui/Tooltip";
 
 const ROW_HEIGHT = 28;
 
+/**
+ * Changed files. Several can be selected like in a file manager (click,
+ * ⌘/Ctrl-click, Shift-click, Shift+arrows, ⌘A/Ctrl+A); Space, ⌘⌫ and the
+ * context menu act on all of them.
+ */
 export function FileList({
   repo,
   files,
-  selectedPath,
+  selection,
   onSelect,
+  onSelectAll,
+  onMove,
   onToggle,
   onDiscard,
   onStash,
 }: {
   repo: string;
   files: FileChange[];
-  selectedPath: string | null;
-  onSelect: (path: string) => void;
-  onToggle: (file: FileChange) => void;
+  /** Nothing is selected while a stash is shown. */
+  selection: ListSelection;
+  onSelect: (path: string, how: SelectHow) => void;
+  onSelectAll: () => void;
+  onMove: (delta: number, extend: boolean) => void;
+  /** Includes or excludes `files` together, the way the first one isn't. */
+  onToggle: (files: FileChange[]) => void;
   onDiscard: (files: FileChange[]) => void;
   onStash: (files: FileChange[]) => void;
 }) {
@@ -43,38 +60,43 @@ export function FileList({
     overscan: 12,
   });
 
-  const selectedIndex = files.findIndex((f) => f.path === selectedPath);
+  const selectedPaths = new Set(selection.keys);
+  const selectedFiles = files.filter((f) => selectedPaths.has(f.path));
+  const focusIndex = files.findIndex((f) => f.path === selection.focus);
 
   useEffect(() => {
-    if (selectedIndex >= 0) virtualizer.scrollToIndex(selectedIndex, { align: "auto" });
-  }, [selectedIndex, virtualizer]);
+    if (focusIndex >= 0) virtualizer.scrollToIndex(focusIndex, { align: "auto" });
+  }, [focusIndex, virtualizer]);
 
-  // Arrow keys move the selection; Space toggles inclusion in the commit;
-  // ⌘⌫ / Ctrl+Backspace asks to discard the selected file's changes.
+  // Conflicted files are resolved with the conflict actions, never ticked.
+  const toggleable = selectedFiles.filter((f) => f.staged !== "conflicted");
+
+  // Arrow keys move the selection (Shift extends it); Space includes or
+  // excludes the selected files; ⌘⌫ / Ctrl+Backspace asks to discard them.
   const onKeyDown = (e: KeyboardEvent) => {
     if (files.length === 0) return;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      const delta = e.key === "ArrowDown" ? 1 : -1;
-      const next = Math.max(0, Math.min(files.length - 1, selectedIndex + delta));
-      onSelect(files[next].path);
+      onMove(e.key === "ArrowDown" ? 1 : -1, e.shiftKey);
+    } else if (isSelectAll(e)) {
+      e.preventDefault();
+      onSelectAll();
     } else if (
       (e.key === "Backspace" || e.key === "Delete") &&
       (e.metaKey || e.ctrlKey) &&
-      selectedIndex >= 0
+      selectedFiles.length > 0
     ) {
       // Opens the confirmation; nothing is discarded without it.
       e.preventDefault();
-      onDiscard([files[selectedIndex]]);
-    } else if (
-      e.key === " " &&
-      selectedIndex >= 0 &&
-      files[selectedIndex].staged !== "conflicted"
-    ) {
+      onDiscard(selectedFiles);
+    } else if (e.key === " " && toggleable.length > 0) {
       e.preventDefault();
-      onToggle(files[selectedIndex]);
+      onToggle(toggleable);
     }
   };
+
+  // A right click on a selected file acts on the whole selection.
+  const menuTargets = (file: FileChange) => (selectedPaths.has(file.path) ? selectedFiles : [file]);
 
   return (
     <div
@@ -82,7 +104,8 @@ export function FileList({
       className={styles.scroll}
       role="listbox"
       aria-label={t("list.title", { count: files.length })}
-      aria-activedescendant={selectedIndex >= 0 ? `file-${selectedIndex}` : undefined}
+      aria-multiselectable
+      aria-activedescendant={focusIndex >= 0 ? `file-${focusIndex}` : undefined}
       tabIndex={0}
       onKeyDown={onKeyDown}
     >
@@ -92,7 +115,9 @@ export function FileList({
           const kind = displayKind(file);
           const state = checkState(file);
           const { dir, name } = splitPath(file.path);
-          const selected = file.path === selectedPath;
+          const selected = selectedPaths.has(file.path);
+          const targets = menuTargets(file);
+          const several = targets.length > 1;
           return (
             <ContextMenu.Root key={file.path}>
               <ContextMenu.Trigger asChild>
@@ -106,12 +131,23 @@ export function FileList({
                   aria-checked={state === "mixed" ? "mixed" : state === "checked"}
                   className={styles.row}
                   style={{ transform: `translateY(${item.start}px)`, height: ROW_HEIGHT }}
-                  onMouseDown={() => onSelect(file.path)}
+                  onMouseDown={(e) => {
+                    // A right click keeps a selection it lands in, so the
+                    // menu acts on all of it.
+                    if (e.button !== 0) {
+                      if (!selected) onSelect(file.path, "single");
+                      return;
+                    }
+                    const how = selectHow(e);
+                    // Shift-click would also select the text in between.
+                    if (how === "range") e.preventDefault();
+                    onSelect(file.path, how);
+                  }}
                 >
                   <CheckMark
                     state={state}
                     disabled={kind === "conflicted"}
-                    onToggle={() => onToggle(file)}
+                    onToggle={() => onToggle([file])}
                   />
                   <Tooltip
                     content={file.origPath ? `${file.origPath} → ${file.path}` : file.path}
@@ -131,26 +167,34 @@ export function FileList({
               </ContextMenu.Trigger>
               <ContextMenu.Portal>
                 <ContextMenu.Content className={menu.content}>
-                  <ContextMenu.Item className={menu.item} onSelect={() => onDiscard([file])}>
-                    {t("fileMenu.discard")}
+                  <ContextMenu.Item className={menu.item} onSelect={() => onDiscard(targets)}>
+                    {several
+                      ? t("fileMenu.discardSelected", { count: targets.length })
+                      : t("fileMenu.discard")}
                   </ContextMenu.Item>
                   <ContextMenu.Item
                     className={menu.item}
-                    disabled={kind === "conflicted"}
-                    onSelect={() => onStash([file])}
+                    disabled={targets.some((f) => f.staged === "conflicted")}
+                    onSelect={() => onStash(targets)}
                   >
-                    {t("fileMenu.stash")}
+                    {several
+                      ? t("fileMenu.stashSelected", { count: targets.length })
+                      : t("fileMenu.stash")}
                   </ContextMenu.Item>
                   <ContextMenu.Separator className={menu.separator} />
                   <ContextMenu.Item
                     className={menu.item}
-                    onSelect={() => void navigator.clipboard.writeText(file.path)}
+                    onSelect={() =>
+                      void navigator.clipboard.writeText(targets.map((f) => f.path).join("\n"))
+                    }
                   >
-                    {t("fileMenu.copyPath")}
+                    {several
+                      ? t("fileMenu.copyPaths", { count: targets.length })
+                      : t("fileMenu.copyPath")}
                   </ContextMenu.Item>
                   <ContextMenu.Item
                     className={menu.item}
-                    disabled={kind === "deleted"}
+                    disabled={several || kind === "deleted"}
                     onSelect={() =>
                       void commands
                         .externalReveal(joinPath(repo, file.path))

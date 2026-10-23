@@ -20,6 +20,15 @@ import { StashDetail } from "../stashes/StashDetail";
 import { StashDialog } from "../stashes/StashDialog";
 import { StashSection } from "../stashes/StashSection";
 import { useCommand } from "../../lib/commands";
+import {
+  NO_SELECTION,
+  move,
+  reconcile,
+  select,
+  selectAll,
+  type ListSelection,
+} from "../../lib/listSelection";
+import { SelectedFiles } from "./SelectedFiles";
 import { useChangeActions, useStatus } from "./api";
 import styles from "./ChangesView.module.css";
 import { CommitForm } from "./CommitForm";
@@ -41,7 +50,7 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
   const stashes = useStashes(repo).data ?? [];
   const { stage, unstage } = useChangeActions(repo);
   const showError = useNotify((s) => s.showError);
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [rawSelection, setSelection] = useState<ListSelection>(NO_SELECTION);
   const [selectedStash, setSelectedStash] = useState<string | null>(null);
   const [discarding, setDiscarding] = useState<FileChange[] | null>(null);
   // Paths to stash; empty means all changes.
@@ -69,7 +78,10 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
 
   const { files, branch } = status.data;
   // Keep a selection whenever there are files; fall back to the first.
-  const selected = files.find((f) => f.path === selectedPath) ?? files[0] ?? null;
+  const order = files.map((f) => f.path);
+  const selection = reconcile(order, rawSelection);
+  const selectedFiles = files.filter((f) => selection.keys.includes(f.path));
+  const selected = selectedFiles.length === 1 ? selectedFiles[0] : null;
   const stagedCount = files.filter((f) => checkState(f) !== "unchecked").length;
   const allState = combinedCheckState(files.filter((f) => f.staged !== "conflicted"));
 
@@ -84,10 +96,13 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
   const operation = conflicts.data?.operation ?? null;
   // Falls back to the files once the stash is popped or dropped.
   const stash = stashes.find((s) => s.oid === selectedStash) ?? null;
-  const selectFile = (path: string) => {
-    setSelectedPath(path);
+  const showFiles = (next: ListSelection) => {
+    setSelection(next);
     setSelectedStash(null);
   };
+  // Includes them all unless they all are already.
+  const toggleTogether = (targets: FileChange[]) =>
+    toggle(targets, !targets.every((f) => checkState(f) === "checked"));
 
   return (
     <div className={styles.root}>
@@ -128,9 +143,11 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
           <FileList
             repo={repo}
             files={files}
-            selectedPath={stash ? null : (selected?.path ?? null)}
-            onSelect={selectFile}
-            onToggle={(file) => toggle([file], checkState(file) !== "checked")}
+            selection={stash ? NO_SELECTION : selection}
+            onSelect={(path, how) => showFiles(select(order, selection, path, how))}
+            onSelectAll={() => showFiles(selectAll(order, selection))}
+            onMove={(delta, extend) => showFiles(move(order, selection, delta, extend))}
+            onToggle={toggleTogether}
             onDiscard={setDiscarding}
             onStash={(targets) => setStashing(targets.map((f) => f.path))}
           />
@@ -149,6 +166,13 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
       <div className={styles.main}>
         {stash ? (
           <StashDetail key={stash.oid} repo={repo} stash={stash} />
+        ) : selectedFiles.length > 1 ? (
+          <SelectedFiles
+            files={selectedFiles}
+            onToggle={toggleTogether}
+            onStash={() => setStashing(selectedFiles.map((f) => f.path))}
+            onDiscard={() => setDiscarding(selectedFiles)}
+          />
         ) : files.length > 0 ? (
           <DiffView
             repo={repo}

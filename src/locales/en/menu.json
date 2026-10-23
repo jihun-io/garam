@@ -73,6 +73,7 @@
     "title": "Keyboard shortcuts",
     "close": "Close",
     "commit": "Commit",
-    "discard": "Discard changes to the selected file"
+    "discard": "Discard changes to the selected files",
+    "selectAllFiles": "Select all changed files"
   }
 }

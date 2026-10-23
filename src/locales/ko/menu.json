@@ -73,6 +73,7 @@
     "title": "키보드 단축키",
     "close": "닫기",
     "commit": "커밋",
-    "discard": "선택한 파일의 변경 취소"
+    "discard": "선택한 파일의 변경 취소",
+    "selectAllFiles": "변경된 파일 모두 선택"
   }
 }

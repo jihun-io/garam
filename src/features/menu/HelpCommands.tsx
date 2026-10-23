@@ -34,6 +34,7 @@ function ShortcutsDialog({ onClose }: { onClose: () => void }) {
       .map(([id, accelerator]): [string, string] => [commandLabel(t, id), accelerator]),
     [t("menu:shortcuts.commit"), LOCAL_SHORTCUTS.commit],
     [t("menu:shortcuts.discard"), LOCAL_SHORTCUTS.discard],
+    [t("menu:shortcuts.selectAllFiles"), LOCAL_SHORTCUTS.selectAllFiles],
   ];
 
   return (

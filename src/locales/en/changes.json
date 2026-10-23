@@ -5,7 +5,16 @@
     "selectAll": "Include all files in the commit",
     "more": "More actions",
     "discardAll": "Discard all changes…",
-    "stashAll": "Stash All Changes…"
+    "stashAll": "Stash all changes…"
+  },
+  "selection": {
+    "title_one": "{{count}} file selected",
+    "title_other": "{{count}} files selected",
+    "include": "Include in commit",
+    "exclude": "Exclude from commit",
+    "stash": "Stash…",
+    "discard": "Discard changes…",
+    "conflicted": "Conflicted files can be included or stashed once their conflicts are resolved."
   },
   "kind": {
     "added": "Added",
@@ -16,8 +25,14 @@
   },
   "fileMenu": {
     "discard": "Discard changes…",
-    "stash": "Stash This File…",
+    "discardSelected_one": "Discard changes to {{count}} file…",
+    "discardSelected_other": "Discard changes to {{count}} files…",
+    "stash": "Stash this file…",
+    "stashSelected_one": "Stash {{count}} file…",
+    "stashSelected_other": "Stash {{count}} files…",
     "copyPath": "Copy path",
+    "copyPaths_one": "Copy {{count}} path",
+    "copyPaths_other": "Copy {{count}} paths",
     "reveal_macos": "Show in Finder",
     "reveal_windows": "Show in Explorer",
     "reveal_linux": "Show in file manager"

@@ -169,7 +169,7 @@ describe("stashes in the changes view", () => {
     const user = userEvent.setup();
     const { container } = setup({ stashes: [] });
     await user.click(await screen.findByRole("button", { name: "More actions" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Stash All Changes…" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Stash all changes…" }));
     const dialog = await screen.findByRole("dialog", { name: "Stash Changes" });
     expect(await axeViolations(container)).toEqual([]);
     await user.type(within(dialog).getByLabelText("Message"), "before the demo");
@@ -184,7 +184,7 @@ describe("stashes in the changes view", () => {
     setup({ stashes: [] });
     const row = await screen.findByRole("option", { name: /a\.txt/ });
     await user.pointer({ keys: "[MouseRight]", target: row });
-    await user.click(await screen.findByRole("menuitem", { name: "Stash This File…" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Stash this file…" }));
     const dialog = await screen.findByRole("dialog", { name: "Stash Selected Files" });
     expect(within(dialog).getByText(/only the changes to a\.txt/)).toBeVisible();
     await user.click(within(dialog).getByRole("button", { name: "Stash" }));

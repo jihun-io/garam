@@ -7,6 +7,15 @@
     "discardAll": "모든 변경 취소…",
     "stashAll": "모든 변경 사항 보관…"
   },
+  "selection": {
+    "title_one": "파일 {{count}}개 선택됨",
+    "title_other": "파일 {{count}}개 선택됨",
+    "include": "커밋에 포함",
+    "exclude": "커밋에서 제외",
+    "stash": "보관…",
+    "discard": "변경 취소…",
+    "conflicted": "충돌한 파일은 충돌을 해결해야 커밋에 포함하거나 보관할 수 있습니다."
+  },
   "kind": {
     "added": "추가됨",
     "modified": "수정됨",
@@ -16,8 +25,14 @@
   },
   "fileMenu": {
     "discard": "변경 취소…",
+    "discardSelected_one": "파일 {{count}}개 변경 취소…",
+    "discardSelected_other": "파일 {{count}}개 변경 취소…",
     "stash": "이 파일 보관…",
+    "stashSelected_one": "파일 {{count}}개 보관…",
+    "stashSelected_other": "파일 {{count}}개 보관…",
     "copyPath": "경로 복사",
+    "copyPaths_one": "경로 {{count}}개 복사",
+    "copyPaths_other": "경로 {{count}}개 복사",
     "reveal_macos": "Finder에서 보기",
     "reveal_windows": "탐색기에서 보기",
     "reveal_linux": "파일 관리자에서 보기"

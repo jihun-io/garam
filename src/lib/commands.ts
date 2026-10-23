@@ -42,6 +42,7 @@ export type CommandId = keyof typeof SHORTCUTS;
 export const LOCAL_SHORTCUTS = {
   commit: "CmdOrCtrl+Enter",
   discard: "CmdOrCtrl+Backspace",
+  selectAllFiles: "CmdOrCtrl+A",
 } as const;
 
 const MAC_SYMBOLS: Record<string, string> = {

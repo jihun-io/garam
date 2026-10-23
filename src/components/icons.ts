@@ -21,6 +21,7 @@ import { Code } from "@phosphor-icons/react/dist/csr/Code";
 import { Copy } from "@phosphor-icons/react/dist/csr/Copy";
 import { DotsThree } from "@phosphor-icons/react/dist/csr/DotsThree";
 import { FolderSimple } from "@phosphor-icons/react/dist/csr/FolderSimple";
+import { Files } from "@phosphor-icons/react/dist/csr/Files";
 import { Funnel } from "@phosphor-icons/react/dist/csr/Funnel";
 import { GearSix } from "@phosphor-icons/react/dist/csr/GearSix";
 import { GitBranch } from "@phosphor-icons/react/dist/csr/GitBranch";
@@ -73,6 +74,7 @@ export const Icons = {
   error: WarningCircle,
   update: ArrowCircleUp,
   history: ClockCounterClockwise,
+  files: Files,
 
   // Refs in the history
   remoteBranch: Cloud,
