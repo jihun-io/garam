@@ -102,7 +102,9 @@ UI 개선은 `docs/UI.md` 계획(1~6단계)을 따른다.
   - Windows는 v0.1에서 서명하지 않는다(SmartScreen 경고를 README에서 안내). SignPath Foundation(오픈소스 무료 서명)을 신청하고, Microsoft Store(MSIX)는 askpass 동작을 확인한 뒤에 검토한다
   - 수동 실행으로 확인함: 앱은 서명·공증·스테이플되고 유니버설(x86_64, arm64)이며, DMG도 따로 공증·스테이플해 내려받은 파일(quarantine)을 Gatekeeper가 받아들인다. Tauri는 DMG 안의 앱만 공증하므로 DMG 공증 단계가 필요하다
   - `v0.1.0-rc.1` 태그로 확인함(2026-10-22): 세 OS 빌드가 모두 성공해 초안 프리릴리스에 올라갔다. macOS 앱은 공증 Accepted, DMG는 스테이플 후 Gatekeeper가 `Notarized Developer ID`로 받아들였고, 공증한 DMG로 교체 업로드(`--clobber`)도 지나갔다. 업데이터 산출물(`.sig`, `latest.json`)도 함께 올라간다
-  - **남은 확인**: 초안 Release에서 `latest.json` 하나에 세 OS(macOS 유니버설, Linux AppImage, Windows NSIS)가 모두 합쳐졌는지 본다. rc.1 설치 파일을 세 OS에서 직접 설치해 본다(macOS는 내려받은 DMG, Windows는 SmartScreen 경고, Linux는 AppImage·deb)
+  - `v0.1.0-rc.2`(2026-10-23): 첫 태그 푸시에서는 초안만 생기고 설치 파일이 하나도 올라가지 않았다. 초안을 만든 직후 릴리스 목록을 조회하면 새 초안이 아직 빠져 있어 id가 비었고, id가 비면 세 빌드가 업로드를 건너뛰면서도 성공으로 끝났다(rc.1은 운 좋게 잡혔다). 초안을 만드는 API 응답에서 id를 받고, 비면 `prepare`가 실패하도록 고쳤다. 빈 초안과 태그를 지우고 고친 커밋에 태그를 다시 달아 설치 파일이 올라가는 것을 확인했다(태그는 Garam의 태그 삭제·태그 푸시로 다뤘다)
+  - Windows에서 rc.2를 실행해 rc.1에서 찾은 문제 두 가지가 고쳐진 것을 확인했다: 설정 창이 빈 흰 화면으로 뜨던 것(동기 명령에서 창을 만들면 WebView2가 교착됨, 명령을 async로), "Garam에 관하여"가 아무것도 열지 않던 것(OS 기본 About 항목은 정보 없이는 동작하지 않음, 모든 OS에서 앱 정보 창으로)
+  - **남은 확인**: 초안 Release에서 `latest.json` 하나에 세 OS(macOS 유니버설, Linux AppImage, Windows NSIS)가 모두 합쳐졌는지 본다. Linux에서 AppImage·deb를 설치해 본다(설정 창·정보 창 포함). macOS는 내려받은 DMG로 설치해 본다
 - [ ] 자동 업데이트
   - Rust가 확인·설치 상태를 하나로 들고 모든 창에 알린다(ARCHITECTURE.md 2.11). 시작 10초 뒤와 6시간마다 확인(설정에서 끔), 메뉴 "업데이트 확인…", 오른쪽 아래 알림(업데이트 / 새로운 기능 / 나중에 → 내려받는 중 % → 지금 다시 시작). 릴리스 워크플로가 `latest.json`과 서명된 업데이트 파일을 올린다(Windows는 NSIS 기준)
   - **남은 것**: 실제 업데이트는 공개된 릴리스가 두 개 있어야 확인할 수 있다. v0.1.0을 낸 뒤 v0.1.1(또는 시험용 버전)을 내서 세 OS에서 설치된 앱이 업데이트되는지 본다. 첫 릴리스 전에는 피드가 없어(404) 메뉴의 확인이 "업데이트를 확인하지 못했습니다"로 끝난다. 피드 주소가 `releases/latest/download/latest.json`이고 GitHub의 latest는 초안·프리릴리스를 가리키지 않으므로, rc 버전으로는 업데이트를 시험할 수 없다
