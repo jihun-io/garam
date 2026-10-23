@@ -59,9 +59,20 @@ pnpm typecheck && pnpm lint && pnpm format:check && pnpm i18n:check && pnpm test
 - Git engine features get an integration test that builds a real repository with the `TestRepo` fixture (the `testing` feature of `garam-git`).
 - If you changed the UI, run the app with `pnpm tauri dev` and try it, in both light and dark themes. Screenshots in the pull request help.
 
+## Branches
+
+Garam follows [GitHub Flow](https://docs.github.com/en/get-started/using-github/github-flow): `main` is the only long-lived branch, and every change reaches it through a pull request. Maintainers work the same way.
+
+- **`main` is always green.** Nobody pushes to it directly; a pull request merges only after CI passes on macOS, Windows and Linux.
+- **Branch from `main`, keep it short.** Name the branch after the change, with the Conventional Commits type as a prefix: `feat/checks-icon`, `fix/editor-picker`, `docs/roadmap`. Merge within days, not weeks; rebase on `main` or merge it in if you fall behind.
+- **Pull requests are squash-merged.** The pull request title becomes the commit on `main`, so write it as a commit message. Commits inside your branch can be as messy as you like. The branch is deleted after the merge.
+- **Releases are tags on `main`.** Pushing a `v*` tag builds and publishes the release; there's no release branch.
+- **Patch releases for an older version** get a maintenance branch only when `main` has already moved on: branch `release/0.2` from the `v0.2.0` tag, cherry-pick the fix, tag `v0.2.1` there, and make sure the fix is on `main` too.
+
 ## Commits and pull requests
 
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org): `fix(history): draw only the visible files of a commit`. Explain _why_ in the body when it isn't obvious.
+- The same goes for pull request titles, since the title becomes the squashed commit.
 - Keep a pull request to one change. Say what you tested, and on which OS.
 
 ## Code from GitHub Desktop
