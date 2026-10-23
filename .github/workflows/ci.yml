@@ -26,6 +26,9 @@ jobs:
       - run: pnpm format:check
       - run: pnpm i18n:check
       - run: pnpm test
+      # Pull requests skip the full Tauri build below, so check the
+      # production bundle here; it's the same on every OS.
+      - run: pnpm exec vite build
 
   rust:
     strategy:
@@ -46,7 +49,14 @@ jobs:
           version: 1
       - name: Install Rust toolchain (from rust-toolchain.toml)
         run: rustup toolchain install
+      # Pull requests restore main's cache but don't save their own: a saved
+      # cache holds only dependencies, so it would match main's and push it
+      # out of the repository's 10 GB cache limit. The release workflow
+      # restores this cache too, through the shared key.
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -59,5 +69,8 @@ jobs:
       - name: Check generated TypeScript bindings are up to date
         if: runner.os == 'Linux'
         run: git diff --exit-code -- src/ipc/bindings.ts
+      # The LTO release build takes 3 to 6 minutes and no cache shortens it,
+      # so it runs on main only, to catch a broken build before a release tag.
       - name: Build app (no installer)
+        if: github.event_name == 'push'
         run: pnpm tauri build --no-bundle

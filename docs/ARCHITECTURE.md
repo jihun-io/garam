@@ -285,7 +285,7 @@ struct AppError {
 - **Git 엔진 통합 테스트**가 가장 중요하다. `tempfile`로 임시 저장소를 만드는 픽스처 빌더(`TestRepo`)를 두고 충돌, rebase 중단, 서브모듈, 한글 파일명, CRLF, 빈 저장소 같은 상황을 재현한다.
 - 파서(status, diff, log, 진행률)는 실제 git 출력 샘플로 단위 테스트한다.
 - 프론트엔드는 기능별로 핵심 상호작용을 Vitest로 테스트한다.
-- CI(GitHub Actions): macOS·Windows·Linux에서 `cargo test`, `pnpm test`, 린트, 번역 키 검사, Tauri 빌드.
+- CI(GitHub Actions): macOS·Windows·Linux에서 `cargo test`, `pnpm test`, 린트, 번역 키 검사. Tauri 릴리스 빌드(LTO라 OS마다 3~6분)는 main에 푸시할 때만 돌리고, PR에서는 프론트 번들(`vite build`)만 확인한다. Rust 캐시는 main에서만 저장하며 PR과 릴리스 워크플로는 그것을 읽기만 한다(저장소 캐시 한도가 10GB이고, 태그에 저장한 캐시는 다른 실행이 읽을 수 없다).
 
 ## 7. 보안
 

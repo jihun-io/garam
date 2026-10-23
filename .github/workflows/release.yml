@@ -108,9 +108,13 @@ jobs:
       - name: Add macOS targets for the universal build
         if: runner.os == 'macOS'
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      # Restore the cache CI saves on main, whose release build shares most of
+      # this one. Don't save: a cache saved here would belong to the tag, and
+      # no later run can read a tag's cache.
       - uses: Swatinem/rust-cache@v2
         with:
-          key: release
+          shared-key: rust
+          save-if: false
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
