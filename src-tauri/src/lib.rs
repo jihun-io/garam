@@ -26,8 +26,8 @@ use crate::repositories::RepositoryStore;
 /// `export_bindings` test to regenerate `src/ipc/bindings.ts`.
 pub fn specta_builder() -> Builder<tauri::Wry> {
     use commands::{
-        branches, changes, conflicts, external, git, github, history, remote, repo, settings,
-        stashes, update, window,
+        branches, changes, conflicts, external, git, github, history, pull_requests, remote, repo,
+        settings, stashes, update, window,
     };
     Builder::<tauri::Wry>::new().commands(collect_commands![
         git::git_info,
@@ -120,6 +120,10 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         github::github_accounts,
         github::github_sign_in,
         github::github_sign_out,
+        pull_requests::pull_request_context,
+        pull_requests::pull_request_list,
+        pull_requests::pull_request_template,
+        pull_requests::pull_request_create,
         settings::settings_get,
         settings::settings_set,
         settings::settings_launch_language,

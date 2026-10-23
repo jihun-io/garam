@@ -13,6 +13,7 @@ import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
 import { CaretRight } from "@phosphor-icons/react/dist/csr/CaretRight";
 import { Check } from "@phosphor-icons/react/dist/csr/Check";
 import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
+import { CircleDashed } from "@phosphor-icons/react/dist/csr/CircleDashed";
 import { CircleNotch } from "@phosphor-icons/react/dist/csr/CircleNotch";
 import { ClockCounterClockwise } from "@phosphor-icons/react/dist/csr/ClockCounterClockwise";
 import { Cloud } from "@phosphor-icons/react/dist/csr/Cloud";
@@ -29,9 +30,11 @@ import { GearSix } from "@phosphor-icons/react/dist/csr/GearSix";
 import { GitBranch } from "@phosphor-icons/react/dist/csr/GitBranch";
 import { GitCommit } from "@phosphor-icons/react/dist/csr/GitCommit";
 import { GitDiff } from "@phosphor-icons/react/dist/csr/GitDiff";
+import { GitPullRequest } from "@phosphor-icons/react/dist/csr/GitPullRequest";
 import { Info } from "@phosphor-icons/react/dist/csr/Info";
 import { MagnifyingGlass } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
 import { MinusCircle } from "@phosphor-icons/react/dist/csr/MinusCircle";
+import { NotePencil } from "@phosphor-icons/react/dist/csr/NotePencil";
 import { Monitor } from "@phosphor-icons/react/dist/csr/Monitor";
 import { Moon } from "@phosphor-icons/react/dist/csr/Moon";
 import { PlusCircle } from "@phosphor-icons/react/dist/csr/PlusCircle";
@@ -40,8 +43,10 @@ import { Record as RecordIcon } from "@phosphor-icons/react/dist/csr/Record";
 import { Sun } from "@phosphor-icons/react/dist/csr/Sun";
 import { Tag } from "@phosphor-icons/react/dist/csr/Tag";
 import { Terminal } from "@phosphor-icons/react/dist/csr/Terminal";
+import { UserCheck } from "@phosphor-icons/react/dist/csr/UserCheck";
 import { WarningCircle } from "@phosphor-icons/react/dist/csr/WarningCircle";
 import { X } from "@phosphor-icons/react/dist/csr/X";
+import { XCircle } from "@phosphor-icons/react/dist/csr/XCircle";
 
 export const Icons = {
   // Toolbar
@@ -88,6 +93,14 @@ export const Icons = {
   detachedHead: GitCommit,
   commit: GitCommit,
   stash: Archive,
+
+  // Pull requests
+  pullRequest: GitPullRequest,
+  checksPassed: CheckCircle,
+  checksFailed: XCircle,
+  checksPending: CircleDashed,
+  reviewApproved: UserCheck,
+  changesRequested: NotePencil,
 
   // Appearance
   themeSystem: Monitor,

@@ -3,12 +3,14 @@ import type { Branch } from "../../ipc";
 import { useCommand } from "../../lib/commands";
 import { useStatus } from "../changes/api";
 import { useNotify } from "../notify/notifyStore";
+import { PullRequestControls } from "../pullRequests/PullRequestControls";
+import { PullRequestBadge } from "../pullRequests/PullRequestStatus";
 import { useBranchActions, useBranches } from "./api";
 import { useBranchDialog } from "./branchDialogStore";
 import { BranchDialogs } from "./BranchDialogs";
 import { BranchPicker } from "./BranchPicker";
 
-/** Branch picker plus its dialogs, for the toolbar. */
+/** Branch picker, the branch's pull request, and their dialogs, for the toolbar. */
 export function BranchControls({ repo }: { repo: string }) {
   const status = useStatus(repo);
   const { switchTo } = useBranchActions(repo);
@@ -38,7 +40,9 @@ export function BranchControls({ repo }: { repo: string }) {
   return (
     <>
       <BranchPicker repo={repo} status={branch} onChoose={choose} />
+      <PullRequestBadge repo={repo} status={branch} />
       <BranchDialogs repo={repo} status={branch} />
+      <PullRequestControls repo={repo} status={branch} />
     </>
   );
 }

@@ -1,0 +1,154 @@
+/* Toolbar badge: as tall as the other toolbar buttons, only as wide as it needs. */
+.badge {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.badge[data-muted] {
+  color: var(--color-ink-muted);
+}
+
+.marks {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-ink-muted);
+}
+
+.failed {
+  color: var(--color-danger);
+}
+
+/* "#12" with the check icon in the branch list. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-ink-muted);
+}
+
+/* A draft or finished pull request reads quieter than an open one. */
+.tag[data-muted] {
+  font-style: italic;
+}
+
+/* The sheet: the form on the left, what the pull request holds on the right. */
+.sheet {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  margin: calc(-1 * var(--space-4));
+  border-top: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  padding: var(--space-4);
+  overflow: auto;
+  border-right: 1px solid var(--color-line);
+}
+
+.route {
+  color: var(--color-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.label {
+  font-weight: 550;
+}
+
+/* The body takes the height the other fields leave. */
+.bodyField {
+  flex: 1;
+  grid-template-rows: auto minmax(96px, 1fr);
+}
+
+.body {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  resize: none;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  line-height: 1.45;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.hint {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.errorBlock {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+
+.preview {
+  container: commit-detail / inline-size;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  background: var(--color-surface);
+}
+
+.previewNotice {
+  padding: var(--space-4);
+  color: var(--color-ink-muted);
+}
+
+.previewHead {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.previewCounts {
+  font-weight: 550;
+}
+
+.commits {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.commits li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hash {
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.more {
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}

@@ -109,7 +109,7 @@
     "suggested": "{{account}} — suggested",
     "noAccountHint": "Push and pull sign in the way your Git is set up (credential helper or a prompt).",
     "accountHint": "Push and pull over HTTPS sign in as @{{login}}, whatever your Git is set up to use.",
-    "sshHint": "This repository's remote uses SSH, so your SSH keys are used instead of the account.",
+    "sshHint": "This repository's remote uses SSH: push and pull use your SSH keys, and the account is used for pull requests.",
     "author": "Commit author",
     "accountEmails": "Emails on this account",
     "mismatch": "{{email}} isn't on the @{{login}} account, so GitHub won't link these commits to it."

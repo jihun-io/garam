@@ -7,12 +7,17 @@
 mod api;
 mod device;
 mod error;
+mod pulls;
 
 use std::time::Duration;
 
 pub use api::{Email, User};
 pub use device::DeviceCode;
-pub use error::{ErrorKind, GitHubError};
+pub use error::{ErrorKind, GitHubError, Validation};
+pub use pulls::{
+    CheckState, Checks, CreatedPullRequest, NewPullRequest, PullRequest, PullRequestState, RepoId,
+    RepoRef, Repository, ReviewDecision,
+};
 
 /// Client ID of Garam's OAuth App on github.com (public by design).
 pub const CLIENT_ID: &str = "Ov23liJ32glLdO4R8vgx";

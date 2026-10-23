@@ -89,6 +89,53 @@ fn parse_list(output: &str) -> Vec<Branch> {
         .collect()
 }
 
+/// Where a local branch pushes and pulls.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Upstream {
+    /// The local branch, e.g. `feature`.
+    pub branch: String,
+    pub oid: String,
+    pub is_head: bool,
+    /// The remote's name, e.g. `origin`.
+    pub remote: String,
+    /// The branch's name on the remote, which may differ from the local one.
+    pub remote_branch: String,
+}
+
+/// Local branches that track a branch on a remote. Read from git rather
+/// than split from `origin/feature`, since remote names may hold a `/`.
+pub fn upstreams(git: &Git, repo: &Path) -> Result<Vec<Upstream>, GitError> {
+    const FORMAT: &str =
+        "%(refname)%00%(objectname)%00%(HEAD)%00%(upstream:remotename)%00%(upstream:remoteref)";
+    let output = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["for-each-ref", &format!("--format={FORMAT}"), "refs/heads"])
+        .run()?;
+    Ok(output
+        .stdout_str()
+        .lines()
+        .filter_map(|line| {
+            let f: Vec<&str> = line.splitn(5, '\0').collect();
+            let [full, oid, head, remote, remote_ref] = f[..] else {
+                return None;
+            };
+            // An upstream on a local branch (`.` remote) has no remote name.
+            if remote.is_empty() || remote == "." {
+                return None;
+            }
+            Some(Upstream {
+                branch: full.strip_prefix("refs/heads/")?.to_owned(),
+                oid: oid.to_owned(),
+                is_head: head == "*",
+                remote: remote.to_owned(),
+                remote_branch: remote_ref.strip_prefix("refs/heads/")?.to_owned(),
+            })
+        })
+        .collect())
+}
+
 /// Parses `ahead 1, behind 2`, `ahead 3`, `gone` or an empty string.
 fn parse_track(track: &str) -> (u32, u32, bool) {
     let (mut ahead, mut behind) = (0, 0);

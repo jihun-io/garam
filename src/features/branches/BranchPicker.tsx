@@ -16,6 +16,12 @@ import { Icon } from "../../components/Icon";
 import { runCommand, shortcutFor, useCommand } from "../../lib/commands";
 import { ToolbarButton } from "../../components/ui/ToolbarButton";
 import { Tooltip } from "../../components/ui/Tooltip";
+import { useNotify } from "../notify/notifyStore";
+import { canOpenFor, useDefaultRemote } from "../pullRequests/PullRequestControls";
+import { supportsPullRequests, usePullRequestContext } from "../pullRequests/api";
+import { usePullRequestDialog } from "../pullRequests/pullRequestDialogStore";
+import { PullRequestTag, useBranchPullRequests } from "../pullRequests/PullRequestStatus";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 /** How long dragged commits hover over the button before the list opens. */
 const OPEN_ON_DRAG_MS = 400;
@@ -34,6 +40,11 @@ export function BranchPicker({
   const relativeTime = useRelativeTime();
   const branches = useBranches(repo);
   const openDialog = useBranchDialog((s) => s.open);
+  const openPullRequestDialog = usePullRequestDialog((s) => s.open);
+  const pullRequests = useBranchPullRequests(repo, status);
+  const prSupported = supportsPullRequests(usePullRequestContext(repo).data);
+  const defaultRemote = useDefaultRemote(repo);
+  const showError = useNotify((s) => s.showError);
   const showPane = useHistoryPane((s) => s.show);
   const [open, setOpen] = useState(false);
   useCommand("view.branches", () => setOpen(true));
@@ -123,6 +134,9 @@ export function BranchPicker({
           >
             <span className={styles.itemName}>{branch.name}</span>
             <span className={styles.itemMeta}>
+              {branch.kind === "local" && pullRequests.has(branch.name) && (
+                <PullRequestTag pr={pullRequests.get(branch.name)!} />
+              )}
               {branch.upstreamGone && <span className={styles.gone}>{t("picker.gone")}</span>}
               <CommitCounts ahead={branch.ahead} behind={branch.behind} />
               <span>{relativeTime(branch.committedAt)}</span>
@@ -155,6 +169,28 @@ export function BranchPicker({
                   >
                     {t("picker.mergeThis", { branch: current })}
                   </ContextMenu.Item>
+                )}
+                {pullRequests.has(branch.name) ? (
+                  <ContextMenu.Item
+                    className={menu.item}
+                    onSelect={() =>
+                      fromPicker(
+                        () => void openUrl(pullRequests.get(branch.name)!.url).catch(showError),
+                      )
+                    }
+                  >
+                    {t("picker.viewPullRequest", { number: pullRequests.get(branch.name)!.number })}
+                  </ContextMenu.Item>
+                ) : (
+                  prSupported &&
+                  canOpenFor(branch, defaultRemote) && (
+                    <ContextMenu.Item
+                      className={menu.item}
+                      onSelect={() => fromPicker(() => openPullRequestDialog(branch.name))}
+                    >
+                      {t("picker.createPullRequest")}
+                    </ContextMenu.Item>
+                  )
                 )}
                 <ContextMenu.Separator className={menu.separator} />
                 <ContextMenu.Item

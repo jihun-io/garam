@@ -248,6 +248,20 @@ export const commands = {
 	 *  The authorization stays on GitHub until the user revokes it there.
 	 */
 	githubSignOut: (key: string) => typedError<null, AppError>(__TAURI_INVOKE("github_sign_out", { key })),
+	pullRequestContext: (repo: string) => typedError<PullRequestContext, AppError>(__TAURI_INVOKE("pull_request_context", { repo })),
+	/**
+	 *  Pull requests of the local branches, for badges: open ones for every
+	 *  branch, and the latest in any state for the current branch. Empty when
+	 *  the repository can't use pull requests.
+	 */
+	pullRequestList: (repo: string) => typedError<BranchPullRequest[], AppError>(__TAURI_INVOKE("pull_request_list", { repo })),
+	/**  The pull request template on `base` (a full ref or commit id). */
+	pullRequestTemplate: (repo: string, base: string) => typedError<string | null, AppError>(__TAURI_INVOKE("pull_request_template", { repo, base })),
+	/**
+	 *  Opens a pull request on `owner/name`. The branch must already be on
+	 *  the remote; the frontend publishes or pushes first.
+	 */
+	pullRequestCreate: (repo: string, owner: string, name: string, pullRequest: NewPullRequest) => typedError<CreatedPullRequest, AppError>(__TAURI_INVOKE("pull_request_create", { repo, owner, name, pullRequest })),
 	settingsGet: () => __TAURI_INVOKE<AppSettings>("settings_get"),
 	settingsSet: (settings: AppSettings) => typedError<null, AppError>(__TAURI_INVOKE("settings_set", { settings })),
 	/**  The language setting the app started with, the same in every window. */
@@ -329,7 +343,17 @@ export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "exter
 /**  The account's token was revoked or expired; sign in again. */
 "github_unauthorized" | 
 /**  The sign-in code expired before it was approved. */
-"github_login_expired" | "github_login_denied" | "github_unexpected" | 
+"github_login_expired" | "github_login_denied" | 
+/**  The repository doesn't exist or the account can't see it. */
+"github_not_found" | 
+/**  The organization hasn't approved Garam (OAuth App access restrictions). */
+"github_oauth_app_restricted" | 
+/**  The organization uses SAML SSO; `url` authorizes the token for it. */
+"github_sso_required" | "github_rate_limited" | 
+/**  GitHub refused the input; params `field`, `code`, `message`. */
+"github_validation" | 
+/**  The repository has no signed-in account chosen. */
+"github_no_account" | "github_unexpected" | 
 /**  The release feed couldn't be reached or read. */
 "update_check_failed" | 
 /**  Downloading, verifying or installing the update failed. */
@@ -379,6 +403,10 @@ export type AutoStash = {
 	branch: string,
 };
 
+export type BlockedAccess = {
+	error: AppError,
+} & LocalRemote;
+
 export type Branch = {
 	/**  Short name: `main` or `origin/main`. */
 	name: string,
@@ -403,6 +431,12 @@ export type Branch = {
 
 export type BranchKind = "local" | "remote";
 
+/**  A local branch's pull request. */
+export type BranchPullRequest = {
+	branch: string,
+	pullRequest: PullRequest,
+};
+
 export type BranchStatus = {
 	/**  Current branch name; `None` when HEAD is detached. */
 	head: string | null,
@@ -415,6 +449,16 @@ export type BranchStatus = {
 
 /**  How a file differs on one side (index or working tree). */
 export type ChangeKind = "added" | "modified" | "deleted" | "renamed" | "copied" | "type_changed" | "untracked" | "conflicted";
+
+/**  All checks and commit statuses of a commit, rolled into one. */
+export type CheckState = "pending" | "success" | "failure";
+
+export type Checks = {
+	state: CheckState | null,
+	total: number,
+	failed: number,
+	pending: number,
+};
 
 /**  How a cherry-pick of several commits went. */
 export type CherryPickOutcome = {
@@ -504,6 +548,12 @@ export type ConflictState = {
 	 *  [`skip`]. Never set for a merge, whose commit may be empty.
 	 */
 	empty: boolean,
+};
+
+export type CreatedPullRequest = {
+	number: number,
+	/**  The page on the website. */
+	url: string,
 };
 
 export type CredentialPrompt = {
@@ -717,6 +767,16 @@ export type LineRef = {
 	line: number,
 };
 
+export type LocalRemote = {
+	/**  The default remote's name, e.g. `origin`. */
+	remote: string,
+	/**
+	 *  Its default branch as git last saw it (`refs/remotes/origin/HEAD`);
+	 *  `None` when git never recorded one.
+	 */
+	defaultBranch: string | null,
+};
+
 /**
  *  A commit HEAD was on that no branch, tag or remote branch holds now,
  *  e.g. after a reset or a deleted branch.
@@ -732,6 +792,16 @@ export type LostCommit = {
 } & CommitSummary;
 
 export type MergeOutcome = "up_to_date" | "fast_forward" | "merged";
+
+/**  What a new pull request asks for. */
+export type NewPullRequest = {
+	title: string,
+	body: string,
+	/**  The branch name, or `owner:branch` when it lives in a fork. */
+	head: string,
+	base: string,
+	draft: boolean,
+};
 
 /**  Where a repository chosen from another one's window opens. */
 export type OpenRepositoryIn = "ask" | "current_window" | "new_window";
@@ -773,6 +843,63 @@ export type PullOutcome = "up_to_date" | "updated" |
  */
 "updated_with_conflicts";
 
+export type PullRequest = {
+	number: number,
+	url: string,
+	title: string,
+	state: PullRequestState,
+	draft: boolean,
+	headBranch: string,
+	/**  `None` when the head repository (a fork) was deleted. */
+	headOwner: string | null,
+	/**  The last commit of the head branch. */
+	headOid: string,
+	baseBranch: string,
+	/**  `None` when the last commit has no checks or statuses at all. */
+	checks: Checks | null,
+	review: ReviewDecision | null,
+};
+
+/**  Whether the repository can use pull requests, and where they can go. */
+export type PullRequestContext = 
+/**  The remote isn't on github.com, or there is no remote. */
+{ status: "unsupported" } | 
+/**
+ *  No account is chosen for the repository, or it was signed out.
+ *  Only what git knows locally is there.
+ */
+{
+	status: "no_account",
+} & LocalRemote | 
+/**
+ *  An account is chosen, but GitHub refused or couldn't be reached
+ *  (e.g. the organization hasn't approved Garam). What git knows
+ *  locally is there too, so the app can still offer and explain.
+ */
+{
+	status: "blocked",
+} & BlockedAccess | {
+	status: "ready",
+} & PullRequestTargets;
+
+export type PullRequestState = "open" | "closed" | "merged";
+
+export type PullRequestTarget = {
+	repo: RepoRef,
+	/**  A local remote that points at it, for comparing with its branches. */
+	remote: string | null,
+};
+
+export type PullRequestTargets = {
+	/**  Where branches are published: the default remote's repository. */
+	head: RepoId,
+	/**
+	 *  Repositories a pull request can go to: the parent first for a fork,
+	 *  then the repository itself.
+	 */
+	targets: PullRequestTarget[],
+};
+
 export type RefKind = 
 /**  A detached HEAD. */
 "head" | "branch" | "remote" | "tag";
@@ -813,6 +940,13 @@ export type RemoteInfo = {
 	lastFetchedAt: number | null,
 };
 
+/**  A repository on a GitHub host, read from a git remote URL. */
+export type RepoId = {
+	host: string,
+	owner: string,
+	name: string,
+};
+
 /**  Where a repository's identity comes from. */
 export type RepoIdentity = {
 	/**  What git uses for commits in the repository. */
@@ -824,6 +958,14 @@ export type RepoIdentity = {
 	 *  system or included config).
 	 */
 	inherited: Identity,
+};
+
+/**  A repository a pull request can target. */
+export type RepoRef = {
+	owner: string,
+	name: string,
+	/**  `None` for an empty repository. */
+	defaultBranch: string | null,
 };
 
 export type RepoStatus = {
@@ -865,6 +1007,9 @@ export type ResetMode =
 "mixed" | 
 /**  Discard them, and any uncommitted changes to tracked files. */
 "hard";
+
+/**  Set only when the base branch requires reviews. */
+export type ReviewDecision = "approved" | "changes_requested" | "review_required";
 
 export type SavedLogin = {
 	/**  `https` or `http`. */

@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 
+use crate::api::status_error;
 use crate::{Client, GitHubError};
 
 const GRANT_TYPE: &str = "urn:ietf:params:oauth:grant-type:device_code";
@@ -53,10 +54,8 @@ impl Client {
             .post(format!("{}/login/device/code", self.web_url))
             .header("Accept", "application/json")
             .send_form([("client_id", self.client_id.as_str()), ("scope", scopes)])?;
-        let status = response.status().as_u16();
-        if status != 200 {
-            let body = response.body_mut().read_to_string().unwrap_or_default();
-            return Err(GitHubError::Status { status, body });
+        if response.status().as_u16() != 200 {
+            return Err(status_error(&mut response));
         }
         let raw: RawDeviceCode = response.body_mut().read_json()?;
         Ok(DeviceCode {
@@ -113,10 +112,8 @@ impl Client {
                 ("device_code", device_code),
                 ("grant_type", GRANT_TYPE),
             ])?;
-        let status = response.status().as_u16();
-        if status != 200 {
-            let body = response.body_mut().read_to_string().unwrap_or_default();
-            return Err(GitHubError::Status { status, body });
+        if response.status().as_u16() != 200 {
+            return Err(status_error(&mut response));
         }
         Ok(response.body_mut().read_json()?)
     }

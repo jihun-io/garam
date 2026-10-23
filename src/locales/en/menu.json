@@ -36,7 +36,9 @@
       "create": "New Branch…",
       "rename": "Rename Branch…",
       "merge": "Merge into Current Branch…",
-      "compare": "Compare Branches…"
+      "compare": "Compare Branches…",
+      "createPullRequest": "Create Pull Request…",
+      "viewPullRequest": "View Pull Request on GitHub"
     },
     "help": {
       "shortcuts": "Keyboard Shortcuts",

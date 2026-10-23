@@ -22,6 +22,7 @@ pub mod index;
 pub mod log;
 pub mod patch;
 mod progress;
+pub mod pull_request;
 pub mod remote;
 pub mod repo;
 pub mod stash;

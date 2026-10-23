@@ -249,6 +249,8 @@ v0.2에서는 **PR 만들기와 상태 배지**까지 한다. PR 체크아웃은
 - 포크: GraphQL `isFork`, `parent { nameWithOwner defaultBranchRef }`로 PR을 보낼 상위 저장소와 기본 기준 브랜치를 얻는다. 포크에서 상위 저장소로 보낼 때 head는 `포크소유자:브랜치`다
 - 문서로만 확인한 것: 조직이 OAuth App 접근 제한을 켜 두었으면 그 조직 저장소에 Garam 토큰이 통하지 않는다(403, 메시지에 "OAuth App access restrictions"). SAML SSO 조직은 토큰을 그 조직에 승인해야 하며 403에 `X-GitHub-SSO` 헤더(승인 URL)가 붙는다. GitHub Free의 비공개 저장소는 초안 PR을 만들 수 없다(422)
 
+- 앱에서 확인한 것(2026-10-23): 조직 비공개 저장소에서 gh CLI 토큰(같은 계정)으로는 저장소가 보이고 푸시 권한도 있는데, Garam 토큰으로는 GraphQL이 `NOT_FOUND`("Could not resolve to a Repository")를 줬다. SSO 헤더는 없었다. 조직의 OAuth App 접근 제한으로 보이며, GraphQL은 이 경우 원인을 숨긴다. 그래서 `repository`가 `NOT_FOUND`면 REST `GET /repos/{owner}/{name}`에 다시 물어 접근 제한(403 메시지)이나 SSO(`X-GitHub-SSO`)를 가린다. 앱에서 REST가 실제로 접근 제한 메시지(403)를 주는 것을 확인했다. REST가 404만 주는 경우에 대비해 `github_not_found` 문구에도 조직 승인 가능성을 적고 "GitHub의 Garam 설정 열기" 버튼을 붙인다. 조직이 승인하면 바로 풀리므로 막힌 결과(`blocked`)는 캐시하지 않고 열 때마다 다시 묻고, 대화상자에 "다시 확인"을 둔다
+
 **언제 보이나**
 
 - PR 대상 저장소의 원격(현재 브랜치 업스트림의 원격, 없으면 기본 원격)이 github.com일 때만. 아니면 PR 메뉴와 배지를 모두 숨긴다
@@ -257,30 +259,35 @@ v0.2에서는 **PR 만들기와 상태 배지**까지 한다. PR 체크아웃은
 
 **화면**
 
-- [ ] 진입점: 브랜치 메뉴 "PR 만들기…"(현재 브랜치에 열린 PR이 있으면 "PR 보기"로 바뀌어 브라우저를 연다), 브랜치 목록 행의 오른쪽 클릭, 게시·푸시 완료 알림의 동작 버튼 "PR 만들기"(아직 PR이 없을 때만). 단축키는 두지 않는다(⌘R은 새로 고침, ⇧⌘R은 브랜치 이름 바꾸기)
-- [ ] PR 만들기 대화상자(큰 시트): 왼쪽에 보낼 곳(포크면 "상위 저장소 / 내 포크", 기본은 상위), 기준 브랜치(검색 가능, 기본은 보낼 저장소의 기본 브랜치), 제목, 본문, "초안으로 만들기". 오른쪽은 브랜치 비교 화면(세 점 비교, 방식 전환 숨김)을 미리 보기로 넣고 "커밋 n개 · 파일 m개"를 보인다. 비교에 쓰는 기준은 원격 추적 브랜치(`refs/remotes/origin/main`)이고, 대화상자를 열 때 묻지 않는 가져오기를 한 번 한다
-- [ ] 제목·본문 채우기: 기준과 갈라진 뒤 커밋이 하나면 그 요약과 본문(Co-authored-by 꼬리말은 그대로 둔다). 여러 개면 제목은 브랜치 이름을 읽기 좋게(`feat/tag-list` → "Feat/tag list"), 본문은 커밋 요약 목록. 기준 브랜치에 PR 템플릿(`.github/pull_request_template.md`, 루트·`docs/`의 같은 이름, 대소문자 무시)이 있으면 본문은 템플릿으로 채운다(웹에서 PR을 만들 때와 같다. API는 템플릿을 채워 주지 않는다). 사용자가 고친 뒤에 기준 브랜치를 바꾸면 덮어쓰지 않는다
-- [ ] 만들기 전 확인(버튼 이름이 상황을 말한다): 게시하지 않은 브랜치면 "게시하고 만들기", 푸시하지 않은 커밋이 있으면 "푸시하고 만들기"(PR은 원격 브랜치로 만들어지므로 빠진다). 같은 head의 열린 PR이 이미 있으면 대화상자 대신 "이미 PR #12가 있습니다 · 브라우저에서 열기". 기준과 차이가 없으면 만들기를 끄고 이유를 보인다. 무료 플랜 비공개 저장소에서 초안이 거부되면 오류를 번역해 보이고 초안을 끈 채 다시 시도할 수 있게 한다
-- [ ] 만든 뒤: 알림 "PR #12를 만들었습니다"와 동작 버튼 "브라우저에서 열기", 배지를 바로 갱신
-- [ ] 상태 배지(툴바): 현재 브랜치 버튼 옆에 `#12`, CI 아이콘(성공·실패·진행 중, 없으면 표시 안 함), 리뷰 상태(승인됨·변경 요청, 그 외는 표시 안 함). 초안은 흐리게. 누르면 브라우저에서 PR을 연다. 툴팁에 상태를 문장으로("PR #12 · 검사 3개 중 1개 실패 · 변경 요청됨"). 병합됐거나 닫힌 PR은 브랜치 끝 커밋이 그 PR의 마지막 커밋과 같을 때만 "병합됨"·"닫힘"으로 보인다(그 뒤로 커밋했으면 새 PR을 만들 수 있게 숨긴다)
-- [ ] 상태 배지(브랜치 목록): 로컬 브랜치 행 오른쪽에 열린 PR의 `#12`와 CI 점. 업스트림 브랜치 이름으로 짝짓는다(로컬 이름과 다를 수 있다)
-- [ ] 조회 시점: 저장소를 열 때, 창이 포커스를 얻을 때(마지막 조회 뒤 1분이 지났으면), 백그라운드 가져오기 주기마다, 푸시·게시·PR 만들기 뒤. 현재 브랜치 PR의 CI가 진행 중이면 창이 앞에 있는 동안 1분마다. 실패하면 배지를 조용히 숨긴다(배지 때문에 오류 알림을 띄우지 않는다)
-- [ ] 용어(GLOSSARY): 처음 나올 때 "풀 리퀘스트(PR)", 메뉴·배지처럼 좁은 곳은 "PR". GLOSSARY의 외래어 음역 원칙을 따른다
+- [x] 진입점: 브랜치 메뉴 "PR 만들기…"·"GitHub에서 PR 보기", 브랜치 목록 행의 오른쪽 클릭, 게시·푸시 완료 알림의 동작 버튼 "PR 만들기"(아직 PR이 없을 때만). 단축키는 두지 않는다(⌘R은 새로 고침, ⇧⌘R은 브랜치 이름 바꾸기)
+- [x] PR을 제안하는 자리: 툴바의 PR 배지 자리에 "아직 PR 없음 / PR 만들기" 버튼, 변경 사항 탭 빈 화면의 명령 목록에 "PR 만들기…". 현재 브랜치가 저장소의 기본 브랜치가 아니고, PR이 없고, 기준 브랜치(첫 대상의 기본 브랜치)에 없는 커밋이 있을 때만 보인다. main에서 일할 때는 나타나지 않는다. 계정이 없으면 GitHub에 묻지 않고 git이 기록한 원격의 기본 브랜치(`refs/remotes/origin/HEAD`, `remote::default_branch`)로 판단하고, 누르면 계정부터 고르게 한다. 계정이 있어도 GitHub이 거부하거나 연결되지 않으면(`blocked`) 같은 방식으로 제안하고, 누르면 그 오류와 해결 버튼을 보여 준다. git이 기본 브랜치를 모르면(손으로 원격을 더한 저장소 등) 제안하지 않는다. git 2.48부터는 가져오기가 이 값을 기록한다
+- [x] 같은 브랜치로 보내기 막기: 같은 저장소에서 head와 기준 브랜치가 같으면(main에서 main으로) 만들기를 끄고 "새 브랜치 만들기…"로 안내한다. 그대로 두면 푸시한 뒤에야 GitHub이 422로 거부한다. 포크의 main에서 상위 저장소의 main으로는 그대로 허용한다
+- [x] PR 만들기 대화상자(큰 시트): 왼쪽에 보낼 곳(포크면 "상위 저장소 / 내 포크", 기본은 상위), 기준 브랜치(공용 `Select`, 글자를 치면 그 이름으로 이동. 기본은 보낼 저장소의 기본 브랜치), 제목, 본문, "초안으로 만들기". 오른쪽은 브랜치 비교 화면(세 점 비교, 방식 전환 숨김)을 미리 보기로 넣고 "커밋 n개 · 파일 m개"를 보인다. 비교에 쓰는 기준은 원격 추적 브랜치(`refs/remotes/origin/main`)이고, 대화상자를 열 때 묻지 않는 가져오기를 한 번 한다
+- [x] 제목·본문 채우기: 기준과 갈라진 뒤 커밋이 하나면 그 요약과 본문(Co-authored-by 꼬리말은 그대로 둔다). 여러 개면 제목은 브랜치 이름을 읽기 좋게(`feat/tag-list` → "Feat/tag list"), 본문은 커밋 요약 목록. 기준 브랜치에 PR 템플릿(`.github/pull_request_template.md`, 루트·`docs/`의 같은 이름, 대소문자 무시)이 있으면 본문은 템플릿으로 채운다(웹에서 PR을 만들 때와 같다. API는 템플릿을 채워 주지 않는다). 사용자가 고친 뒤에 기준 브랜치를 바꾸면 덮어쓰지 않는다
+- [x] 만들기 전 확인(버튼 이름이 상황을 말한다): 게시하지 않은 브랜치면 "게시하고 만들기", 푸시하지 않은 커밋이 있으면 "푸시하고 만들기"(PR은 원격 브랜치로 만들어지므로 빠진다). 같은 head의 열린 PR이 이미 있으면 대화상자 대신 "이미 PR #12가 있습니다 · 브라우저에서 열기". 기준과 차이가 없으면 만들기를 끄고 이유를 보인다. 무료 플랜 비공개 저장소에서 초안이 거부되면 오류를 번역해 보이고 초안을 끈 채 다시 시도할 수 있게 한다
+- [ ] 만든 뒤: 알림 "PR #12를 만들었습니다"와 동작 버튼 "브라우저에서 열기", 배지를 바로 갱신. 구현함, 실제 PR을 만든 뒤 확인한다
+- [ ] 상태 배지(툴바): 현재 브랜치 버튼 옆에 `#12`, CI 아이콘(성공·실패·진행 중, 없으면 표시 안 함), 리뷰 상태(승인됨·변경 요청, 그 외는 표시 안 함). 초안은 흐리게. 누르면 브라우저에서 PR을 연다. 툴팁에 상태를 문장으로("PR #12 · 검사 3개 중 1개 실패 · 변경 요청됨"). 병합됐거나 닫힌 PR은 브랜치 끝 커밋이 그 PR의 마지막 커밋과 같을 때만 "병합됨"·"닫힘"으로 보인다(그 뒤로 커밋했으면 새 PR을 만들 수 있게 숨긴다). 구현함, 실제 PR을 만든 뒤 확인한다
+- [ ] 상태 배지(브랜치 목록): 로컬 브랜치 행 오른쪽에 열린 PR의 `#12`와 CI 점. 업스트림 브랜치 이름으로 짝짓는다(로컬 이름과 다를 수 있다). 구현함, 실제 PR을 만든 뒤 확인한다
+- [ ] 조회 시점: 저장소를 열 때, 창이 포커스를 얻을 때(마지막 조회 뒤 1분이 지났으면), 백그라운드 가져오기 주기마다, 푸시·게시·PR 만들기 뒤. 현재 브랜치 PR의 CI가 진행 중이면 창이 앞에 있는 동안 1분마다. 실패하면 배지를 조용히 숨긴다(배지 때문에 오류 알림을 띄우지 않는다). 구현함, 실제 PR을 만든 뒤 확인한다
+- [x] 용어(GLOSSARY): 처음 나올 때 "풀 리퀘스트(PR)", 메뉴·배지처럼 좁은 곳은 "PR". GLOSSARY의 외래어 음역 원칙을 따른다
+
+- [x] 실제 앱에서 확인함(2026-10-23, macOS 개발 빌드): 계정이 없는 저장소와 조직이 막은 저장소의 제안 버튼과 안내, 조직 승인 뒤 "다시 확인"으로 폼 열기, 기본 브랜치에서 제안이 숨는 것, 기준에 없는 커밋이 없는 브랜치, 대화상자의 채우기·미리 보기·"푸시하고 만들기"
+- **남은 확인**: PR을 실제로 만들기(초안 포함)와 그 뒤의 알림, 툴바·브랜치 목록 배지, CI 진행 중일 때의 갱신
 
 **엔진**
 
-- [ ] 호스팅 계층: 프론트에는 호스트에 묶이지 않는 타입(`PullRequestSummary`: 번호, URL, 상태, 초안, head 이름·소유자, 마지막 커밋, 검사 상태, 리뷰 상태)만 보낸다. 지금은 github.com 구현 하나뿐이라 trait는 v0.3 GitLab을 붙일 때 만든다
-- [ ] `garam-github`: GraphQL 호출 도우미와 세 가지 조회·한 가지 쓰기
+- [x] 호스팅 계층: 프론트에는 호스트에 묶이지 않는 타입(`PullRequest`: 번호, URL, 상태, 초안, head 이름·소유자, 마지막 커밋, 검사 상태, 리뷰 상태)만 보낸다. 지금은 github.com 구현 하나뿐이라 trait는 v0.3 GitLab을 붙일 때 만든다
+- [x] `garam-github`: GraphQL 호출 도우미와 세 가지 조회·한 가지 쓰기
   - `repository(owner, name)`: 포크 여부, 상위 저장소와 그 기본 브랜치, 내 권한
   - `open_pull_requests(owner, name)`: 열린 PR 최근 100개(브랜치 목록 배지용). 커서로 더 받지는 않는다
   - `pull_requests_for_branch(owner, name, head_owner, branch)`: 상태 전부, 최근 것부터(툴바 배지와 "이미 있음" 확인)
   - `create_pull_request(owner, name, {title, body, head, base, draft})`: REST `POST /pulls`. 번호와 URL을 돌려준다
   - 원격 URL에서 호스트·소유자·이름 읽기(`https`·`ssh://`·`git@host:` 형식, `.git` 꼬리 제거). 지금 프론트의 `parseRemote`와 같은 규칙
-- [ ] 오류(`ErrorKind`에 더함): `not_found`(404, 저장소가 없거나 계정에 권한이 없음), `oauth_app_restricted`(403 + 접근 제한 메시지, 조직 소유자에게 승인을 요청하라고 Garam의 권한 설정 페이지로 안내), `sso_required`(403 + `X-GitHub-SSO`, 헤더의 URL을 연다), `validation`(422의 `field`·`code`를 params로), `rate_limited`(403·429 + `X-RateLimit-Remaining: 0`). 기존 `unauthorized`는 "다시 로그인"으로 이어진다
-- [ ] `garam-git`: 기준 ref에서 PR 템플릿 읽기(`git ls-tree`로 후보 경로를 찾고 `git cat-file blob`), 제목·본문 채우기에 쓸 갈라진 뒤 커밋 목록(브랜치 비교의 세 점 커밋 목록을 그대로 쓴다)
-- [ ] Tauri 명령(`commands/pull_requests.rs`): `pull_request_context(repo)`(보낼 수 있는 저장소들과 기본 기준 브랜치, 계정 유무), `pull_requests(repo)`(로컬 브랜치별 PR 요약), `pull_request_template(repo, base_ref)`, `pull_request_create(repo, input)`. 토큰은 저장소에 연결된 계정의 것을 `AccountStore::token`으로 꺼내고 프론트로 보내지 않는다
-- [ ] 테스트: API는 mockito로(만들기 성공, 422의 세 모양, 접근 제한 403, SSO 헤더, rate limit, rollup이 `null`인 PR, 포크의 같은 이름 브랜치 거르기), 템플릿 찾기와 커밋 목록은 `TestRepo`로. 실제 PR을 만들어 보는 확인은 사용자가 고른 테스트 저장소에서 한 번 한다
-- [ ] ARCHITECTURE.md 2.10에 GitHub API 사용(호출 목록, 조회 주기, 오류 매핑)을 적는다
+- [x] 오류(`AppErrorKind`에 더함): `github_not_found`(404·GraphQL `NOT_FOUND`, 저장소가 없거나 계정에 권한이 없음), `github_oauth_app_restricted`(403 + 접근 제한 메시지, 조직 소유자에게 승인을 요청하라고 Garam의 권한 설정 페이지로 안내), `github_sso_required`(403 + `X-GitHub-SSO`, params `url`로 승인 페이지를 연다), `github_validation`(422, params `field`·`code`·`message`), `github_rate_limited`(`X-RateLimit-Remaining: 0`이거나 rate limit 메시지), `github_no_account`(계정이 없는데 만들기를 부름). 기존 `github_unauthorized`는 "다시 로그인"으로 이어진다
+- [x] `garam-git`: 기준 ref에서 PR 템플릿 읽기(`pull_request::template`, `git ls-tree`로 후보 경로를 찾고 `git cat-file blob`), 로컬 브랜치의 업스트림 원격과 원격 쪽 브랜치 이름(`branch::upstreams`, `%(upstream:remotename)`·`%(upstream:remoteref)`. 원격 이름에 `/`가 들어갈 수 있어 `origin/x`를 쪼개지 않는다), 제목·본문 채우기에 쓸 갈라진 뒤 커밋 목록(브랜치 비교의 세 점 커밋 목록을 그대로 쓴다)
+- [x] Tauri 명령(`commands/pull_requests.rs`): `pull_request_context(repo)`(보낼 수 있는 저장소들과 기본 기준 브랜치, 계정 유무), `pull_request_list(repo)`(로컬 브랜치별 PR 요약), `pull_request_template(repo, base_ref)`, `pull_request_create(repo, input)`. 토큰은 저장소에 연결된 계정의 것을 `AccountStore::token`으로 꺼내고 프론트로 보내지 않는다
+- [x] 테스트: API는 mockito로(만들기 성공, 422의 세 모양, 접근 제한 403, SSO 헤더, rate limit, rollup이 `null`인 PR, 포크의 같은 이름 브랜치 거르기), 템플릿 찾기와 커밋 목록은 `TestRepo`로. 실제 PR을 만들어 보는 확인은 사용자가 고른 테스트 저장소에서 한 번 한다
+- [x] ARCHITECTURE.md 2.10에 GitHub API 사용(호출 목록, 조회 주기, 오류 매핑)을 적었다
 
 **제외**: PR 체크아웃(다른 사람의 PR, 포크 원격 추가가 따라와 범위가 크다. v0.3 후보), 리뷰어·담당자·라벨 지정(GitHub에서 한다), 앱 안에서 PR 내용·리뷰·댓글 보기, 병합 버튼, 본문 마크다운 미리 보기, 열린 PR 100개를 넘는 저장소의 브랜치 목록 배지(현재 브랜치 배지는 따로 조회하므로 영향 없음).
 
@@ -371,7 +378,7 @@ M6의 커밋 목록을 "지금 내 브랜치가 원격과 어떤 관계인지"�
 - **토큰 전달**: askpass보다 **credential helper**가 맞다. 사용자의 osxkeychain 같은 도우미에 다른 자격 증명이 저장돼 있으면 git이 askpass를 부르지 않기 때문이다. 네트워크 작업에 `-c credential.https://github.com.helper=`(목록 초기화)와 `-c credential.https://github.com.helper=<garam 실행 파일>`을 붙이고, askpass처럼 앱 실행 파일을 credential helper 모드로 실행해 작업 ID로 계정을 찾아 토큰을 돌려준다. 계정이 없는 저장소는 지금처럼 사용자 설정을 그대로 쓴다.
 - **보안 원칙 변경**: ARCHITECTURE.md 7장의 "자격 증명은 앱이 저장하지 않는다"를 "앱이 발급받은 GitHub 토큰만 OS 키체인에 저장한다"로 바꿔야 한다. 토큰은 파일·로그·프론트로 보내지 않는다.
 - **만료 토큰을 쓰지 않는다**: OAuth App의 "Expire user access tokens"는 끈다. 만료 토큰은 refresh token으로 갱신해야 하는데, 갱신 요청에 client secret이 필요해 Device Flow를 고른 이유가 사라진다. 대신 키체인 저장, 최소 scope, 로그아웃 시 폐기로 위험을 줄인다.
-- **다른 credential helper와 함께 쓰기**: 사용자가 이미 `gh auth git-credential`이나 osxkeychain을 쓰고 원격 URL에 사용자 이름(`https://jihun-io@github.com/...`)을 넣어 계정을 구분할 수도 있다. 계정을 고르지 않은 저장소에서는 이 설정을 건드리지 않는다.
+- **다른 credential helper와 함께 쓰기**: 사용자가 이미 `gh auth git-credential`이나 osxkeychain을 쓰고 원격 URL에 사용자 이름(`https://me@github.com/...`)을 넣어 계정을 구분할 수도 있다. 계정을 고르지 않은 저장소에서는 이 설정을 건드리지 않는다.
 - **새 의존성**: HTTPS 클라이언트(`reqwest`, rustls)와 키체인 접근(`keyring`). 토큰을 GitHub에서 폐기하는 API(`DELETE /applications/{client_id}/token`)는 client secret이 필요해 앱이 직접 부를 수 없다. 그래서 로그아웃은 키체인에서 토큰을 지우고, 권한까지 취소하려는 사용자를 GitHub 설정 페이지로 안내한다.
 - **테스트**: Device Flow와 API는 목 서버로, credential helper 프로토콜은 `git credential fill`로 통합 테스트한다.
 

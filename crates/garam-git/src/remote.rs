@@ -440,6 +440,25 @@ fn transfer(
     Ok(())
 }
 
+/// The remote's default branch as the last clone or fetch saw it
+/// (`refs/remotes/<remote>/HEAD`), e.g. `main`. `None` when git never
+/// recorded it, as in a repository whose remote was added by hand.
+pub fn default_branch(git: &Git, repo: &Path, remote: &str) -> Result<Option<String>, GitError> {
+    let prefix = format!("refs/remotes/{remote}/");
+    let output = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["symbolic-ref", "--quiet", "--end-of-options"])
+        .arg(format!("{prefix}HEAD"))
+        .run_unchecked()?;
+    Ok(output
+        .success()
+        .then(|| output.stdout_str().trim().to_owned())
+        .and_then(|target| target.strip_prefix(&prefix).map(str::to_owned))
+        .filter(|branch| !branch.is_empty()))
+}
+
 /// The checked-out branch, or `None` when HEAD is detached.
 fn current_branch(git: &Git, repo: &Path) -> Result<Option<String>, GitError> {
     let output = git

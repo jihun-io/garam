@@ -20,7 +20,9 @@
     "gone": "원격에서 삭제됨",
     "tooltip": "브랜치 바꾸기",
     "compareThis": "현재 브랜치({{branch}})와 비교",
-    "compare": "브랜치 비교…"
+    "compare": "브랜치 비교…",
+    "createPullRequest": "PR 만들기…",
+    "viewPullRequest": "PR #{{number}} 열기"
   },
   "switch": {
     "title": "{{branch}} 브랜치로 전환할까요?",

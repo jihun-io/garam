@@ -136,6 +136,9 @@ async function buildMenu(
     separator(),
     command("branch.merge"),
     command("branch.compare"),
+    separator(),
+    command("branch.createPullRequest"),
+    command("branch.viewPullRequest"),
   ]);
   const window = mac
     ? submenu(t("menu:menus.window"), [

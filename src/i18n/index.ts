@@ -10,6 +10,7 @@ import enCredentials from "../locales/en/credentials.json";
 import enErrors from "../locales/en/errors.json";
 import enHistory from "../locales/en/history.json";
 import enMenu from "../locales/en/menu.json";
+import enPullRequests from "../locales/en/pullRequests.json";
 import enRepos from "../locales/en/repos.json";
 import enSettings from "../locales/en/settings.json";
 import enStashes from "../locales/en/stashes.json";
@@ -25,6 +26,7 @@ import koCredentials from "../locales/ko/credentials.json";
 import koErrors from "../locales/ko/errors.json";
 import koHistory from "../locales/ko/history.json";
 import koMenu from "../locales/ko/menu.json";
+import koPullRequests from "../locales/ko/pullRequests.json";
 import koRepos from "../locales/ko/repos.json";
 import koSettings from "../locales/ko/settings.json";
 import koStashes from "../locales/ko/stashes.json";
@@ -43,6 +45,7 @@ export const resources = {
     errors: enErrors,
     history: enHistory,
     menu: enMenu,
+    pullRequests: enPullRequests,
     repos: enRepos,
     settings: enSettings,
     stashes: enStashes,
@@ -60,6 +63,7 @@ export const resources = {
     errors: koErrors,
     history: koHistory,
     menu: koMenu,
+    pullRequests: koPullRequests,
     repos: koRepos,
     settings: koSettings,
     stashes: koStashes,

@@ -20,7 +20,9 @@
     "gone": "Deleted on remote",
     "tooltip": "Switch branch",
     "compareThis": "Compare with Current Branch ({{branch}})",
-    "compare": "Compare Branches…"
+    "compare": "Compare Branches…",
+    "createPullRequest": "Create Pull Request…",
+    "viewPullRequest": "Open Pull Request #{{number}}"
   },
   "switch": {
     "title": "Switch to {{branch}}?",

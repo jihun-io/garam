@@ -10,6 +10,13 @@ import { useBranches } from "../branches/api";
 import { CommitCounts } from "../branches/CommitCounts";
 import { useStatus } from "../changes/api";
 import { useNotify } from "../notify/notifyStore";
+import {
+  branchPullRequest,
+  supportsPullRequests,
+  usePullRequestContext,
+  usePullRequests,
+} from "../pullRequests/api";
+import { usePullRequestDialog } from "../pullRequests/pullRequestDialogStore";
 import { useSettings } from "../settings/api";
 import { useRemoteInfo, useSyncActions, type SyncResult } from "./api";
 import { hasUpstream, primaryAction } from "./primaryAction";
@@ -60,6 +67,19 @@ export function SyncButton({ repo }: { repo: string }) {
   const head = branch?.head ?? "";
   const busy = running !== undefined;
 
+  // After publishing or pushing, offer a pull request if there isn't one.
+  const { t: tPr } = useTranslation("pullRequests");
+  const prContext = usePullRequestContext(repo).data;
+  const prList = usePullRequests(repo, status.data?.branch.head ?? null).data;
+  const openPullRequest = usePullRequestDialog((s) => s.open);
+  const offerPullRequest = () => {
+    const current = branchPullRequest(prList, head || null, branch?.oid ?? null);
+    if (!head || !supportsPullRequests(prContext) || current?.state === "open") {
+      return undefined;
+    }
+    return { label: tPr("create"), run: () => openPullRequest(head) };
+  };
+
   // A pull that local changes stopped can be retried with them stashed.
   const [blockedPull, setBlockedPull] = useState(false);
 
@@ -86,9 +106,12 @@ export function SyncButton({ repo }: { repo: string }) {
             : t("done.pulled", { upstream }),
       );
     } else if (action === "push") {
-      showInfo(t("done.pushed", { upstream }) + withTags);
+      showInfo(t("done.pushed", { upstream }) + withTags, offerPullRequest());
     } else if (action === "publish") {
-      showInfo(t("done.published", { branch: head, remote: remote ?? "" }) + withTags);
+      showInfo(
+        t("done.published", { branch: head, remote: remote ?? "" }) + withTags,
+        offerPullRequest(),
+      );
     }
   };
 

@@ -25,6 +25,7 @@ export function FormDialog({
   children,
   footer,
   dismissible = true,
+  wide = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,6 +35,8 @@ export function FormDialog({
   footer: ReactNode;
   /** When false, Escape and outside clicks don't close it (e.g. mid-clone). */
   dismissible?: boolean;
+  /** A tall, wide sheet for side-by-side content (e.g. a form and a diff). */
+  wide?: boolean;
 }) {
   // Taken while rendering as it opens, before focus moves into the dialog,
   // and kept through the closing so the close handler can use it.
@@ -60,7 +63,7 @@ export function FormDialog({
         <RadixDialog.Overlay className={styles.overlay} />
         <WindowDragArea overDialog />
         <RadixDialog.Content
-          className={styles.content}
+          className={wide ? `${styles.content} ${styles.wide}` : styles.content}
           aria-describedby={undefined}
           onEscapeKeyDown={block}
           onPointerDownOutside={outside}

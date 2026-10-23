@@ -29,6 +29,8 @@ export const SHORTCUTS = {
   "branch.rename": "CmdOrCtrl+Shift+R",
   "branch.merge": "CmdOrCtrl+Shift+M",
   "branch.compare": null,
+  "branch.createPullRequest": null,
+  "branch.viewPullRequest": null,
   "repo.recover": null,
   "help.shortcuts": "CmdOrCtrl+/",
   "help.report": null,

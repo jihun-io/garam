@@ -6,9 +6,14 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[features]
+# Derive specta::Type so the Tauri layer can export TypeScript bindings.
+specta = ["dep:specta"]
+
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
+specta = { workspace = true, optional = true }
 thiserror.workspace = true
 ureq = { version = "3", features = ["json"] }
 

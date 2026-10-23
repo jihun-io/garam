@@ -12,6 +12,7 @@ import { AutoStashBanner } from "../branches/AutoStashBanner";
 import { useConflicts } from "../conflicts/api";
 import { ConflictBanner, ConflictPanel } from "../conflicts/ConflictPanel";
 import { CommandList } from "../menu/CommandList";
+import { usePullRequestOffer } from "../pullRequests/api";
 import { useNotify } from "../notify/notifyStore";
 import { SidebarSplitter } from "../settings/SidebarSplitter";
 import { useStashes } from "../stashes/api";
@@ -56,6 +57,7 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
   // Paths to stash; empty means all changes.
   const [stashing, setStashing] = useState<string[] | null>(null);
   const hasFiles = (status.data?.files.length ?? 0) > 0;
+  const offerPullRequest = usePullRequestOffer(repo, status.data?.branch);
   useCommand("repo.stash", () => setStashing([]), hasFiles);
 
   if (status.isError) {
@@ -181,7 +183,14 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
           />
         ) : (
           <EmptyMessage icon="success" title={t("empty.title")} body={t("empty.body")}>
-            <CommandList ids={["repo.openEditor", "repo.openTerminal", "repo.reveal"]} />
+            <CommandList
+              ids={[
+                ...(offerPullRequest ? (["branch.createPullRequest"] as const) : []),
+                "repo.openEditor",
+                "repo.openTerminal",
+                "repo.reveal",
+              ]}
+            />
           </EmptyMessage>
         )}
       </div>

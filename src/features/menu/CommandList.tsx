@@ -16,6 +16,7 @@ const ICONS: Partial<Record<CommandId, IconName>> = {
   "repo.openEditor": "editor",
   "repo.openTerminal": "terminal",
   "repo.reveal": "repository",
+  "branch.createPullRequest": "pullRequest",
 };
 
 /**

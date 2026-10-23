@@ -201,8 +201,16 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - **토큰을 git에 넘기기(credential helper)**: 계정이 있는 저장소의 네트워크 작업에는 `-c credential.https://<host>.helper=`(빈 값으로 사용자가 설정한 도우미 목록을 비움)와 `-c credential.https://<host>.helper=!'<garam 실행 파일>' 'garam-credential'`을 붙인다(`Git::with_credential_helper`). askpass와 같은 방식으로 **앱 실행 파일 자신**이 도우미가 되어, `main()`이 `garam-credential get`을 보면 창을 열지 않고 askpass 중계 소켓으로 앱에 물어 `username=<로그인 이름>`, `password=<토큰>`을 돌려준다. 앱은 그 작업에 맡겨 둔 계정(`Askpass::provide`)이 있고 호스트가 맞을 때만 답한다. `store`·`erase`는 아무것도 하지 않으므로 토큰이 사용자의 osxkeychain 등에 복사되지 않는다.
 - 도우미 값은 git이 셸로 실행하므로 `!`로 시작하고 경로와 인수를 작은따옴표로 감싼다(공백·따옴표가 있는 경로). `!`가 없으면 git이 `git credential-<값>`으로 해석한다.
 - 이 설정은 Garam이 실행하는 git에만 붙는다. 터미널에서 실행하는 git은 사용자의 설정(`gh auth git-credential`, 원격 URL의 사용자 이름 등)을 그대로 따른다.
-- **추천**: 원격 URL의 사용자 이름(`https://jihun-io@github.com/...`) → 원격 소유자 → 작성자 이메일이 계정의 인증된 이메일·noreply 주소인 계정 순서.
+- **추천**: 원격 URL의 사용자 이름(`https://me@github.com/...`) → 원격 소유자 → 작성자 이메일이 계정의 인증된 이메일·noreply 주소인 계정 순서.
 - **불일치 경고**: 저장소에 계정이 있고 작성자 이메일이 그 계정의 인증된 이메일·noreply 주소가 아니면 GitHub가 커밋을 그 계정과 연결하지 않는다. 커밋 영역과 대화상자에 알리되 커밋을 막지는 않는다.
+
+- **Pull Request (GitHub API)**: 저장소에 연결된 계정의 토큰으로 부른다(`commands/pull_requests.rs`, 토큰은 프론트로 가지 않는다). 지금 scope(`repo`)로 충분하다.
+  - 읽기는 GraphQL: 포크 여부와 상위 저장소(`repository`), 열린 PR 최근 100개(`open_pull_requests`), 한 브랜치의 PR(`pull_requests_for_branch`, 이름이 같은 다른 포크의 브랜치는 head 소유자로 거른다). CI 상태는 `statusCheckRollup`으로 본다. REST의 combined status는 검사가 없어도 `pending`을 준다.
+  - 쓰기는 REST `POST /repos/{owner}/{repo}/pulls`. head는 같은 저장소면 브랜치 이름, 포크에서 보내면 `owner:branch`.
+  - 로컬 정보: 브랜치의 업스트림 원격과 원격 쪽 이름(`branch::upstreams`), 원격의 기본 브랜치(`remote::default_branch`, `refs/remotes/<원격>/HEAD`), 기준 ref의 PR 템플릿(`pull_request::template`).
+  - `pull_request_context`는 `unsupported`(github.com이 아님) / `no_account` / `blocked`(계정은 있는데 GitHub이 거부하거나 연결되지 않음) / `ready`를 돌려준다. `no_account`·`blocked`에도 원격 이름과 기본 브랜치를 실어, 프론트가 GitHub에 묻지 않고 PR을 제안하고 누르면 계정 선택이나 오류로 이끌 수 있게 한다.
+  - 조회 결과는 파일 감시가 무효화하는 `["repo", repo]` 밖의 키(`["pull-requests", repo]`)에 둔다. 배지는 5분마다(현재 브랜치 CI가 진행 중이면 1분), 창이 포커스를 얻을 때, 가져오기·푸시·PR 만들기 뒤에 다시 묻는다. `blocked`는 조직 승인으로 언제든 풀릴 수 있어 캐시하지 않는다.
+  - 오류 매핑: 401 → `github_unauthorized`, 404·GraphQL `NOT_FOUND` → `github_not_found`, 403 + 접근 제한 메시지 → `github_oauth_app_restricted`, 403 + `X-GitHub-SSO` → `github_sso_required`(params `url`), `X-RateLimit-Remaining: 0` → `github_rate_limited`, 422 → `github_validation`(params `field`·`code`·`message`). GraphQL은 조직이 막은 비공개 저장소도 `NOT_FOUND`로 감추므로, 그때는 REST `GET /repos/{owner}/{repo}`에 다시 물어 원인을 가린다.
 
 ### 2.11 앱 업데이트
 

@@ -190,11 +190,18 @@ export function useFileImages(
 }
 
 /** Under the repo prefix: branches move, and the comparison with them. */
-export function useComparison(repo: string, base: string, target: string, mode: CompareMode) {
+export function useComparison(
+  repo: string,
+  base: string,
+  target: string,
+  mode: CompareMode,
+  enabled = true,
+) {
   return useQuery({
     queryKey: historyKeys.comparison(repo, base, target, mode),
     queryFn: () => unwrap(commands.compareGet(repo, base, target, mode)),
     placeholderData: keepPreviousData,
+    enabled,
   });
 }
 
