@@ -93,7 +93,7 @@ garam-git/src/
 ├── credential.rs  # askpass로 들어온 git·ssh 프롬프트 분류
 ├── log.rs         # 히스토리 페이지 조회, 커밋 상세·diff, revert
 ├── commit_graph.rs # commit-graph 파일 만들기·새 커밋 덧붙이기·블룸 필터 (대형 저장소 히스토리 속도)
-├── stash.rs
+├── stash.rs       # 스태시 목록·보관·적용·버리기
 └── conflict.rs    # 충돌 상태 감지, ours/theirs 해결
 ```
 
@@ -125,6 +125,8 @@ diff 본문은 구문 강조를 한다(`src/features/changes/syntax/`). 어떤 �
 
 - "현재 브랜치에 보관하기"를 고르면 `git stash push --include-untracked --message garam-auto-stash:<브랜치>`로 보관한 뒤 전환한다. 그 브랜치로 돌아오면 메시지로 stash를 찾아 복원 배너를 띄운다.
 - stash는 `stash@{n}` 대신 커밋 id로 가리킨다. 다른 stash가 생기면 번호가 밀리기 때문이다. 작업 직전에 id로 현재 번호를 다시 찾는다.
+- 스태시는 `stash.rs`가 다룬다(목록, 보관, 적용·꺼내기, 버리기·되살리기, 스태시에서 브랜치 만들기, 파일과 diff). 스태시 커밋의 첫 부모는 보관한 커밋, 두 번째는 index, 세 번째는 추적하지 않는 파일이다. `--include-untracked`는 추적하지 않는 파일이 없어도 빈 세 번째 부모를 만들므로 트리가 비었는지로 판단한다.
+- 적용은 `--index`로 스테이지 상태까지 되살리고, 그게 안 되면(`conflicts in index`) 없이 다시 적용한다. 보관한 추적하지 않는 파일이 이미 있으면 git은 추적 중인 변경을 적용한 뒤에 실패하므로, 적용하기 전에 겹치는 파일을 먼저 확인해 아무것도 하지 않는다. 충돌은 오류가 아니라 결과(`Conflicted`)로 돌려주고, 이때 꺼내기도 스태시를 지우지 않는다.
 - 전환이 실패하면 **이번에 만든 stash만** 되돌린다. 보관할 변경이 없으면 git이 stash를 만들지 않으므로, 전후 `refs/stash`를 비교해 새로 생겼는지 확인한다.
 - 원격 브랜치를 고르면 같은 이름의 로컬 브랜치가 있을 때는 그쪽으로, 없으면 `git switch --track`으로 추적 브랜치를 만들어 전환한다.
 

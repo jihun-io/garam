@@ -8,5 +8,6 @@ pub mod history;
 pub mod remote;
 pub mod repo;
 pub mod settings;
+pub mod stashes;
 pub mod update;
 pub mod window;

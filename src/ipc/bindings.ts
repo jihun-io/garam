@@ -103,14 +103,27 @@ export const commands = {
 	/**  How many commits merging `branch` would bring into HEAD. */
 	branchMergePreview: (repo: string, branch: string) => typedError<number, AppError>(__TAURI_INVOKE("branch_merge_preview", { repo, branch })),
 	branchMerge: (repo: string, branch: string) => typedError<MergeOutcome, AppError>(__TAURI_INVOKE("branch_merge", { repo, branch })),
+	stashList: (repo: string) => typedError<Stash[], AppError>(__TAURI_INVOKE("stash_list", { repo })),
+	/**
+	 *  Puts the uncommitted changes aside, or only `paths` when given, and
+	 *  returns the new stash's id.
+	 */
+	stashPush: (repo: string, message: string | null, includeUntracked: boolean, paths: string[]) => typedError<string, AppError>(__TAURI_INVOKE("stash_push", { repo, message, includeUntracked, paths })),
+	/**  Applies a stash, and with `pop` removes it once applied cleanly. */
+	stashApply: (repo: string, oid: string, pop: boolean) => typedError<ApplyOutcome, AppError>(__TAURI_INVOKE("stash_apply", { repo, oid, pop })),
+	stashDrop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_drop", { repo, oid })),
+	/**  Puts a just-dropped stash back. */
+	stashRestore: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_restore", { repo, oid })),
+	/**  Creates a branch where the stash was made and pops it there. */
+	stashBranch: (repo: string, oid: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_branch", { repo, oid, name })),
+	stashFiles: (repo: string, oid: string) => typedError<CommitFile[], AppError>(__TAURI_INVOKE("stash_files", { repo, oid })),
+	stashFileDiff: (repo: string, oid: string, file: CommitFile, ignoreWhitespace: boolean) => typedError<FileDiff, AppError>(__TAURI_INVOKE("stash_file_diff", { repo, oid, file, ignoreWhitespace })),
 	/**  The stash Garam made when the user last left `branch`, if any. */
 	stashFindAuto: (repo: string, branch: string) => typedError<{
 	/**  Commit id of the stash entry; stable while `stash@{n}` indexes shift. */
 	oid: string,
 	branch: string,
 } | null, AppError>(__TAURI_INVOKE("stash_find_auto", { repo, branch })),
-	stashPop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_pop", { repo, oid })),
-	stashDrop: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("stash_drop", { repo, oid })),
 	conflictState: (repo: string) => typedError<ConflictState, AppError>(__TAURI_INVOKE("conflict_state", { repo })),
 	/**  Keeps one side's version of a conflicted file. */
 	conflictResolve: (repo: string, path: string, side: Side) => typedError<null, AppError>(__TAURI_INVOKE("conflict_resolve", { repo, path, side })),
@@ -327,6 +340,20 @@ export type AppSettings = {
 	checkForUpdates: boolean,
 };
 
+/**  How applying a stash went. */
+export type ApplyOutcome = "applied" | 
+/**
+ *  Applied, but which changes were staged couldn't be restored:
+ *  everything is unstaged now.
+ */
+"applied_unstaged" | 
+/**
+ *  The changes conflicted with the working tree. The conflicts are
+ *  there to resolve, and the stash stays, also when popping.
+ */
+"conflicted";
+
+/**  A stash Garam made when leaving a branch, to restore on coming back. */
 export type AutoStash = {
 	/**  Commit id of the stash entry; stable while `stash@{n}` indexes shift. */
 	oid: string,
@@ -514,7 +541,13 @@ export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "
  */
 "pull_blocked_by_local_changes" | "merge_conflict" | "rebase_conflict" | "revert_conflict" | "cherry_pick_conflict" | 
 /**  The branch already has the commit's changes; nothing was picked. */
-"cherry_pick_empty" | "invalid_tag_name" | "tag_exists" | 
+"cherry_pick_empty" | 
+/**  No changes matched, so no stash was made. */
+"nothing_to_stash" | 
+/**  The stash was dropped or popped elsewhere since the list was read. */
+"stash_not_found" | 
+/**  An untracked file in the stash already exists; nothing was applied. */
+"stash_untracked_exists" | "invalid_tag_name" | "tag_exists" | 
 /**  The remote already has a tag of that name on another commit. */
 "remote_tag_exists" | 
 /**  HEAD moved since the screen was drawn (e.g. a commit from a terminal). */
@@ -864,6 +897,24 @@ export type SignatureStatus =
 "expired" | "revoked" | 
 /**  Signed, but the key isn't available to check it. */
 "cannot_check";
+
+export type Stash = {
+	/**  Commit id; stable while `stash@{n}` shifts. */
+	oid: string,
+	/**  The commit the changes were stashed on. */
+	base: string,
+	/**  `stash@{0}` when listed. */
+	name: string,
+	/**  The branch it was stashed on; none on a detached HEAD. */
+	branch: string | null,
+	/**  What the user wrote; none when git made up a "WIP on" message. */
+	message: string | null,
+	/**  Made by Garam when switching away from `branch`. */
+	auto: boolean,
+	hasUntracked: boolean,
+	/**  Seconds since the Unix epoch. */
+	createdAt: number,
+};
 
 /**  One entry of `git stash list`. */
 export type StashEntry = {

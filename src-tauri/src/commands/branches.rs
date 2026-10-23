@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use garam_git::Git;
-use garam_git::branch::{self, AutoStash, Branch, MergeOutcome, SwitchMode};
+use garam_git::branch::{self, Branch, MergeOutcome, SwitchMode};
 
 use crate::error::{AppResult, blocking};
 
@@ -94,30 +94,4 @@ pub async fn branch_merge_preview(repo: String, branch: String) -> AppResult<u32
 #[specta::specta]
 pub async fn branch_merge(repo: String, branch: String) -> AppResult<MergeOutcome> {
     blocking(move || Ok(branch::merge(&Git::locate()?, Path::new(&repo), &branch)?)).await
-}
-
-/// The stash Garam made when the user last left `branch`, if any.
-#[tauri::command]
-#[specta::specta]
-pub async fn stash_find_auto(repo: String, branch: String) -> AppResult<Option<AutoStash>> {
-    blocking(move || {
-        Ok(branch::find_auto_stash(
-            &Git::locate()?,
-            Path::new(&repo),
-            &branch,
-        )?)
-    })
-    .await
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn stash_pop(repo: String, oid: String) -> AppResult<()> {
-    blocking(move || Ok(branch::pop_stash(&Git::locate()?, Path::new(&repo), &oid)?)).await
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn stash_drop(repo: String, oid: String) -> AppResult<()> {
-    blocking(move || Ok(branch::drop_stash(&Git::locate()?, Path::new(&repo), &oid)?)).await
 }

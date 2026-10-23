@@ -74,7 +74,7 @@ export function useBranchActions(repo: string) {
       scope,
     }),
     popStash: useMutation({
-      mutationFn: (oid: string) => unwrap(commands.stashPop(repo, oid)),
+      mutationFn: (oid: string) => unwrap(commands.stashApply(repo, oid, true)),
       onSettled,
       scope,
     }),

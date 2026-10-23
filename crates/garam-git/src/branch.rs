@@ -148,9 +148,6 @@ pub enum SwitchMode {
     LeaveChanges,
 }
 
-/// Marker in stash messages created by Garam, followed by the branch name.
-const AUTO_STASH_PREFIX: &str = "garam-auto-stash:";
-
 /// Switches to a local branch, or to a remote branch by creating a local
 /// tracking branch of the same name.
 pub fn switch(
@@ -164,7 +161,7 @@ pub fn switch(
     // makes no entry, and popping would grab an unrelated older one.
     let mut created_stash = None;
     if mode == SwitchMode::LeaveChanges {
-        let before = stash_top(git, repo)?;
+        let before = crate::stash::top(git, repo)?;
         let label = current.unwrap_or("HEAD");
         git.command()
             .cwd(repo)
@@ -173,9 +170,9 @@ pub fn switch(
             // No paths are passed here, so pattern matching is harmless.
             .env("GIT_LITERAL_PATHSPECS", "0")
             .args(["stash", "push", "--include-untracked", "--message"])
-            .arg(format!("{AUTO_STASH_PREFIX}{label}"))
+            .arg(format!("{}{label}", crate::stash::AUTO_STASH_PREFIX))
             .run()?;
-        let after = stash_top(git, repo)?;
+        let after = crate::stash::top(git, repo)?;
         if after != before {
             created_stash = after;
         }
@@ -204,7 +201,7 @@ pub fn switch(
     };
     if let Err(err) = result {
         if let Some(oid) = created_stash {
-            let _ = pop_stash(git, repo, &oid);
+            let _ = crate::stash::apply(git, repo, &oid, true);
         }
         return Err(err);
     }
@@ -234,19 +231,6 @@ fn local_exists(git: &Git, repo: &Path, name: &str) -> Result<bool, GitError> {
         ])
         .run_unchecked()?
         .success())
-}
-
-/// Commit id of the newest stash entry, if any.
-fn stash_top(git: &Git, repo: &Path) -> Result<Option<String>, GitError> {
-    let output = git
-        .command()
-        .cwd(repo)
-        .read_only()
-        .args(["rev-parse", "--quiet", "--verify", "refs/stash"])
-        .run_unchecked()?;
-    Ok(output
-        .success()
-        .then(|| output.stdout_str().trim().to_owned()))
 }
 
 pub fn rename(git: &Git, repo: &Path, old: &str, new: &str) -> Result<(), GitError> {
@@ -313,77 +297,6 @@ pub fn merge(git: &Git, repo: &Path, branch: &str) -> Result<MergeOutcome, GitEr
     } else {
         MergeOutcome::Merged
     })
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[cfg_attr(feature = "specta", derive(specta::Type))]
-#[serde(rename_all = "camelCase")]
-pub struct AutoStash {
-    /// Commit id of the stash entry; stable while `stash@{n}` indexes shift.
-    pub oid: String,
-    pub branch: String,
-}
-
-/// The newest stash Garam made when leaving `branch`, if any.
-pub fn find_auto_stash(
-    git: &Git,
-    repo: &Path,
-    branch: &str,
-) -> Result<Option<AutoStash>, GitError> {
-    Ok(stash_entries(git, repo)?
-        .into_iter()
-        .find(|(_, _, b)| b == branch)
-        .map(|(_, oid, branch)| AutoStash { oid, branch }))
-}
-
-/// `(stash@{n}, oid, branch)` for every Garam auto-stash, newest first.
-fn stash_entries(git: &Git, repo: &Path) -> Result<Vec<(String, String, String)>, GitError> {
-    let output = git
-        .command()
-        .cwd(repo)
-        .read_only()
-        .args(["stash", "list", "--format=%gd%x00%H%x00%gs"])
-        .run()?;
-    Ok(output
-        .stdout_str()
-        .lines()
-        .filter_map(|line| {
-            let mut f = line.splitn(3, '\0');
-            let (selector, oid, subject) = (f.next()?, f.next()?, f.next()?);
-            // Subject looks like "On main: garam-auto-stash:main".
-            let (_, message) = subject.split_once(": ")?;
-            let branch = message.strip_prefix(AUTO_STASH_PREFIX)?;
-            Some((selector.to_owned(), oid.to_owned(), branch.to_owned()))
-        })
-        .collect())
-}
-
-fn selector_for(git: &Git, repo: &Path, oid: &str) -> Result<String, GitError> {
-    stash_entries(git, repo)?
-        .into_iter()
-        .find(|(_, o, _)| o == oid)
-        .map(|(selector, _, _)| selector)
-        .ok_or_else(|| GitError::Parse(format!("stash {oid} no longer exists")))
-}
-
-/// Applies an auto-stash to the working tree and removes it.
-pub fn pop_stash(git: &Git, repo: &Path, oid: &str) -> Result<(), GitError> {
-    let selector = selector_for(git, repo, oid)?;
-    git.command()
-        .cwd(repo)
-        .args(["stash", "pop", "--index", &selector])
-        .run()?;
-    Ok(())
-}
-
-/// Deletes an auto-stash without applying it.
-pub fn drop_stash(git: &Git, repo: &Path, oid: &str) -> Result<(), GitError> {
-    let selector = selector_for(git, repo, oid)?;
-    git.command()
-        .cwd(repo)
-        .args(["stash", "drop", "--quiet", &selector])
-        .run()?;
-    Ok(())
 }
 
 #[cfg(test)]

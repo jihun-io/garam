@@ -23,7 +23,7 @@ vi.mock("../../ipc/bindings", () => ({
     branchMergePreview: vi.fn(),
     branchMerge: vi.fn(),
     stashFindAuto: vi.fn(),
-    stashPop: vi.fn(),
+    stashApply: vi.fn(),
     stashDrop: vi.fn(),
   },
 }));
@@ -65,11 +65,11 @@ function setup(files: FileChange[] = []) {
     commands.branchCreate,
     commands.branchSwitch,
     commands.branchRename,
-    commands.stashPop,
     commands.stashDrop,
   ]) {
     vi.mocked(fn).mockResolvedValue(ok(null));
   }
+  vi.mocked(commands.stashApply).mockResolvedValue(ok("applied"));
   return renderWithQuery(
     <>
       <BranchControls repo="/repo" />
@@ -250,10 +250,10 @@ describe("AutoStashBanner", () => {
   it("restores changes left on the branch", async () => {
     const user = userEvent.setup();
     vi.mocked(commands.stashFindAuto).mockResolvedValue(ok({ oid: "s1", branch: "main" }));
-    vi.mocked(commands.stashPop).mockResolvedValue(ok(null));
+    vi.mocked(commands.stashApply).mockResolvedValue(ok("applied"));
     renderWithQuery(<AutoStashBanner repo="/repo" branch="main" />);
     await user.click(await screen.findByRole("button", { name: "Restore changes" }));
-    expect(commands.stashPop).toHaveBeenCalledWith("/repo", "s1");
+    expect(commands.stashApply).toHaveBeenCalledWith("/repo", "s1", true);
   });
 
   it("stays hidden when nothing was left behind", async () => {

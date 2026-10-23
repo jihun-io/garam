@@ -2,7 +2,7 @@ use std::fs;
 
 use garam_git::branch::{self, BranchKind, MergeOutcome, SwitchMode};
 use garam_git::testing::TestRepo;
-use garam_git::{ErrorKind, status};
+use garam_git::{ErrorKind, stash, status};
 
 fn current(repo: &TestRepo) -> Option<String> {
     status::status(repo.git_handle(), repo.path())
@@ -130,11 +130,11 @@ fn leaving_changes_stashes_them_for_later() {
     assert_eq!(current(&repo).as_deref(), Some("main"));
     assert_eq!(changed_files(&repo), 0);
     assert_eq!(
-        branch::find_auto_stash(repo.git_handle(), repo.path(), "main").unwrap(),
+        stash::find_auto(repo.git_handle(), repo.path(), "main").unwrap(),
         None
     );
 
-    let stash = branch::find_auto_stash(repo.git_handle(), repo.path(), "other")
+    let stash = stash::find_auto(repo.git_handle(), repo.path(), "other")
         .unwrap()
         .expect("stash for other");
     branch::switch(
@@ -145,14 +145,14 @@ fn leaving_changes_stashes_them_for_later() {
         Some("main"),
     )
     .unwrap();
-    branch::pop_stash(repo.git_handle(), repo.path(), &stash.oid).unwrap();
+    stash::apply(repo.git_handle(), repo.path(), &stash.oid, true).unwrap();
     assert_eq!(
         fs::read_to_string(repo.path().join("file.txt")).unwrap(),
         "work in progress\n"
     );
     assert!(repo.path().join("new.txt").exists());
     assert_eq!(
-        branch::find_auto_stash(repo.git_handle(), repo.path(), "other").unwrap(),
+        stash::find_auto(repo.git_handle(), repo.path(), "other").unwrap(),
         None
     );
 }

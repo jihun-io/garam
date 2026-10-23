@@ -36,6 +36,12 @@ pub enum ErrorKind {
     CherryPickConflict,
     /// The branch already has the commit's changes; nothing was picked.
     CherryPickEmpty,
+    /// No changes matched, so no stash was made.
+    NothingToStash,
+    /// The stash was dropped or popped elsewhere since the list was read.
+    StashNotFound,
+    /// An untracked file in the stash already exists; nothing was applied.
+    StashUntrackedExists,
     InvalidTagName,
     TagExists,
     /// The remote already has a tag of that name on another commit.
@@ -139,6 +145,15 @@ pub enum GitError {
     #[error("conflicted files remain")]
     ConflictsRemain,
 
+    #[error("there are no changes to stash")]
+    NothingToStash,
+
+    #[error("no such stash")]
+    StashNotFound,
+
+    #[error("stashed untracked files already exist: {}", .0.join(", "))]
+    StashUntrackedExists(Vec<String>),
+
     #[error("no merge, rebase, revert or cherry-pick is in progress")]
     NothingInProgress,
 
@@ -177,6 +192,9 @@ impl GitError {
             Self::RemoteBranchNotFound => ErrorKind::RemoteBranchNotFound,
             Self::NoRemote => ErrorKind::NoRemote,
             Self::ConflictsRemain => ErrorKind::ConflictsRemain,
+            Self::NothingToStash => ErrorKind::NothingToStash,
+            Self::StashNotFound => ErrorKind::StashNotFound,
+            Self::StashUntrackedExists(_) => ErrorKind::StashUntrackedExists,
             Self::NothingInProgress => ErrorKind::NothingInProgress,
             Self::Io(_) | Self::Parse(_) => ErrorKind::Unknown,
         }
@@ -196,8 +214,11 @@ impl GitError {
             | Self::RemoteBranchNotFound
             | Self::NoRemote
             | Self::ConflictsRemain
+            | Self::NothingToStash
+            | Self::StashNotFound
             | Self::NothingInProgress => None,
             Self::Failed { stderr, .. } => Some(stderr.trim().to_owned()),
+            Self::StashUntrackedExists(paths) => Some(paths.join("\n")),
             other => Some(other.to_string()),
         }
     }
@@ -229,6 +250,10 @@ fn classify(stderr: &str) -> ErrorKind {
         ("is not fully merged", ErrorKind::BranchNotMerged),
         ("a branch named", ErrorKind::BranchExists),
         ("fatal: tag '", ErrorKind::TagExists),
+        (
+            "could not restore untracked files from stash",
+            ErrorKind::StashUntrackedExists,
+        ),
         ("nothing to commit", ErrorKind::NothingToCommit),
         ("no changes added to commit", ErrorKind::NothingToCommit),
         ("please tell me who you are", ErrorKind::IdentityMissing),

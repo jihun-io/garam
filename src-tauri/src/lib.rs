@@ -27,7 +27,7 @@ use crate::repositories::RepositoryStore;
 pub fn specta_builder() -> Builder<tauri::Wry> {
     use commands::{
         branches, changes, conflicts, external, git, github, history, remote, repo, settings,
-        update, window,
+        stashes, update, window,
     };
     Builder::<tauri::Wry>::new().commands(collect_commands![
         git::git_info,
@@ -65,9 +65,15 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         branches::branch_delete,
         branches::branch_merge_preview,
         branches::branch_merge,
-        branches::stash_find_auto,
-        branches::stash_pop,
-        branches::stash_drop,
+        stashes::stash_list,
+        stashes::stash_push,
+        stashes::stash_apply,
+        stashes::stash_drop,
+        stashes::stash_restore,
+        stashes::stash_branch,
+        stashes::stash_files,
+        stashes::stash_file_diff,
+        stashes::stash_find_auto,
         conflicts::conflict_state,
         conflicts::conflict_resolve,
         conflicts::conflict_mark_resolved,
