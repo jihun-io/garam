@@ -8,6 +8,7 @@ import { Checkbox } from "../../components/ui/Checkbox";
 import { Loading } from "../../components/ui/Loading";
 import menu from "../../components/ui/Menu.module.css";
 import { toAppError, type FileChange } from "../../ipc";
+import { BaseBanner } from "../branches/BaseBanner";
 import { AutoStashBanner } from "../branches/AutoStashBanner";
 import { useConflicts } from "../conflicts/api";
 import { ConflictBanner, ConflictPanel } from "../conflicts/ConflictPanel";
@@ -111,6 +112,10 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
       <aside className={styles.sidebar}>
         {tabs}
         <AutoStashBanner repo={repo} branch={branch.head} />
+        {/* The state is always there; step aside only while conflicts are. */}
+        {conflicts.data && !conflicts.data.operation && conflicts.data.files.length === 0 && (
+          <BaseBanner repo={repo} branch={branch.head} />
+        )}
         {conflicts.data && <ConflictBanner state={conflicts.data} />}
         <StashConflictBanner repo={repo} conflicts={conflicts.data} />
         <div className={styles.listHeader}>

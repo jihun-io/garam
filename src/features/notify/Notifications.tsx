@@ -43,7 +43,7 @@ export function Notifications({ children }: { children?: ReactNode }) {
             ) : (
               <p role="status">{notice.message}</p>
             )}
-            {notice.type === "info" && notice.action && (
+            {notice.action && (
               <Button
                 className={styles.action}
                 onClick={() => {

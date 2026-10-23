@@ -89,7 +89,7 @@ garam-git/src/
 ├── patch.rs       # 선택한 줄로 부분 패치 생성 (줄 단위 스테이징)
 ├── commit.rs      # commit/amend
 ├── precommit.rs   # 커밋 전 안전 검사(비밀 값·큰 파일·무시할 만한 파일), .gitignore에 더하기
-├── branch.rs      # 브랜치 목록·생성·전환·삭제·병합
+├── branch.rs      # 브랜치 목록·생성·전환·삭제·병합, 병합 미리 보기(merge-tree), 기준 브랜치 상태, 브랜치 정리
 ├── remote.rs      # fetch/pull/push/publish, 원격 저장소 정보
 ├── credential.rs  # askpass로 들어온 git·ssh 프롬프트 분류
 ├── log.rs         # 히스토리 페이지 조회, 커밋 상세·diff, revert

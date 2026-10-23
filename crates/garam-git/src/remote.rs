@@ -473,7 +473,7 @@ fn current_branch(git: &Git, repo: &Path) -> Result<Option<String>, GitError> {
 }
 
 /// A config value, or `None` if it isn't set.
-fn config_get(git: &Git, repo: &Path, key: &str) -> Result<Option<String>, GitError> {
+pub(crate) fn config_get(git: &Git, repo: &Path, key: &str) -> Result<Option<String>, GitError> {
     let output = git
         .command()
         .cwd(repo)

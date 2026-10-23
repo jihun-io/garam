@@ -38,7 +38,8 @@
       "merge": "현재 브랜치에 병합…",
       "compare": "브랜치 비교…",
       "createPullRequest": "PR 만들기…",
-      "viewPullRequest": "GitHub에서 PR 보기"
+      "viewPullRequest": "GitHub에서 PR 보기",
+      "cleanup": "브랜치 정리…"
     },
     "help": {
       "shortcuts": "키보드 단축키",

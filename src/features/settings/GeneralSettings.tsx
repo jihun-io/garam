@@ -15,7 +15,14 @@ const OPEN_REPOSITORY_IN: OpenRepositoryIn[] = ["ask", "current_window", "new_wi
 
 export function GeneralSettings() {
   const { t } = useTranslation(["settings", "common"]);
-  const { language, openRepositoryIn, checkForUpdates, commitChecks } = useSettings();
+  const {
+    language,
+    openRepositoryIn,
+    checkForUpdates,
+    commitChecks,
+    baseNotices,
+    confirmConflictingPull,
+  } = useSettings();
   const update = useUpdateSettings();
   const launchLanguage = useLaunchLanguage();
   // macOS adds some menu items itself and localizes them only at launch.
@@ -46,19 +53,24 @@ export function GeneralSettings() {
           />
         )}
       </Setting>
-      <Setting label={t("general.commitChecks")} hint={t("general.commitChecksHint")}>
-        {(id) => (
-          <Select
-            id={id}
-            value={commitChecks ? "on" : "off"}
-            options={(["on", "off"] as const).map((value) => ({
-              value,
-              label: t(`general.commitChecksChoices.${value}`),
-            }))}
-            onChange={(value) => update({ commitChecks: value === "on" })}
-          />
-        )}
-      </Setting>
+      <OnOff
+        label={t("general.commitChecks")}
+        hint={t("general.commitChecksHint")}
+        value={commitChecks}
+        onChange={(on) => update({ commitChecks: on })}
+      />
+      <OnOff
+        label={t("general.baseNotices")}
+        hint={t("general.baseNoticesHint")}
+        value={baseNotices}
+        onChange={(on) => update({ baseNotices: on })}
+      />
+      <OnOff
+        label={t("general.confirmConflictingPull")}
+        hint={t("general.confirmConflictingPullHint")}
+        value={confirmConflictingPull}
+        onChange={(on) => update({ confirmConflictingPull: on })}
+      />
       <UpdateSettings
         automatic={checkForUpdates}
         onChange={(automatic) => update({ checkForUpdates: automatic })}
@@ -101,6 +113,36 @@ function UpdateSettings({
             {t("general.checkNow")}
           </Button>
         </div>
+      )}
+    </Setting>
+  );
+}
+
+/** A setting that is on or off, shown as a choice so it reads like the rest. */
+function OnOff({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  const { t } = useTranslation("settings");
+  return (
+    <Setting label={label} hint={hint}>
+      {(id) => (
+        <Select
+          id={id}
+          value={value ? "on" : "off"}
+          options={(["on", "off"] as const).map((choice) => ({
+            value: choice,
+            label: t(`general.onOff.${choice}`),
+          }))}
+          onChange={(choice) => onChange(choice === "on")}
+        />
       )}
     </Setting>
   );

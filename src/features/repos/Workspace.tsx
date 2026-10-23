@@ -7,6 +7,7 @@ import type { RepositoryEntry } from "../../ipc";
 import { useCommand } from "../../lib/commands";
 import { BranchControls } from "../branches/BranchControls";
 import { useRepoWatcher } from "../changes/useRepoWatcher";
+import { useConflictNoticeCleanup } from "../conflicts/useConflictNoticeCleanup";
 import { useHistoryPrepare } from "../history/api";
 import { SyncButton } from "../sync/SyncButton";
 import { OpenInMenu } from "./OpenInMenu";
@@ -26,6 +27,7 @@ export function Workspace({
   const { t } = useTranslation();
   const active = selected && !selected.missing ? selected.path : null;
   useRepoWatcher(active);
+  useConflictNoticeCleanup(active);
   useHistoryPrepare(active);
   useWindowTitle(selected?.name ?? null);
   const client = useQueryClient();

@@ -21,9 +21,13 @@
     "checkNow": "지금 확인",
     "commitChecks": "커밋 전 안전 검사",
     "commitChecksHint": "커밋하기 전에 비밀 값, 큰 파일, 보통 커밋하지 않는 파일이 들어가는지 확인합니다.",
-    "commitChecksChoices": {
-      "on": "확인하기",
-      "off": "확인하지 않기"
+    "baseNotices": "기준 브랜치가 앞서 가면 알리기",
+    "baseNoticesHint": "작업 중인 브랜치를 만든 기본 브랜치(main 등)에 커밋이 많이 쌓이거나, 가져오면 충돌할 내용이 생기면 변경 사항 위에 알립니다.",
+    "confirmConflictingPull": "충돌이 예상되면 풀하기 전에 묻기",
+    "confirmConflictingPullHint": "풀하면 충돌할 파일이 있을 때 먼저 보여 주고 묻습니다. 충돌이 없으면 묻지 않습니다.",
+    "onOff": {
+      "on": "켜기",
+      "off": "끄기"
     }
   },
   "appearance": {

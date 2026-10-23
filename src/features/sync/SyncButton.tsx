@@ -4,10 +4,11 @@ import { useTranslation } from "react-i18next";
 
 import menu from "../../components/ui/Menu.module.css";
 import { toAppError } from "../../ipc";
-import { shortcutFor, useCommand } from "../../lib/commands";
+import { runCommand, shortcutFor, useCommand } from "../../lib/commands";
 import { useRelativeTime } from "../../lib/time";
-import { useBranches } from "../branches/api";
+import { useBranches, useMergePreview } from "../branches/api";
 import { CommitCounts } from "../branches/CommitCounts";
+import { ConflictPreview } from "../branches/ConflictPreview";
 import { useStatus } from "../changes/api";
 import { useNotify } from "../notify/notifyStore";
 import {
@@ -43,16 +44,16 @@ function useTick(ms: number) {
  * the branch, plus a menu for the others. Hidden without remotes.
  */
 export function SyncButton({ repo }: { repo: string }) {
-  const { t } = useTranslation("sync");
+  const { t } = useTranslation(["sync", "common"]);
   const relativeTime = useRelativeTime();
   const status = useStatus(repo);
   const info = useRemoteInfo(repo);
   const branches = useBranches(repo);
   const running = useSyncStore((s) => s.running[repo]);
   const { run, cancel } = useSyncActions(repo);
-  const { showError, showInfo } = useNotify();
+  const { showError, showErrorWithAction, showInfo } = useNotify();
   const remote = info.data?.defaultRemote ?? null;
-  const { fetchIntervalMinutes } = useSettings();
+  const { fetchIntervalMinutes, confirmConflictingPull } = useSettings();
   useBackgroundFetch(repo, remote, fetchIntervalMinutes);
   useTick(60 * 1000);
 
@@ -82,6 +83,25 @@ export function SyncButton({ repo }: { repo: string }) {
 
   // A pull that local changes stopped can be retried with them stashed.
   const [blockedPull, setBlockedPull] = useState(false);
+  // What pulling would bring, as of the last fetch: commits, and the files
+  // merging them would conflict on.
+  const pullPreview = useMergePreview(
+    repo,
+    tracked && (branch?.behind ?? 0) > 0 ? "@{upstream}" : null,
+  ).data;
+  const pullConflicts = pullPreview?.conflicts ?? [];
+  const [confirmPull, setConfirmPull] = useState(false);
+
+  const resolveConflicts = {
+    label: t("common:fix.resolveConflicts"),
+    run: () => runCommand("view.changes"),
+  };
+
+  /** Pulls, first asking when the pull is expected to conflict. */
+  const pull = () => {
+    if (confirmConflictingPull && pullConflicts.length > 0) setConfirmPull(true);
+    else start("pull");
+  };
 
   const start = (action: SyncAction, autostash = false) => {
     // Push and publish carry the tags waiting now.
@@ -91,7 +111,18 @@ export function SyncButton({ repo }: { repo: string }) {
       .catch((e: unknown) => {
         const kind = toAppError(e).kind;
         if (kind === "pull_blocked_by_local_changes") setBlockedPull(true);
-        else if (kind !== "cancelled") showError(e);
+        else if (kind === "cancelled") return;
+        // The next step is plain from what failed: pull what the remote
+        // has before pushing again (not pushing by itself, since the pull
+        // may conflict), publish a branch the remote doesn't have, or
+        // resolve what stopped.
+        else if (kind === "non_fast_forward" && action === "push")
+          showErrorWithAction(e, { label: t("common:fix.pullFirst"), run: pull });
+        else if (kind === "no_upstream" || kind === "remote_branch_not_found")
+          showErrorWithAction(e, { label: t("common:fix.publish"), run: () => start("publish") });
+        else if (kind === "merge_conflict" || kind === "rebase_conflict")
+          showErrorWithAction(e, resolveConflicts);
+        else showError(e);
       });
   };
 
@@ -104,6 +135,7 @@ export function SyncButton({ repo }: { repo: string }) {
           : result === "updated_with_conflicts"
             ? t("done.pulledWithConflicts", { upstream })
             : t("done.pulled", { upstream }),
+        result === "updated_with_conflicts" ? resolveConflicts : undefined,
       );
     } else if (action === "push") {
       showInfo(t("done.pushed", { upstream }) + withTags, offerPullRequest());
@@ -118,7 +150,7 @@ export function SyncButton({ repo }: { repo: string }) {
   // Push publishes a branch that isn't on the remote yet.
   const canPublish = primary?.action === "publish" && !primary.disabled;
   useCommand("sync.fetch", () => start("fetch"), ready && !busy && !!remote);
-  useCommand("sync.pull", () => start("pull"), ready && !busy && tracked);
+  useCommand("sync.pull", pull, ready && !busy && tracked);
   useCommand(
     "sync.push",
     () => start(tracked ? "push" : "publish"),
@@ -149,6 +181,16 @@ export function SyncButton({ repo }: { repo: string }) {
     : primary.action === "publish"
       ? t("action.publish")
       : t(`action.${primary.action}`, { remote: remote ?? "" });
+  // The pull button tells what it would bring before it is pressed.
+  const pullSummary =
+    primary.action === "pull" && pullPreview && pullPreview.commits > 0
+      ? pullConflicts.length > 0
+        ? t("preview.withConflicts", {
+            count: pullPreview.commits,
+            files: t("preview.files", { count: pullConflicts.length }),
+          })
+        : t("preview.commits", { count: pullPreview.commits })
+      : null;
   const detail =
     primary.action === "publish" && !running
       ? primary.disabled
@@ -160,7 +202,20 @@ export function SyncButton({ repo }: { repo: string }) {
 
   return (
     <div className={styles.root}>
-      <Tooltip content={label} shortcut={primaryShortcut}>
+      <Tooltip
+        content={
+          pullSummary && !running ? (
+            <>
+              {label}
+              <br />
+              {pullSummary}
+            </>
+          ) : (
+            label
+          )
+        }
+        shortcut={primaryShortcut}
+      >
         <ToolbarButton
           icon={shown}
           value={label}
@@ -170,7 +225,7 @@ export function SyncButton({ repo }: { repo: string }) {
           progress={busy ? percent : undefined}
           disabled={busy || (primary.action === "publish" && primary.disabled)}
           aria-busy={busy}
-          onClick={() => start(primary.action)}
+          onClick={() => (primary.action === "pull" ? pull() : start(primary.action))}
           trailing={
             <>
               {busy && (
@@ -212,11 +267,7 @@ export function SyncButton({ repo }: { repo: string }) {
               >
                 {t("menu.fetch")}
               </DropdownMenu.Item>
-              <DropdownMenu.Item
-                className={menu.item}
-                disabled={!tracked}
-                onSelect={() => start("pull")}
-              >
+              <DropdownMenu.Item className={menu.item} disabled={!tracked} onSelect={pull}>
                 {t("menu.pull")}
               </DropdownMenu.Item>
               <DropdownMenu.Item
@@ -230,6 +281,18 @@ export function SyncButton({ repo }: { repo: string }) {
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
       )}
+      {confirmPull && (
+        <ConflictingPullDialog
+          upstream={upstream}
+          commits={pullPreview?.commits ?? 0}
+          conflicts={pullConflicts}
+          onPull={() => {
+            setConfirmPull(false);
+            start("pull");
+          }}
+          onClose={() => setConfirmPull(false)}
+        />
+      )}
       {blockedPull && (
         <PullBlockedDialog
           onStash={() => {
@@ -240,6 +303,46 @@ export function SyncButton({ repo }: { repo: string }) {
         />
       )}
     </div>
+  );
+}
+
+/** Asks before a pull that merging is expected to leave conflicted. */
+function ConflictingPullDialog({
+  upstream,
+  commits,
+  conflicts,
+  onPull,
+  onClose,
+}: {
+  upstream: string;
+  commits: number;
+  conflicts: string[];
+  onPull: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation("sync");
+  return (
+    <FormDialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title={t("conflictingPull.title")}
+      description={t("conflictingPull.body", { count: commits, upstream })}
+      onSubmit={onPull}
+      footer={
+        <>
+          <Button onClick={onClose} autoFocus>
+            {t("conflictingPull.cancel")}
+          </Button>
+          <Button type="submit" variant="primary">
+            {t("conflictingPull.submit")}
+          </Button>
+        </>
+      }
+    >
+      {/* The remote may have moved since the last fetch: "may". */}
+      <ConflictPreview conflicts={conflicts} estimate />
+      <p>{t("conflictingPull.after")}</p>
+    </FormDialog>
   );
 }
 

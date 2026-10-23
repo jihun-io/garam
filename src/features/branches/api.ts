@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { commands, unwrap, type Branch, type SwitchMode } from "../../ipc";
+import {
+  commands,
+  unwrap,
+  type Branch,
+  type SwitchMode,
+  type UpdateMode,
+  type DeletedBranch,
+} from "../../ipc";
 import { changesKeys, indexScope } from "../changes/api";
 
 /** A branch's full ref name, as git commands that take refs want it. */
@@ -12,6 +19,9 @@ export const branchKeys = {
   list: (repo: string) => ["repo", repo, "branches"] as const,
   autoStash: (repo: string, branch: string) => ["repo", repo, "auto-stash", branch] as const,
   mergePreview: (repo: string, branch: string) => ["repo", repo, "merge-preview", branch] as const,
+  // Under the repository's key, so every fetch and change refreshes it.
+  baseStatus: (repo: string) => ["repo", repo, "base-status"] as const,
+  cleanup: (repo: string) => ["repo", repo, "branch-cleanup"] as const,
 };
 
 export function useBranches(repo: string) {
@@ -34,6 +44,24 @@ export function useMergePreview(repo: string, branch: string | null) {
     queryKey: branchKeys.mergePreview(repo, branch ?? ""),
     queryFn: () => unwrap(commands.branchMergePreview(repo, branch!)),
     enabled: branch !== null,
+  });
+}
+
+/** How far the remote's default branch has moved on from this one. */
+export function useBaseStatus(repo: string, enabled = true) {
+  return useQuery({
+    queryKey: branchKeys.baseStatus(repo),
+    queryFn: () => unwrap(commands.branchBaseStatus(repo)),
+    enabled,
+  });
+}
+
+/** Local branches merged into the default branch or gone from the remote. */
+export function useCleanupCandidates(repo: string, enabled = true) {
+  return useQuery({
+    queryKey: branchKeys.cleanup(repo),
+    queryFn: () => unwrap(commands.branchCleanupCandidates(repo)),
+    enabled,
   });
 }
 
@@ -70,6 +98,23 @@ export function useBranchActions(repo: string) {
     }),
     merge: useMutation({
       mutationFn: (branch: string) => unwrap(commands.branchMerge(repo, branch)),
+      onSettled,
+      scope,
+    }),
+    deleteMany: useMutation({
+      mutationFn: (names: string[]) => unwrap(commands.branchDeleteMany(repo, names)),
+      onSettled,
+      scope,
+    }),
+    restore: useMutation({
+      mutationFn: (deleted: DeletedBranch[]) => unwrap(commands.branchRestore(repo, deleted)),
+      onSettled,
+      scope,
+    }),
+    /** Merges or rebases onto `base`, setting uncommitted changes aside. */
+    updateFrom: useMutation({
+      mutationFn: ({ base, mode }: { base: string; mode: UpdateMode }) =>
+        unwrap(commands.branchUpdateFrom(repo, base, mode)),
       onSettled,
       scope,
     }),

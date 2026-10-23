@@ -265,8 +265,11 @@ fn merges_with_each_outcome() {
     .unwrap();
 
     assert_eq!(
-        branch::commits_to_merge(repo.git_handle(), repo.path(), "ff").unwrap(),
-        1
+        branch::merge_preview(repo.git_handle(), repo.path(), "ff").unwrap(),
+        branch::MergePreview {
+            commits: 1,
+            conflicts: Some(Vec::new())
+        }
     );
     assert_eq!(
         branch::merge(repo.git_handle(), repo.path(), "ff").unwrap(),

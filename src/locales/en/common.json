@@ -18,5 +18,11 @@
   },
   "time": {
     "justNow": "just now"
+  },
+  "fix": {
+    "pullFirst": "Pull first",
+    "publish": "Publish branch",
+    "resolveConflicts": "Resolve conflicts",
+    "stashAndRetry": "Set changes aside and try again"
   }
 }

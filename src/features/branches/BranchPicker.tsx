@@ -8,7 +8,7 @@ import type { Branch, BranchStatus } from "../../ipc";
 import { useRelativeTime } from "../../lib/time";
 import { dropTarget, useCommitDrag } from "../history/commitDragStore";
 import { useHistoryPane } from "../history/historyPaneStore";
-import { refName, useBranches } from "./api";
+import { refName, useBranches, useCleanupCandidates } from "./api";
 import { useBranchDialog } from "./branchDialogStore";
 import { CommitCounts } from "./CommitCounts";
 import styles from "./branches.module.css";
@@ -48,6 +48,8 @@ export function BranchPicker({
   const showPane = useHistoryPane((s) => s.show);
   const [open, setOpen] = useState(false);
   useCommand("view.branches", () => setOpen(true));
+  // Looked up while the list is open, for the footer's "n to clean up".
+  const cleanupCount = useCleanupCandidates(repo, open).data?.length ?? 0;
   const dragging = useCommitDrag((s) => s.drag !== null);
   // The branch under the dragged commits; `:hover` doesn't follow a drag
   // that began elsewhere in every web view.
@@ -304,6 +306,14 @@ export function BranchPicker({
             <Button variant="ghost" onClick={() => fromPicker(() => runCommand("branch.compare"))}>
               {t("picker.compare")}
             </Button>
+            {cleanupCount > 0 && (
+              <Button
+                variant="ghost"
+                onClick={() => fromPicker(() => openDialog({ kind: "cleanup" }))}
+              >
+                {t("picker.cleanup", { count: cleanupCount })}
+              </Button>
+            )}
           </div>
         </Popover.Content>
       </Popover.Portal>

@@ -8,7 +8,8 @@ export type BranchDialog =
   | { kind: "rename"; branch: Branch }
   | { kind: "delete"; branch: Branch }
   | { kind: "merge"; branch?: Branch }
-  | { kind: "switch"; target: Branch };
+  | { kind: "switch"; target: Branch }
+  | { kind: "cleanup" };
 
 export const useBranchDialog = create<{
   dialog: BranchDialog | null;

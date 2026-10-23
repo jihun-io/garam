@@ -8,10 +8,11 @@ export const conflictKeys = {
 };
 
 /** The stopped operation, if any, and the files that still conflict. */
-export function useConflicts(repo: string) {
+export function useConflicts(repo: string, enabled = true) {
   return useQuery({
     queryKey: conflictKeys.state(repo),
     queryFn: () => unwrap(commands.conflictState(repo)),
+    enabled,
   });
 }
 

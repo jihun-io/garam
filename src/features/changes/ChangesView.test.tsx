@@ -86,6 +86,8 @@ vi.mock("../../ipc/bindings", () => ({
     repoList: vi.fn(),
     repoSetAccount: vi.fn(),
     remoteInfo: vi.fn(),
+    conflictState: vi.fn(),
+    branchBaseStatus: vi.fn(),
   },
 }));
 
@@ -694,6 +696,23 @@ describe("ChangesView", () => {
       "All taken care of. The rest of your changes will be committed.",
     );
     expect(commands.commitCreate).not.toHaveBeenCalled();
+  });
+
+  it("tells when main moved on in a way that would conflict, unless conflicts are open", async () => {
+    vi.mocked(commands.branchBaseStatus).mockResolvedValue(
+      ok({
+        base: "origin/main",
+        baseBranch: "main",
+        behind: 13,
+        conflicts: ["app.txt"],
+        published: true,
+      }),
+    );
+    vi.mocked(commands.conflictState).mockResolvedValue(
+      ok({ operation: null, files: [], empty: false }),
+    );
+    setup([change("a.txt", "modified", null)]);
+    expect(await screen.findByText("main has 13 new commits")).toBeVisible();
   });
 
   it("shows an empty state when the working folder is clean", async () => {

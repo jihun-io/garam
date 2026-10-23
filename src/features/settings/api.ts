@@ -25,6 +25,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   openRepositoryIn: "ask",
   checkForUpdates: true,
   commitChecks: true,
+  baseNotices: true,
+  confirmConflictingPull: true,
 };
 
 export function useSettings(): AppSettings {

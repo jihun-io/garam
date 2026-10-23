@@ -18,5 +18,11 @@
   },
   "time": {
     "justNow": "방금 전"
+  },
+  "fix": {
+    "pullFirst": "먼저 풀하기",
+    "publish": "브랜치 게시",
+    "resolveConflicts": "충돌 해결하기",
+    "stashAndRetry": "변경 사항을 잠시 보관하고 다시 하기"
   }
 }

@@ -21,9 +21,13 @@
     "checkNow": "Check Now",
     "commitChecks": "Safety checks before a commit",
     "commitChecksHint": "Before committing, Garam looks for secrets, large files and files that usually aren't committed.",
-    "commitChecksChoices": {
-      "on": "Check",
-      "off": "Don't check"
+    "baseNotices": "Tell me when the base branch moves ahead",
+    "baseNoticesHint": "When the default branch (such as main) your branch was made from gets many new commits, or something that would conflict, a notice shows above your changes.",
+    "confirmConflictingPull": "Ask before a pull that would conflict",
+    "confirmConflictingPullHint": "When pulling would conflict, Garam shows the files and asks first. Pulls without conflicts go straight ahead.",
+    "onOff": {
+      "on": "On",
+      "off": "Off"
     }
   },
   "appearance": {

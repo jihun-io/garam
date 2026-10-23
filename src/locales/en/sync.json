@@ -36,5 +36,21 @@
     "body": "Your changes can be stashed for the pull and put back afterwards. If putting them back conflicts, they stay in the stash and the conflicted files are shown.",
     "cancel": "Cancel",
     "submit": "Stash Changes and Pull"
+  },
+  "preview": {
+    "commits_one": "Brings in {{count}} commit",
+    "commits_other": "Brings in {{count}} commits",
+    "withConflicts_one": "Brings in {{count}} commit · {{files}} expected to conflict",
+    "withConflicts_other": "Brings in {{count}} commits · {{files}} expected to conflict",
+    "files_one": "{{count}} file",
+    "files_other": "{{count}} files"
+  },
+  "conflictingPull": {
+    "title": "Pulling Will Conflict",
+    "body_one": "Bringing in {{count}} commit from {{upstream}} leads to conflicts.",
+    "body_other": "Bringing in {{count}} commits from {{upstream}} leads to conflicts.",
+    "after": "If you pull anyway, you can resolve the conflicted files one by one in Changes. If the remote changed since the last fetch, it may turn out differently.",
+    "cancel": "Cancel",
+    "submit": "Pull Anyway"
   }
 }

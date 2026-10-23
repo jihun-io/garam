@@ -26,6 +26,7 @@ vi.mock("../../ipc/bindings", () => ({
   commands: {
     statusGet: vi.fn(),
     branchList: vi.fn(),
+    branchMergePreview: vi.fn(),
     remoteInfo: vi.fn(),
     remoteFetch: vi.fn(),
     remotePull: vi.fn(),
@@ -59,6 +60,9 @@ function setup(
     }),
   );
   vi.mocked(commands.branchList).mockResolvedValue(ok([]));
+  vi.mocked(commands.branchMergePreview).mockResolvedValue(
+    ok({ commits: branch.behind ?? 0, conflicts: [] }),
+  );
   vi.mocked(commands.remoteInfo).mockResolvedValue(
     ok({
       remotes: [{ name: "origin", url: "https://example.com/repo.git" }],
@@ -234,6 +238,33 @@ describe("SyncButton", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "The remote has commits you don't have yet. Pull first, then push again.",
     );
+
+    // The way out is right there; it pulls, and leaves pushing to the user.
+    vi.mocked(commands.remotePull).mockResolvedValue(ok("updated"));
+    await user.click(screen.getByRole("button", { name: "Pull first" }));
+    await vi.waitFor(() => expect(commands.remotePull).toHaveBeenCalled());
+    expect(commands.remotePush).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks before a pull that would conflict", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.remotePull).mockResolvedValue(ok("updated"));
+    setup({ behind: 2 });
+    vi.mocked(commands.branchMergePreview).mockResolvedValue(
+      ok({ commits: 2, conflicts: ["src/app.ts"] }),
+    );
+
+    const button = await screen.findByRole("button", { name: /Pull origin/ });
+    await vi.waitFor(() =>
+      expect(commands.branchMergePreview).toHaveBeenCalledWith("/repo", "@{upstream}"),
+    );
+    await user.click(button);
+    const dialog = await screen.findByRole("dialog", { name: "Pulling Will Conflict" });
+    expect(within(dialog).getByText("src/app.ts")).toBeVisible();
+    expect(commands.remotePull).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Pull Anyway" }));
+    await vi.waitFor(() => expect(commands.remotePull).toHaveBeenCalled());
   });
 
   it("asks for credentials and sends the answer back", async () => {

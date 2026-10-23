@@ -38,7 +38,8 @@
       "merge": "Merge into Current Branch…",
       "compare": "Compare Branches…",
       "createPullRequest": "Create Pull Request…",
-      "viewPullRequest": "View Pull Request on GitHub"
+      "viewPullRequest": "View Pull Request on GitHub",
+      "cleanup": "Clean Up Branches…"
     },
     "help": {
       "shortcuts": "Keyboard Shortcuts",

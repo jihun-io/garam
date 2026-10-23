@@ -6,6 +6,7 @@ import { useNotify } from "../notify/notifyStore";
 import { useBranchActions, useBranches } from "./api";
 import { useBranchDialog } from "./branchDialogStore";
 import { BranchNameDialog } from "./BranchNameDialog";
+import { CleanupDialog } from "./CleanupDialog";
 import { DeleteBranchDialog } from "./DeleteBranchDialog";
 import { MergeDialog } from "./MergeDialog";
 import { SwitchDialog } from "./SwitchDialog";
@@ -77,8 +78,10 @@ export function BranchDialogs({ repo, status }: { repo: string; status: BranchSt
           current={current}
           branches={branches.data ?? []}
           initial={dialog.branch}
-          onMerge={async (from) => {
-            const outcome = await actions.merge.mutateAsync(from);
+          onMerge={async (from, autostash) => {
+            const outcome = autostash
+              ? await actions.updateFrom.mutateAsync({ base: from, mode: "merge" })
+              : await actions.merge.mutateAsync(from);
             showInfo(
               outcome === "up_to_date"
                 ? t("merge.resultUpToDate", { into: current })
@@ -89,5 +92,7 @@ export function BranchDialogs({ repo, status }: { repo: string; status: BranchSt
           onClose={close}
         />
       );
+    case "cleanup":
+      return <CleanupDialog repo={repo} onClose={close} />;
   }
 }

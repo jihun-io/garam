@@ -22,7 +22,9 @@
     "compareThis": "Compare with Current Branch ({{branch}})",
     "compare": "Compare Branches…",
     "createPullRequest": "Create Pull Request…",
-    "viewPullRequest": "Open Pull Request #{{number}}"
+    "viewPullRequest": "Open Pull Request #{{number}}",
+    "cleanup_one": "{{count}} Branch to Clean Up…",
+    "cleanup_other": "{{count}} Branches to Clean Up…"
   },
   "switch": {
     "title": "Switch to {{branch}}?",
@@ -64,7 +66,9 @@
     "upToDate": "{{into}} already has everything from {{from}}.",
     "submit": "Merge {{from}} into {{into}}",
     "resultUpToDate": "{{into}} is already up to date.",
-    "resultMerged": "Merged {{from}} into {{into}}."
+    "resultMerged": "Merged {{from}} into {{into}}.",
+    "submitConflicts": "Merge and Resolve Conflicts",
+    "resultRebased": "Moved {{into}} on top of {{from}}."
   },
   "stash": {
     "banner": "You left changes on this branch earlier.",
@@ -77,5 +81,58 @@
   },
   "form": {
     "cancel": "Cancel"
+  },
+  "conflicts": {
+    "will_one": "{{count}} file will conflict:",
+    "will_other": "{{count}} files will conflict:",
+    "may_one": "{{count}} file may conflict:",
+    "may_other": "{{count}} files may conflict:",
+    "more_one": "and {{count}} more",
+    "more_other": "and {{count}} more",
+    "none": "It merges without conflicts.",
+    "unknown": "Conflicts can't be predicted (git 2.38 or later shows them)."
+  },
+  "base": {
+    "behind_one": "{{base}} has {{count}} new commit",
+    "behind_other": "{{base}} has {{count}} new commits",
+    "conflicts_one": "Bringing it in now conflicts in {{count}} file. Conflicts grow the longer branches stay apart, so bring it in early.",
+    "conflicts_other": "Bringing it in now conflicts in {{count}} files. Conflicts grow the longer branches stay apart, so bring it in early.",
+    "far": "Nothing conflicts yet, but conflicts grow the longer branches stay apart. Bringing it in now keeps it easy.",
+    "update": "Bring In {{base}}…",
+    "later": "Later",
+    "title": "Bring In {{base}}",
+    "mode": "How to bring it in",
+    "modes": {
+      "merge": "Merge",
+      "rebase": "Rebase"
+    },
+    "modeHints": {
+      "merge": "Makes a merge commit joining both histories. Your commits stay as they are.",
+      "rebase": "Replays this branch's commits on top of the latest, for a straight history. Available because the branch isn't on the remote yet."
+    },
+    "publishedMerges": "A branch already pushed is brought up to date by merging. Rebasing it would need a force push and change the history others have.",
+    "autostash": "Uncommitted changes are set aside and put back afterwards.",
+    "merge": "Merge",
+    "rebase": "Rebase",
+    "rebaseConflicts": "Rebase and Resolve Conflicts"
+  },
+  "cleanup": {
+    "title": "Clean Up Branches",
+    "intro": "These branches are already in the default branch or were deleted on the remote. After deleting them you can still undo it from the notice.",
+    "none": "Nothing to clean up. Branches merged into the default branch or deleted on the remote show up here.",
+    "reasons": {
+      "merged": "Merged into the default branch",
+      "gone": "Deleted on the remote"
+    },
+    "unmerged_one": "Has {{count}} commit the default branch doesn't. Deleting it may lose that commit.",
+    "unmerged_other": "Has {{count}} commits the default branch doesn't. Deleting it may lose those commits.",
+    "unknownUnmerged": "Without a known default branch, Garam couldn't check whether it was merged.",
+    "submit_one": "Delete {{count}} Branch",
+    "submit_other": "Delete {{count}} Branches",
+    "done_one": "Deleted {{count}} branch.",
+    "done_other": "Deleted {{count}} branches.",
+    "undo": "Undo",
+    "restored_one": "Brought back {{count}} branch.",
+    "restored_other": "Brought back {{count}} branches."
   }
 }

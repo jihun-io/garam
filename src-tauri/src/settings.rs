@@ -78,6 +78,11 @@ pub struct AppSettings {
     /// Look for secrets, large files and usually-ignored files before a
     /// commit.
     pub commit_checks: bool,
+    /// Show a banner when the remote's default branch has moved on far, or
+    /// in a way that would conflict.
+    pub base_notices: bool,
+    /// Ask before a pull that is expected to conflict.
+    pub confirm_conflicting_pull: bool,
 }
 
 impl Default for AppSettings {
@@ -95,6 +100,8 @@ impl Default for AppSettings {
             open_repository_in: OpenRepositoryIn::default(),
             check_for_updates: true,
             commit_checks: true,
+            base_notices: true,
+            confirm_conflicting_pull: true,
         }
     }
 }

@@ -133,6 +133,7 @@ async function buildMenu(
   const branch = submenu(t("menu:menus.branch"), [
     command("branch.create"),
     command("branch.rename"),
+    command("branch.cleanup"),
     separator(),
     command("branch.merge"),
     command("branch.compare"),

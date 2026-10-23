@@ -21,6 +21,7 @@ export function BranchControls({ repo }: { repo: string }) {
   useCommand("branch.create", () => openDialog({ kind: "create" }), !!status.data);
   useCommand("branch.rename", () => head && openDialog({ kind: "rename", branch: head }), !!head);
   useCommand("branch.merge", () => openDialog({ kind: "merge" }), !!head);
+  useCommand("branch.cleanup", () => openDialog({ kind: "cleanup" }), !!status.data);
   if (status.isError) return null;
   if (!status.data) return <ToolbarPlaceholder icon="branch" />;
   const { branch, files } = status.data;

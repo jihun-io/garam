@@ -22,6 +22,7 @@ vi.mock("../../ipc/bindings", () => ({
     branchDelete: vi.fn(),
     branchMergePreview: vi.fn(),
     branchMerge: vi.fn(),
+    branchUpdateFrom: vi.fn(),
     stashFindAuto: vi.fn(),
     stashApply: vi.fn(),
     stashDrop: vi.fn(),
@@ -229,7 +230,7 @@ describe("BranchControls", () => {
   it("previews a merge and reports the result", async () => {
     const user = userEvent.setup();
     setup();
-    vi.mocked(commands.branchMergePreview).mockResolvedValue(ok(3));
+    vi.mocked(commands.branchMergePreview).mockResolvedValue(ok({ commits: 3, conflicts: [] }));
     vi.mocked(commands.branchMerge).mockResolvedValue(ok("merged"));
     await openPicker(user);
     await user.click(screen.getByRole("button", { name: "Merge into main…" }));
@@ -243,6 +244,31 @@ describe("BranchControls", () => {
 
     expect(commands.branchMerge).toHaveBeenCalledWith("/repo", "feature");
     expect(await screen.findByRole("status")).toHaveTextContent("Merged feature into main.");
+  });
+  it("names the files a merge would conflict on and offers a way out", async () => {
+    const user = userEvent.setup();
+    setup();
+    vi.mocked(commands.branchMergePreview).mockResolvedValue(
+      ok({ commits: 2, conflicts: ["src/app.ts"] }),
+    );
+    vi.mocked(commands.branchMerge).mockResolvedValue({
+      status: "error",
+      error: { kind: "local_changes_would_be_overwritten", params: {}, detail: null },
+    });
+    vi.mocked(commands.branchUpdateFrom).mockResolvedValue(ok("merged"));
+    await openPicker(user);
+    await user.click(screen.getByRole("button", { name: "Merge into main…" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Merge into main" });
+    await user.click(within(dialog).getByRole("option", { name: "feature" }));
+    expect(await within(dialog).findByText("1 file will conflict:")).toBeVisible();
+    expect(within(dialog).getByText("src/app.ts")).toBeVisible();
+    await user.click(within(dialog).getByRole("button", { name: "Merge and Resolve Conflicts" }));
+
+    await user.click(
+      await within(dialog).findByRole("button", { name: "Set changes aside and try again" }),
+    );
+    expect(commands.branchUpdateFrom).toHaveBeenCalledWith("/repo", "feature", "merge");
   });
 });
 

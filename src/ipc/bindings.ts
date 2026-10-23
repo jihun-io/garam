@@ -110,9 +110,37 @@ export const commands = {
 	branchSwitch: (repo: string, target: Branch, mode: SwitchMode, current: string | null) => typedError<null, AppError>(__TAURI_INVOKE("branch_switch", { repo, target, mode, current })),
 	branchRename: (repo: string, from: string, to: string) => typedError<null, AppError>(__TAURI_INVOKE("branch_rename", { repo, from, to })),
 	branchDelete: (repo: string, name: string, force: boolean) => typedError<null, AppError>(__TAURI_INVOKE("branch_delete", { repo, name, force })),
-	/**  How many commits merging `branch` would bring into HEAD. */
-	branchMergePreview: (repo: string, branch: string) => typedError<number, AppError>(__TAURI_INVOKE("branch_merge_preview", { repo, branch })),
+	/**
+	 *  What merging `branch` would bring into HEAD: commits, and the files that
+	 *  would conflict.
+	 */
+	branchMergePreview: (repo: string, branch: string) => typedError<MergePreview, AppError>(__TAURI_INVOKE("branch_merge_preview", { repo, branch })),
 	branchMerge: (repo: string, branch: string) => typedError<MergeOutcome, AppError>(__TAURI_INVOKE("branch_merge", { repo, branch })),
+	/**
+	 *  How far the remote's default branch has moved on from the current
+	 *  branch; `None` where that doesn't apply (see [`branch::base_status`]).
+	 */
+	branchBaseStatus: (repo: string) => typedError<{
+	/**  The remote-tracking branch, `origin/main`. */
+	base: string,
+	/**  The default branch's own name, `main`. */
+	baseBranch: string,
+	/**  Commits on the base the current branch doesn't have. */
+	behind: number,
+	/**
+	 *  Files that would conflict if it were merged in now (see
+	 *  [`MergePreview::conflicts`]).
+	 */
+	conflicts: string[] | null,
+	/**  The current branch is on the remote, so it shouldn't be rebased. */
+	published: boolean,
+} | null, AppError>(__TAURI_INVOKE("branch_base_status", { repo })),
+	/**  Merges or rebases the current branch onto `base`. */
+	branchUpdateFrom: (repo: string, base: string, mode: UpdateMode) => typedError<MergeOutcome, AppError>(__TAURI_INVOKE("branch_update_from", { repo, base, mode })),
+	branchCleanupCandidates: (repo: string) => typedError<CleanupCandidate[], AppError>(__TAURI_INVOKE("branch_cleanup_candidates", { repo })),
+	/**  Deletes branches, returning what undoing it takes. */
+	branchDeleteMany: (repo: string, names: string[]) => typedError<DeletedBranch[], AppError>(__TAURI_INVOKE("branch_delete_many", { repo, names })),
+	branchRestore: (repo: string, deleted: DeletedBranch[]) => typedError<null, AppError>(__TAURI_INVOKE("branch_restore", { repo, deleted })),
 	stashList: (repo: string) => typedError<Stash[], AppError>(__TAURI_INVOKE("stash_list", { repo })),
 	/**
 	 *  Puts the uncommitted changes aside, or only `paths` when given, and
@@ -396,6 +424,13 @@ export type AppSettings = {
 	 *  commit.
 	 */
 	commitChecks: boolean,
+	/**
+	 *  Show a banner when the remote's default branch has moved on far, or
+	 *  in a way that would conflict.
+	 */
+	baseNotices: boolean,
+	/**  Ask before a pull that is expected to conflict. */
+	confirmConflictingPull: boolean,
 };
 
 /**  How applying a stash went. */
@@ -416,6 +451,23 @@ export type AutoStash = {
 	/**  Commit id of the stash entry; stable while `stash@{n}` indexes shift. */
 	oid: string,
 	branch: string,
+};
+
+/**  How far the remote's default branch has moved on from the current one. */
+export type BaseStatus = {
+	/**  The remote-tracking branch, `origin/main`. */
+	base: string,
+	/**  The default branch's own name, `main`. */
+	baseBranch: string,
+	/**  Commits on the base the current branch doesn't have. */
+	behind: number,
+	/**
+	 *  Files that would conflict if it were merged in now (see
+	 *  [`MergePreview::conflicts`]).
+	 */
+	conflicts: string[] | null,
+	/**  The current branch is on the remote, so it shouldn't be rebased. */
+	published: boolean,
 };
 
 export type BlockedAccess = {
@@ -481,6 +533,24 @@ export type CherryPickOutcome = {
 	/**  Commits whose changes HEAD already had. */
 	skipped: number,
 };
+
+/**  A local branch that can probably go. */
+export type CleanupCandidate = {
+	name: string,
+	reason: CleanupReason,
+	/**
+	 *  For a gone branch, commits the default branch doesn't have, which
+	 *  deleting it could lose. `None` without a default branch to compare.
+	 */
+	unmerged: number | null,
+	committedAt: number,
+};
+
+export type CleanupReason = 
+/**  Everything on it is in the default branch (merged or squashed). */
+"merged" | 
+/**  Its upstream was deleted on the remote. */
+"gone";
 
 export type CoAuthor = {
 	name: string,
@@ -590,6 +660,18 @@ export type CredentialRequest = {
 	 *  git has no credential helper to remember it.
 	 */
 	canRemember: boolean,
+};
+
+/**  A deleted branch, with what it takes to bring it back. */
+export type DeletedBranch = {
+	name: string,
+	oid: string,
+	/**
+	 *  `branch.<name>.remote` and `branch.<name>.merge`, which deleting
+	 *  the branch removes.
+	 */
+	remote: string | null,
+	merge: string | null,
 };
 
 export type DiffFontSize = "small" | "medium" | "large";
@@ -817,7 +899,20 @@ export type LostCommit = {
 	visitedAt: number,
 } & CommitSummary;
 
-export type MergeOutcome = "up_to_date" | "fast_forward" | "merged";
+export type MergeOutcome = "up_to_date" | "fast_forward" | "merged" | 
+/**  The branch's own commits were replayed on top ([`update_from`]). */
+"rebased";
+
+/**  What merging a branch into HEAD would do. */
+export type MergePreview = {
+	/**  Commits it would bring in. */
+	commits: number,
+	/**
+	 *  Files that would conflict; `None` when git can't tell (older than
+	 *  2.38, or unrelated histories).
+	 */
+	conflicts: string[] | null,
+};
 
 /**  What a new pull request asks for. */
 export type NewPullRequest = {
@@ -1176,6 +1271,8 @@ export type UpdateInfo = {
 	version: string,
 	currentVersion: string,
 };
+
+export type UpdateMode = "merge" | "rebase";
 
 /**  Download progress, for the window that started the install. */
 export type UpdateProgress = {
