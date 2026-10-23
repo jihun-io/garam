@@ -43,7 +43,15 @@ function mockAccounts(accounts: Account[], chosen: string | null) {
   });
   vi.mocked(commands.repoList).mockResolvedValue({
     repositories: [
-      { path: "/repo", name: "repo", addedAt: 0, lastOpenedAt: 0, missing: false, account: chosen },
+      {
+        path: "/repo",
+        name: "repo",
+        addedAt: 0,
+        lastOpenedAt: 0,
+        missing: false,
+        account: chosen,
+        editor: null,
+      },
     ],
     selected: "/repo",
   });

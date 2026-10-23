@@ -27,8 +27,13 @@
     "reveal_windows": "Show in Explorer",
     "reveal_linux": "Show in file manager",
     "terminal": "Open in Terminal",
-    "editor": "Open in {{name}}",
-    "noEditors": "No supported editors found"
+    "inApp": "Open in {{name}}",
+    "noEditors": "No supported editors found",
+    "otherEditor": "Open in Another Editor",
+    "suggested": "Suited to this repository",
+    "otherApps": "Other apps",
+    "repoEditor": "Default Editor for This Repository",
+    "followSettings": "Same as settings ({{name}})"
   },
   "overview": {
     "copyPath": "Copy path",

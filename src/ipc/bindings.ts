@@ -38,6 +38,11 @@ export const commands = {
 	 *  remotes; `None` goes back to the user's own git setup.
 	 */
 	repoSetAccount: (path: string, account: string | null) => typedError<null, AppError>(__TAURI_INVOKE("repo_set_account", { path, account })),
+	/**
+	 *  Chooses the editor "Open in editor" uses for the repository; `None`
+	 *  follows the app settings.
+	 */
+	repoSetEditor: (path: string, editor: string | null) => typedError<null, AppError>(__TAURI_INVOKE("repo_set_editor", { path, editor })),
 	/**  Cancels a running operation, declining any credential prompt it shows. */
 	operationCancel: (operationId: string) => __TAURI_INVOKE<void>("operation_cancel", { operationId }),
 	/**
@@ -325,6 +330,11 @@ export const commands = {
 	updateInstall: (onProgress: Channel<UpdateProgress>) => typedError<null, AppError>(__TAURI_INVOKE("update_install", { onProgress })),
 	externalEditors: () => typedError<ExternalEditor[], AppError>(__TAURI_INVOKE("external_editors")),
 	externalTerminals: () => typedError<ExternalTerminal[], AppError>(__TAURI_INVOKE("external_terminals")),
+	/**
+	 *  Editors suited to the kind of project in `path` (Xcode for an iOS app,
+	 *  Android Studio for a Gradle build), whether installed or not.
+	 */
+	externalSuggestedEditors: (path: string) => typedError<string[], AppError>(__TAURI_INVOKE("external_suggested_editors", { path })),
 	externalOpenEditor: (editorId: string, path: string) => typedError<null, AppError>(__TAURI_INVOKE("external_open_editor", { editorId, path })),
 	/**  Opens `path` in `terminal_id`, or the first terminal found. */
 	externalOpenTerminal: (path: string, terminalId: string | null) => typedError<null, AppError>(__TAURI_INVOKE("external_open_terminal", { path, terminalId })),
@@ -1112,6 +1122,11 @@ export type RepositoryEntry = {
 	 *  HTTPS remotes; `None` leaves it to the user's git setup.
 	 */
 	account: string | null,
+	/**
+	 *  Id of the editor chosen for this repository; `None` follows the
+	 *  app settings.
+	 */
+	editor: string | null,
 };
 
 export type RepositoryList = {

@@ -27,6 +27,11 @@
   color: var(--color-on-accent);
 }
 
+/* A submenu's trigger stays marked while its submenu is open. */
+.item[data-state="open"]:not([data-highlighted]) {
+  background: var(--color-line);
+}
+
 .item[data-disabled] {
   color: var(--color-ink-faint);
 }
@@ -35,4 +40,27 @@
   height: 1px;
   margin: var(--space-1) var(--space-2);
   background: var(--color-line);
+}
+
+/* Heading of a group of items. */
+.label {
+  padding: var(--space-1) var(--space-2) 2px;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+/* Slot before a checkable item's text, kept empty while unchecked so the
+   texts line up. */
+.indicator {
+  display: inline-grid;
+  place-items: center;
+  width: 12px;
+  flex: none;
+}
+
+/* Pushed to the item's end, like a submenu arrow. */
+.trailing {
+  margin-inline-start: auto;
+  padding-inline-start: var(--space-3);
+  box-sizing: content-box;
 }

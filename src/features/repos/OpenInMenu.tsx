@@ -8,17 +8,17 @@ import { useCommand } from "../../lib/commands";
 import { currentPlatform } from "../../lib/platform";
 import { useNotify } from "../notify/notifyStore";
 import { useSettings } from "../settings/api";
-import { useEditorsPreferredFirst } from "./api";
+import { useRepoEditor } from "./api";
+import { RepoEditorChoice } from "./EditorMenu";
 
 /** "Open in" menu: file manager, terminal, and detected editors. */
 export function OpenInMenu({ path, disabled }: { path: string; disabled?: boolean }) {
   const { t } = useTranslation("repos");
   const settings = useSettings();
-  const editors = useEditorsPreferredFirst(settings.editor);
+  const { editor: firstEditor, editors } = useRepoEditor(path);
   const showError = useNotify((s) => s.showError);
 
   const run = (action: Promise<unknown>) => action.catch(showError);
-  const firstEditor = editors[0];
   useCommand(
     "repo.openEditor",
     () => firstEditor && void run(unwrap(commands.externalOpenEditor(firstEditor.id, path))),
@@ -60,13 +60,19 @@ export function OpenInMenu({ path, disabled }: { path: string; disabled?: boolea
                 className={menu.item}
                 onSelect={() => void run(unwrap(commands.externalOpenEditor(editor.id, path)))}
               >
-                {t("open.editor", { name: editor.name })}
+                {t("open.inApp", { name: editor.name })}
               </DropdownMenu.Item>
             ))
           ) : (
             <DropdownMenu.Item className={menu.item} disabled>
               {t("open.noEditors")}
             </DropdownMenu.Item>
+          )}
+          {editors.length > 1 && (
+            <>
+              <DropdownMenu.Separator className={menu.separator} />
+              <RepoEditorChoice path={path} />
+            </>
           )}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>

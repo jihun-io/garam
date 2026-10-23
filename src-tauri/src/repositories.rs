@@ -22,6 +22,9 @@ struct StoredRepository {
     /// Key of the GitHub account used for this repository's remotes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     account: Option<String>,
+    /// Id of the editor "Open in editor" uses for this repository.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    editor: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -44,6 +47,9 @@ pub struct RepositoryEntry {
     /// Key of the signed-in GitHub account git uses for this repository's
     /// HTTPS remotes; `None` leaves it to the user's git setup.
     pub account: Option<String>,
+    /// Id of the editor chosen for this repository; `None` follows the
+    /// app settings.
+    pub editor: Option<String>,
 }
 
 impl From<&StoredRepository> for RepositoryEntry {
@@ -55,6 +61,7 @@ impl From<&StoredRepository> for RepositoryEntry {
             last_opened_at: r.last_opened_at,
             missing: !Path::new(&r.path).is_dir(),
             account: r.account.clone(),
+            editor: r.editor.clone(),
         }
     }
 }
@@ -107,6 +114,7 @@ impl RepositoryStore {
                     added_at: now,
                     last_opened_at: Some(now),
                     account: None,
+                    editor: None,
                 };
                 let entry = RepositoryEntry::from(&stored);
                 data.repositories.push(stored);
@@ -156,6 +164,17 @@ impl RepositoryStore {
             return Ok(());
         };
         repo.account = account;
+        self.save(&mut data)
+    }
+
+    /// Chooses the editor for the repository at `path` (`None`: the one in
+    /// the app settings).
+    pub fn set_editor(&self, path: &str, editor: Option<String>) -> AppResult<()> {
+        let mut data = self.lock();
+        let Some(repo) = data.repositories.iter_mut().find(|r| r.path == path) else {
+            return Ok(());
+        };
+        repo.editor = editor;
         self.save(&mut data)
     }
 
@@ -239,6 +258,28 @@ mod tests {
 
         reloaded.set_account(&path, None).unwrap();
         assert_eq!(reloaded.account(&path), None);
+    }
+
+    #[test]
+    fn remembers_the_editor_per_repository() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("repositories.json");
+        let repo = dir.path().join("repo");
+        let path = repo.display().to_string();
+        let store = RepositoryStore::load(file.clone());
+        store.add(info(&repo)).unwrap();
+        assert_eq!(store.list().repositories[0].editor, None);
+
+        store.set_editor(&path, Some("xcode".into())).unwrap();
+        store.add(info(&repo)).unwrap();
+        let reloaded = RepositoryStore::load(file);
+        assert_eq!(
+            reloaded.list().repositories[0].editor.as_deref(),
+            Some("xcode")
+        );
+
+        reloaded.set_editor(&path, None).unwrap();
+        assert_eq!(reloaded.list().repositories[0].editor, None);
     }
 
     #[test]

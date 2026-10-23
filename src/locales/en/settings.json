@@ -70,7 +70,8 @@
     "editor": "Editor",
     "terminal": "Terminal",
     "firstFound": "First one found ({{name}})",
-    "noneFound": "None found"
+    "noneFound": "None found",
+    "editorHint": "To use a different editor for one repository, choose it under “Default Editor for This Repository” in the “Open in” menu."
   },
   "sync": {
     "title": "Sync",

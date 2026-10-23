@@ -26,6 +26,7 @@ const repo = (name: string, path: string, missing = false): RepositoryEntry => (
   addedAt: 0,
   lastOpenedAt: 0,
   account: null,
+  editor: null,
 });
 
 const repos = [

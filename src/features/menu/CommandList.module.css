@@ -7,21 +7,54 @@
   list-style: none;
 }
 
-.item {
+.row {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
+}
+
+.item,
+.more {
   min-height: 36px;
-  padding: 0 var(--space-3);
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   box-shadow: var(--shadow-control);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--space-3);
   text-align: start;
 }
 
-.item:hover {
+/* Square button joined to the item's end, like a split push button. */
+.more {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  flex: none;
+  margin-inline-start: -1px;
+  padding: 0;
+  color: var(--color-ink-muted);
+}
+
+.item:has(+ .more) {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.item + .more {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+.item:hover,
+.more:hover,
+.more[data-state="open"] {
+  position: relative;
   border-color: var(--color-ink-faint);
 }
 

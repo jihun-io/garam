@@ -27,8 +27,13 @@
     "reveal_windows": "탐색기에서 보기",
     "reveal_linux": "파일 관리자에서 보기",
     "terminal": "터미널에서 열기",
-    "editor": "{{name}}에서 열기",
-    "noEditors": "지원하는 에디터를 찾지 못했습니다"
+    "inApp": "{{name}}에서 열기",
+    "noEditors": "지원하는 에디터를 찾지 못했습니다",
+    "otherEditor": "다른 에디터에서 열기",
+    "suggested": "이 저장소에 맞는 앱",
+    "otherApps": "다른 앱",
+    "repoEditor": "이 저장소의 기본 에디터",
+    "followSettings": "설정 따르기 ({{name}})"
   },
   "overview": {
     "copyPath": "경로 복사",

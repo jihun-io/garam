@@ -44,6 +44,7 @@ const repo: RepositoryEntry = {
   addedAt: 0,
   lastOpenedAt: 0,
   account: null,
+  editor: null,
 };
 
 describe("Workspace", () => {

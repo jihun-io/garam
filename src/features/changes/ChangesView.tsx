@@ -14,6 +14,8 @@ import { useConflicts } from "../conflicts/api";
 import { ConflictBanner, ConflictPanel } from "../conflicts/ConflictPanel";
 import { CommandList } from "../menu/CommandList";
 import { usePullRequestOffer } from "../pullRequests/api";
+import { useOpenInLabels } from "../repos/api";
+import { MoreEditorsButton } from "../repos/EditorMenu";
 import { useNotify } from "../notify/notifyStore";
 import { SidebarSplitter } from "../settings/SidebarSplitter";
 import { useStashes } from "../stashes/api";
@@ -59,6 +61,7 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
   const [stashing, setStashing] = useState<string[] | null>(null);
   const hasFiles = (status.data?.files.length ?? 0) > 0;
   const offerPullRequest = usePullRequestOffer(repo, status.data?.branch);
+  const openInLabels = useOpenInLabels(repo);
   useCommand("repo.stash", () => setStashing([]), hasFiles);
 
   if (status.isError) {
@@ -195,6 +198,12 @@ export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
                 "repo.openTerminal",
                 "repo.reveal",
               ]}
+              labels={openInLabels}
+              more={{
+                "repo.openEditor": (className) => (
+                  <MoreEditorsButton path={repo} className={className} />
+                ),
+              }}
             />
           </EmptyMessage>
         )}

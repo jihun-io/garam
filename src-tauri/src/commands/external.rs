@@ -9,6 +9,14 @@ pub async fn external_editors() -> AppResult<Vec<ExternalEditor>> {
     blocking(|| Ok(external::detect_editors())).await
 }
 
+/// Editors suited to the kind of project in `path` (Xcode for an iOS app,
+/// Android Studio for a Gradle build), whether installed or not.
+#[tauri::command]
+#[specta::specta]
+pub async fn external_suggested_editors(path: String) -> AppResult<Vec<String>> {
+    blocking(move || Ok(external::suggested_editors(&PathBuf::from(path)))).await
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn external_open_editor(editor_id: String, path: String) -> AppResult<()> {

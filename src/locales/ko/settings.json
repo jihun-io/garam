@@ -70,7 +70,8 @@
     "editor": "에디터",
     "terminal": "터미널",
     "firstFound": "처음 찾은 앱 ({{name}})",
-    "noneFound": "찾지 못함"
+    "noneFound": "찾지 못함",
+    "editorHint": "저장소마다 다른 에디터를 쓰려면 “다른 앱에서 열기” 메뉴의 “이 저장소의 기본 에디터”에서 고르세요."
   },
   "sync": {
     "title": "동기화",

@@ -27,7 +27,7 @@ export function AppsSettings() {
 
   return (
     <>
-      <Setting label={t("apps.editor")}>
+      <Setting label={t("apps.editor")} hint={t("apps.editorHint")}>
         {(id) => (
           <Select
             id={id}

@@ -160,6 +160,19 @@ pub async fn repo_set_account(
     blocking(move || store.set_account(&path, account)).await
 }
 
+/// Chooses the editor "Open in editor" uses for the repository; `None`
+/// follows the app settings.
+#[tauri::command]
+#[specta::specta]
+pub async fn repo_set_editor(
+    store: Store<'_>,
+    path: String,
+    editor: Option<String>,
+) -> AppResult<()> {
+    let store = Arc::clone(&store);
+    blocking(move || store.set_editor(&path, editor)).await
+}
+
 fn destination(parent: &str, name: &str) -> AppResult<PathBuf> {
     let name = validate_name(name)?;
     let parent = PathBuf::from(parent);

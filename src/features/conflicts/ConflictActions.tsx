@@ -10,8 +10,7 @@ import { commands, unwrap, type ConflictFile, type Side } from "../../ipc";
 import { joinPath } from "../../lib/paths";
 import { splitPath } from "../changes/fileState";
 import { useNotify } from "../notify/notifyStore";
-import { useEditorsPreferredFirst } from "../repos/api";
-import { useSettings } from "../settings/api";
+import { useRepoEditor } from "../repos/api";
 import { useConflictActions } from "./api";
 import styles from "./Conflicts.module.css";
 
@@ -19,7 +18,7 @@ import styles from "./Conflicts.module.css";
 export function ConflictActions({ repo, file }: { repo: string; file: ConflictFile }) {
   const { t } = useTranslation("conflicts");
   const { resolve, markResolved } = useConflictActions(repo);
-  const editors = useEditorsPreferredFirst(useSettings().editor);
+  const { editors } = useRepoEditor(repo);
   const showError = useNotify((s) => s.showError);
   const [confirmMarkers, setConfirmMarkers] = useState(false);
   const busy = resolve.isPending || markResolved.isPending;

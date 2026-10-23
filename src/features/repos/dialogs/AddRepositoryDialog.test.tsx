@@ -17,6 +17,7 @@ const entry = {
   addedAt: 0,
   lastOpenedAt: 0,
   account: null,
+  editor: null,
   missing: false,
 };
 
