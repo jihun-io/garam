@@ -66,6 +66,7 @@ export function ConflictPanel({ repo, state }: { repo: string; state: ConflictSt
       ) : (
         <Button
           variant="primary"
+          icon="check"
           className={styles.continue}
           disabled={state.files.length > 0 || busy}
           onClick={finish}
@@ -73,7 +74,7 @@ export function ConflictPanel({ repo, state }: { repo: string; state: ConflictSt
           {t(`continue.${operation}`)}
         </Button>
       )}
-      <Button onClick={() => setAborting(true)} disabled={busy}>
+      <Button icon="close" onClick={() => setAborting(true)} disabled={busy}>
         {t("abort.button")}
       </Button>
       {aborting && (

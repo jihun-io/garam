@@ -107,8 +107,7 @@ export function TagsButton({ repo, states }: { repo: string; states: TagStates }
           </div>
           {remote && missing.length > 0 && (
             <div className={styles.notice}>
-              <Button disabled={push.isPending} onClick={() => pushTags(missing)}>
-                <Icon name="push" size={14} />
+              <Button icon="push" disabled={push.isPending} onClick={() => pushTags(missing)}>
                 {t("tags.pushMissing", { count: missing.length, remote })}
               </Button>
             </div>
@@ -116,7 +115,7 @@ export function TagsButton({ repo, states }: { repo: string; states: TagStates }
           {remote && states.failed && (
             <div className={styles.notice}>
               <p>{t("tags.unknown", { remote })}</p>
-              <Button disabled={states.rechecking} onClick={states.recheck}>
+              <Button icon="fetch" disabled={states.rechecking} onClick={states.recheck}>
                 {t("tags.recheck")}
               </Button>
             </div>

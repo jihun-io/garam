@@ -366,6 +366,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
         <div className={styles.peekBar}>
           <p>{t("peek.note")}</p>
           <Button
+            icon="create"
             onClick={() =>
               openBranchDialog({
                 kind: "create",

@@ -125,6 +125,7 @@ function AccountRow({ account }: { account: Account }) {
         </span>
       </span>
       <Button
+        icon="signOut"
         disabled={signOut.isPending}
         aria-label={t("accounts.signOutLabel", { login: account.login })}
         onClick={() => signOut.mutate(account.key, { onError: showError })}
@@ -192,7 +193,7 @@ function SignIn() {
   if (!signIn.isPending) {
     return (
       <div className={styles.signIn}>
-        <Button variant="primary" onClick={start}>
+        <Button variant="primary" icon="create" onClick={start}>
           {t("accounts.add")}
         </Button>
         {error && error.kind !== "cancelled" && <ErrorMessage error={error} />}
@@ -213,8 +214,10 @@ function SignIn() {
           </code>
           <p className={styles.hint}>{t("accounts.waiting")}</p>
           <div className={styles.actions}>
-            <Button onClick={() => void copy(code.userCode)}>{t("accounts.copyCode")}</Button>
-            <Button onClick={() => void openUrl(code.verificationUri)}>
+            <Button icon="copy" onClick={() => void copy(code.userCode)}>
+              {t("accounts.copyCode")}
+            </Button>
+            <Button icon="openIn" onClick={() => void openUrl(code.verificationUri)}>
               {t("accounts.openBrowser")}
             </Button>
             <Button variant="ghost" onClick={cancel}>

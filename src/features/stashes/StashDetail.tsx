@@ -84,12 +84,17 @@ export function StashDetail({ repo, stash }: { repo: string; stash: Stash }) {
         </p>
         <div className={styles.actions}>
           <Tooltip content={t("actions.popHint")}>
-            <Button variant="primary" disabled={busy} onClick={() => restore(stash.oid, true)}>
+            <Button
+              variant="primary"
+              icon="restoreStash"
+              disabled={busy}
+              onClick={() => restore(stash.oid, true)}
+            >
               {t("actions.pop")}
             </Button>
           </Tooltip>
           <Tooltip content={t("actions.applyHint")}>
-            <Button disabled={busy} onClick={() => restore(stash.oid, false)}>
+            <Button icon="restoreStash" disabled={busy} onClick={() => restore(stash.oid, false)}>
               {t("actions.apply")}
             </Button>
           </Tooltip>

@@ -51,8 +51,12 @@ export function AboutWindow() {
       <h1 className={styles.name}>Garam</h1>
       {version && <p className={styles.version}>{t("version", { version })}</p>}
       <div className={styles.links}>
-        <Button onClick={() => void openUrl(WEBSITE_URL).catch(showError)}>{t("website")}</Button>
-        <Button onClick={() => void openUrl(LICENSE_URL).catch(showError)}>{t("license")}</Button>
+        <Button icon="openIn" onClick={() => void openUrl(WEBSITE_URL).catch(showError)}>
+          {t("website")}
+        </Button>
+        <Button icon="openIn" onClick={() => void openUrl(LICENSE_URL).catch(showError)}>
+          {t("license")}
+        </Button>
       </div>
       <p className={styles.copyright}>{t("copyright")}</p>
     </main>

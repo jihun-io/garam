@@ -2,7 +2,6 @@ import { RadioGroup } from "radix-ui";
 import { useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
-import { Icon } from "../../components/Icon";
 import { Button } from "../../components/ui/Button";
 import { IconButton } from "../../components/ui/IconButton";
 import segmented from "../../components/ui/Segmented.module.css";
@@ -96,6 +95,7 @@ export function CompareView({
         <div className={styles.multiActions}>
           <CompareModeSwitch value={pane.mode} onChange={(mode) => onChange({ ...pane, mode })} />
           <Button
+            icon="swap"
             onClick={() =>
               onChange({
                 ...pane,
@@ -106,7 +106,6 @@ export function CompareView({
               })
             }
           >
-            <Icon name="swap" size={14} />
             {t("compare.swap")}
           </Button>
         </div>

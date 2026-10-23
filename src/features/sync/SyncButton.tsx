@@ -265,9 +265,11 @@ export function SyncButton({ repo }: { repo: string }) {
                 disabled={!remote}
                 onSelect={() => start("fetch")}
               >
+                <Icon name="fetch" size={16} />
                 {t("menu.fetch")}
               </DropdownMenu.Item>
               <DropdownMenu.Item className={menu.item} disabled={!tracked} onSelect={pull}>
+                <Icon name="pull" size={16} />
                 {t("menu.pull")}
               </DropdownMenu.Item>
               <DropdownMenu.Item
@@ -275,6 +277,7 @@ export function SyncButton({ repo }: { repo: string }) {
                 disabled={!tracked || (branch.ahead === 0 && tags === 0)}
                 onSelect={() => start("push")}
               >
+                <Icon name="push" size={16} />
                 {t("menu.push")}
               </DropdownMenu.Item>
             </DropdownMenu.Content>

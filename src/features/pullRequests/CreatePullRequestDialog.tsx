@@ -113,13 +113,17 @@ function AccessError({ error }: { error: AppError }) {
     <div className={styles.errorBlock}>
       <ErrorMessage error={error} />
       {error.kind === "github_sso_required" && error.params.url && (
-        <Button onClick={() => open(error.params.url)}>{t("dialog.authorizeSso")}</Button>
+        <Button icon="openIn" onClick={() => open(error.params.url)}>
+          {t("dialog.authorizeSso")}
+        </Button>
       )}
       {/* GitHub hides a repository an organization blocks Garam from, so
           "not found" may be the same block. */}
       {(error.kind === "github_oauth_app_restricted" || error.kind === "github_not_found") &&
         settingsUrl && (
-          <Button onClick={() => open(settingsUrl)}>{t("dialog.requestAccess")}</Button>
+          <Button icon="openIn" onClick={() => open(settingsUrl)}>
+            {t("dialog.requestAccess")}
+          </Button>
         )}
     </div>
   );

@@ -161,13 +161,17 @@ export function RepoPicker({
             </ul>
           )}
           <div className={styles.footer}>
-            <Button variant="ghost" onClick={() => openFromPicker("add")}>
+            <Button variant="ghost" icon="addRepository" onClick={() => openFromPicker("add")}>
               {t("actions.add")}
             </Button>
-            <Button variant="ghost" onClick={() => openFromPicker("clone")}>
+            <Button variant="ghost" icon="clone" onClick={() => openFromPicker("clone")}>
               {t("actions.clone")}
             </Button>
-            <Button variant="ghost" onClick={() => openFromPicker("create")}>
+            <Button
+              variant="ghost"
+              icon="createRepository"
+              onClick={() => openFromPicker("create")}
+            >
               {t("actions.create")}
             </Button>
           </div>

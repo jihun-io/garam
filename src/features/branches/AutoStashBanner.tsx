@@ -26,10 +26,15 @@ export function AutoStashBanner({ repo, branch }: { repo: string; branch: string
     <div className={styles.banner} role="status">
       <p>{t("stash.banner")}</p>
       <div className={styles.bannerActions}>
-        <Button variant="primary" disabled={busy} onClick={() => restore(oid, true)}>
+        <Button
+          variant="primary"
+          icon="restoreStash"
+          disabled={busy}
+          onClick={() => restore(oid, true)}
+        >
           {t("stash.restore")}
         </Button>
-        <Button disabled={busy} onClick={() => setConfirmDrop(true)}>
+        <Button icon="discard" disabled={busy} onClick={() => setConfirmDrop(true)}>
           {t("stash.discard")}
         </Button>
       </div>

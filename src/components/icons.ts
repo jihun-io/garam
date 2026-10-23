@@ -4,15 +4,19 @@
 import { Archive } from "@phosphor-icons/react/dist/csr/Archive";
 import { ArrowCircleRight } from "@phosphor-icons/react/dist/csr/ArrowCircleRight";
 import { ArrowCircleUp } from "@phosphor-icons/react/dist/csr/ArrowCircleUp";
+import { ArrowCounterClockwise } from "@phosphor-icons/react/dist/csr/ArrowCounterClockwise";
 import { ArrowDown } from "@phosphor-icons/react/dist/csr/ArrowDown";
+import { ArrowsClockwise } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
+import { ArrowsInLineVertical } from "@phosphor-icons/react/dist/csr/ArrowsInLineVertical";
+import { ArrowsLeftRight } from "@phosphor-icons/react/dist/csr/ArrowsLeftRight";
 import { ArrowSquareOut } from "@phosphor-icons/react/dist/csr/ArrowSquareOut";
 import { ArrowUp } from "@phosphor-icons/react/dist/csr/ArrowUp";
-import { ArrowsLeftRight } from "@phosphor-icons/react/dist/csr/ArrowsLeftRight";
-import { ArrowsClockwise } from "@phosphor-icons/react/dist/csr/ArrowsClockwise";
+import { Broom } from "@phosphor-icons/react/dist/csr/Broom";
 import { CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
 import { CaretRight } from "@phosphor-icons/react/dist/csr/CaretRight";
 import { Check } from "@phosphor-icons/react/dist/csr/Check";
 import { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
+import { Cherries } from "@phosphor-icons/react/dist/csr/Cherries";
 import { CircleDashed } from "@phosphor-icons/react/dist/csr/CircleDashed";
 import { CircleNotch } from "@phosphor-icons/react/dist/csr/CircleNotch";
 import { ClockCounterClockwise } from "@phosphor-icons/react/dist/csr/ClockCounterClockwise";
@@ -23,29 +27,37 @@ import { CloudWarning } from "@phosphor-icons/react/dist/csr/CloudWarning";
 import { Code } from "@phosphor-icons/react/dist/csr/Code";
 import { Copy } from "@phosphor-icons/react/dist/csr/Copy";
 import { DotsThree } from "@phosphor-icons/react/dist/csr/DotsThree";
+import { DownloadSimple } from "@phosphor-icons/react/dist/csr/DownloadSimple";
 import { EyeSlash } from "@phosphor-icons/react/dist/csr/EyeSlash";
-import { FolderSimple } from "@phosphor-icons/react/dist/csr/FolderSimple";
 import { Files } from "@phosphor-icons/react/dist/csr/Files";
+import { FolderOpen } from "@phosphor-icons/react/dist/csr/FolderOpen";
+import { FolderSimple } from "@phosphor-icons/react/dist/csr/FolderSimple";
+import { FolderSimplePlus } from "@phosphor-icons/react/dist/csr/FolderSimplePlus";
 import { Funnel } from "@phosphor-icons/react/dist/csr/Funnel";
 import { GearSix } from "@phosphor-icons/react/dist/csr/GearSix";
 import { GitBranch } from "@phosphor-icons/react/dist/csr/GitBranch";
 import { GitCommit } from "@phosphor-icons/react/dist/csr/GitCommit";
 import { GitDiff } from "@phosphor-icons/react/dist/csr/GitDiff";
+import { GitMerge } from "@phosphor-icons/react/dist/csr/GitMerge";
 import { GitPullRequest } from "@phosphor-icons/react/dist/csr/GitPullRequest";
 import { HardDrives } from "@phosphor-icons/react/dist/csr/HardDrives";
 import { Info } from "@phosphor-icons/react/dist/csr/Info";
 import { Key } from "@phosphor-icons/react/dist/csr/Key";
 import { MagnifyingGlass } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
 import { MinusCircle } from "@phosphor-icons/react/dist/csr/MinusCircle";
-import { NotePencil } from "@phosphor-icons/react/dist/csr/NotePencil";
 import { Monitor } from "@phosphor-icons/react/dist/csr/Monitor";
 import { Moon } from "@phosphor-icons/react/dist/csr/Moon";
+import { NotePencil } from "@phosphor-icons/react/dist/csr/NotePencil";
+import { Plus } from "@phosphor-icons/react/dist/csr/Plus";
 import { PlusCircle } from "@phosphor-icons/react/dist/csr/PlusCircle";
 import { Prohibit } from "@phosphor-icons/react/dist/csr/Prohibit";
 import { Record as RecordIcon } from "@phosphor-icons/react/dist/csr/Record";
+import { SignOut } from "@phosphor-icons/react/dist/csr/SignOut";
 import { Sun } from "@phosphor-icons/react/dist/csr/Sun";
 import { Tag } from "@phosphor-icons/react/dist/csr/Tag";
 import { Terminal } from "@phosphor-icons/react/dist/csr/Terminal";
+import { Trash } from "@phosphor-icons/react/dist/csr/Trash";
+import { TrayArrowUp } from "@phosphor-icons/react/dist/csr/TrayArrowUp";
 import { UserCheck } from "@phosphor-icons/react/dist/csr/UserCheck";
 import { WarningCircle } from "@phosphor-icons/react/dist/csr/WarningCircle";
 import { X } from "@phosphor-icons/react/dist/csr/X";
@@ -77,6 +89,21 @@ export const Icons = {
   swap: ArrowsLeftRight,
   compare: GitDiff,
   filter: Funnel,
+
+  // Actions on buttons (docs/UI.md 4.2)
+  create: Plus,
+  addRepository: FolderOpen,
+  clone: DownloadSimple,
+  createRepository: FolderSimplePlus,
+  merge: GitMerge,
+  cherryPick: Cherries,
+  revert: ArrowCounterClockwise,
+  squash: ArrowsInLineVertical,
+  cleanUp: Broom,
+  /** Throws work away: discarding changes, dropping a stash. */
+  discard: Trash,
+  restoreStash: TrayArrowUp,
+  signOut: SignOut,
 
   // Notices and empty states
   info: Info,

@@ -54,6 +54,7 @@ export function StashConflictBanner({
       <p>{t("conflict.resolvedBody", { title: stashTitle(t, stash) })}</p>
       <div className={styles.bannerActions}>
         <Button
+          icon="discard"
           disabled={drop.isPending}
           onClick={() =>
             drop.mutate(stash.oid, { onSuccess: () => clear(repo), onError: showError })

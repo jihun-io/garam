@@ -44,7 +44,7 @@ export function ConflictActions({ repo, file }: { repo: string; file: ConflictFi
         </Button>
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
-            <Button disabled={busy}>
+            <Button icon="editor" disabled={busy}>
               {t("file.openEditor")}
               <Icon name="dropdown" size={12} />
             </Button>
@@ -71,6 +71,7 @@ export function ConflictActions({ repo, file }: { repo: string; file: ConflictFi
         </DropdownMenu.Root>
         <Button
           variant="primary"
+          icon="check"
           disabled={busy}
           onClick={() => (file.hasMarkers ? setConfirmMarkers(true) : mark())}
         >

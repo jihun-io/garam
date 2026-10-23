@@ -71,11 +71,12 @@ export function UpdateNotice() {
   };
   return (
     <Card text={t("available", { version: available.version })}>
-      <Button variant="primary" onClick={install}>
+      <Button variant="primary" icon="update" onClick={install}>
         {t("install")}
       </Button>
       <Button
         variant="ghost"
+        icon="openIn"
         onClick={() => void openUrl(releaseUrl(available.version)).catch(showError)}
       >
         {t("notes")}

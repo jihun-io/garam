@@ -67,16 +67,22 @@ export function MultiSelectionView({
         <p className={styles.commitBody}>{t("multi.body")}</p>
         <div className={styles.multiActions}>
           {can.cherryPick && (
-            <Button onClick={() => actions.cherryPick(commits)}>{t("multi.cherryPick")}</Button>
+            <Button icon="cherryPick" onClick={() => actions.cherryPick(commits)}>
+              {t("multi.cherryPick")}
+            </Button>
           )}
-          <Button onClick={() => actions.cherryPickOnto(commits)}>
+          <Button icon="cherryPick" onClick={() => actions.cherryPickOnto(commits)}>
             {t("multi.cherryPickOnto")}
           </Button>
           {can.revert && (
-            <Button onClick={() => actions.revert(commits)}>{t("multi.revert")}</Button>
+            <Button icon="revert" onClick={() => actions.revert(commits)}>
+              {t("multi.revert")}
+            </Button>
           )}
           {can.squash && (
-            <Button onClick={() => actions.squash(commits)}>{t("multi.squash")}</Button>
+            <Button icon="squash" onClick={() => actions.squash(commits)}>
+              {t("multi.squash")}
+            </Button>
           )}
           <Button variant="ghost" onClick={onClear}>
             {t("multi.clear")}

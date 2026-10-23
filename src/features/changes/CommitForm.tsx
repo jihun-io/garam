@@ -271,7 +271,13 @@ export function CommitForm({
         }
         side="top"
       >
-        <Button type="submit" variant="primary" className={styles.submit} disabled={!ready}>
+        <Button
+          type="submit"
+          variant="primary"
+          icon="commit"
+          className={styles.submit}
+          disabled={!ready}
+        >
           <span className={styles.label}>{label}</span>
         </Button>
       </Tooltip>

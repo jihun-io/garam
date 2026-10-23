@@ -32,10 +32,10 @@ export function SelectedFiles({
         <Button disabled={toggleable.length === 0} onClick={() => onToggle(toggleable)}>
           {allIncluded ? t("selection.exclude") : t("selection.include")}
         </Button>
-        <Button disabled={conflicted} onClick={onStash}>
+        <Button icon="stash" disabled={conflicted} onClick={onStash}>
           {t("selection.stash")}
         </Button>
-        <Button variant="danger" onClick={onDiscard}>
+        <Button variant="danger" icon="discard" onClick={onDiscard}>
           {t("selection.discard")}
         </Button>
       </div>

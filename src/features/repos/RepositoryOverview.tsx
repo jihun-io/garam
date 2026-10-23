@@ -45,7 +45,7 @@ export function RepositoryOverview({ repository }: { repository: RepositoryEntry
       </h1>
       <div className={styles.pathRow}>
         <code className={styles.path}>{repository.path}</code>
-        <Button variant="ghost" onClick={() => void copyPath()} aria-live="polite">
+        <Button variant="ghost" icon="copy" onClick={() => void copyPath()} aria-live="polite">
           {copied ? t("overview.copied") : t("overview.copyPath")}
         </Button>
       </div>
@@ -55,7 +55,7 @@ export function RepositoryOverview({ repository }: { repository: RepositoryEntry
           <h2 className={styles.missingTitle}>{t("overview.missingTitle")}</h2>
           <p>{t("overview.missingBody")}</p>
           <div className={styles.actions}>
-            <Button variant="primary" onClick={() => void locate()}>
+            <Button variant="primary" icon="search" onClick={() => void locate()}>
               {t("overview.locate")}
             </Button>
             <Button onClick={() => remove.mutate(repository.path, { onError: showError })}>

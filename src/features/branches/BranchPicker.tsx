@@ -291,6 +291,7 @@ export function BranchPicker({
           <div className={styles.footer}>
             <Button
               variant="ghost"
+              icon="create"
               onClick={() => fromPicker(() => openDialog({ kind: "create" }))}
             >
               {t("picker.new")}
@@ -298,17 +299,23 @@ export function BranchPicker({
             {current && (
               <Button
                 variant="ghost"
+                icon="merge"
                 onClick={() => fromPicker(() => openDialog({ kind: "merge" }))}
               >
                 {t("picker.merge", { branch: current })}
               </Button>
             )}
-            <Button variant="ghost" onClick={() => fromPicker(() => runCommand("branch.compare"))}>
+            <Button
+              variant="ghost"
+              icon="compare"
+              onClick={() => fromPicker(() => runCommand("branch.compare"))}
+            >
               {t("picker.compare")}
             </Button>
             {cleanupCount > 0 && (
               <Button
                 variant="ghost"
+                icon="cleanUp"
                 onClick={() => fromPicker(() => openDialog({ kind: "cleanup" }))}
               >
                 {t("picker.cleanup", { count: cleanupCount })}
