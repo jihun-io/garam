@@ -237,10 +237,52 @@ GitHub 계정의 남은 항목(조직 멤버십 추천, 복제할 때 계정 고
 
 Garam에서 바로 PR을 만들고, 브랜치가 어떤 PR과 이어져 있는지 본다. GitHub 계정 로그인(Device Flow, 키체인 토큰) 위에 얹는다. 호스팅 계층을 나눠 두어 v0.3의 GitLab Merge Request로 같은 화면을 잇는다.
 
-- [ ] PR 만들기: 브랜치를 게시한 직후나 브랜치 메뉴에서 연다. 제목·본문은 커밋 메시지로 채우고(커밋이 하나면 그 요약과 본문), 기준 브랜치를 고르며, 브랜치 비교 화면(세 점 비교)을 미리 보기로 쓴다. 초안 PR 선택. 게시하지 않은 브랜치면 먼저 게시한다
-- [ ] PR 상태: 브랜치 목록과 툴바에 PR 번호, CI 상태, 리뷰 상태 배지. 누르면 브라우저에서 PR을 연다
-- [ ] PR 체크아웃: 다른 사람의 PR을 받아 내 컴퓨터에서 확인한다(포크의 PR 포함)
-- **설계 메모**: 지금 OAuth scope로 PR을 만들 수 있는지 확인한다. scope를 넓히면 기존 사용자는 다시 로그인해야 하므로, 필요할 때 다시 로그인하라고 안내한다. 기본 원격이 github.com이 아니면 PR 기능을 숨긴다
+v0.2에서는 **PR 만들기와 상태 배지**까지 한다. PR 체크아웃은 후보로 남긴다(아래 "제외").
+
+**실험으로 확인한 것** (2026-10-23. gh CLI의 토큰으로 했다. Garam 토큰과 같은 OAuth App 사용자 토큰(`gho_`)이고, scope는 `repo workflow read:org gist`다. PR이 실제로 만들어지는 요청은 보내지 않았다)
+
+- **지금 scope(`repo workflow read:org user:email`)로 PR을 만들 수 있다. scope를 넓히거나 다시 로그인할 필요가 없다.** 존재하지 않는 head로 `POST /repos/{owner}/{repo}/pulls`를 보내면 공개 저장소와 비공개 저장소 모두 권한 검사를 통과해 422 `{"field":"head","code":"invalid"}`가 온다. GraphQL은 `X-Accepted-OAuth-Scopes: repo`이고 역시 통과한다. 토큰 없이 비공개 저장소를 조회하면 403이 아니라 404가 오므로, 404는 "저장소가 없음"과 "볼 권한이 없음"을 함께 뜻한다
+- 만들기의 422 모양: head가 원격에 없으면 `field: head, code: invalid`, base가 없으면 `field: base, code: invalid`, 차이가 없으면 `code: custom, message: "No commits between main and main"`. 같은 head의 열린 PR이 이미 있을 때의 `custom` "A pull request already exists…"는 문서로만 확인했다(실험하려면 PR을 만들어야 한다). 메시지 문장은 바뀔 수 있으므로 Garam은 `field`·`code`로 나누고, 이미 있는 PR과 차이 없음은 만들기 전에 직접 확인해 막는다
+- **CI 상태는 REST의 combined status(`/commits/{ref}/status`)로 보면 안 된다.** 상태가 하나도 없어도 `state: pending, total_count: 0`을 준다. GitHub Actions는 status가 아니라 check run을 남기므로, Actions만 쓰는 저장소는 늘 "진행 중"으로 보이게 된다. GraphQL `statusCheckRollup`은 check run과 status를 합친 하나의 상태이고, 아무것도 없으면 `null`이다(같은 커밋에서 확인)
+- GraphQL 한 번(비용 1점, 시간당 5000점)으로 열린 PR 목록의 번호·초안 여부·head 브랜치·head 소유자·`reviewDecision`·마지막 커밋의 `statusCheckRollup`을 모두 받는다. `pullRequests(headRefName:)`는 소유자를 거르지 않아 포크의 같은 이름 브랜치도 섞이므로 `headRepositoryOwner`로 다시 거른다. `reviewDecision`은 `APPROVED`·`CHANGES_REQUESTED`·`REVIEW_REQUIRED`이고, 필수 리뷰 규칙이 없으면 `null`이다(문서)
+- REST에 `If-None-Match`(ETag)를 붙이면 바뀌지 않았을 때 304가 오고 rate limit을 쓰지 않는다(core 사용량 12→12). GraphQL에는 조건부 요청이 없다
+- 포크: GraphQL `isFork`, `parent { nameWithOwner defaultBranchRef }`로 PR을 보낼 상위 저장소와 기본 기준 브랜치를 얻는다. 포크에서 상위 저장소로 보낼 때 head는 `포크소유자:브랜치`다
+- 문서로만 확인한 것: 조직이 OAuth App 접근 제한을 켜 두었으면 그 조직 저장소에 Garam 토큰이 통하지 않는다(403, 메시지에 "OAuth App access restrictions"). SAML SSO 조직은 토큰을 그 조직에 승인해야 하며 403에 `X-GitHub-SSO` 헤더(승인 URL)가 붙는다. GitHub Free의 비공개 저장소는 초안 PR을 만들 수 없다(422)
+
+**언제 보이나**
+
+- PR 대상 저장소의 원격(현재 브랜치 업스트림의 원격, 없으면 기본 원격)이 github.com일 때만. 아니면 PR 메뉴와 배지를 모두 숨긴다
+- 저장소에 Garam 계정이 연결돼 있어야 API를 부를 수 있다. 계정이 없으면 배지는 보이지 않고(묻지 않는다), "PR 만들기…"를 누르면 "이 저장소의 계정과 작성자" 대화상자로(로그인한 계정이 없으면 로그인으로) 이끈다
+- SSH 원격도 계정을 고를 수 있다. 푸시는 지금처럼 SSH 키로 하고 계정은 GitHub API에만 쓴다. "이 저장소의 계정과 작성자"의 SSH 안내 문구를 그에 맞게 바꾼다
+
+**화면**
+
+- [ ] 진입점: 브랜치 메뉴 "PR 만들기…"(현재 브랜치에 열린 PR이 있으면 "PR 보기"로 바뀌어 브라우저를 연다), 브랜치 목록 행의 오른쪽 클릭, 게시·푸시 완료 알림의 동작 버튼 "PR 만들기"(아직 PR이 없을 때만). 단축키는 두지 않는다(⌘R은 새로 고침, ⇧⌘R은 브랜치 이름 바꾸기)
+- [ ] PR 만들기 대화상자(큰 시트): 왼쪽에 보낼 곳(포크면 "상위 저장소 / 내 포크", 기본은 상위), 기준 브랜치(검색 가능, 기본은 보낼 저장소의 기본 브랜치), 제목, 본문, "초안으로 만들기". 오른쪽은 브랜치 비교 화면(세 점 비교, 방식 전환 숨김)을 미리 보기로 넣고 "커밋 n개 · 파일 m개"를 보인다. 비교에 쓰는 기준은 원격 추적 브랜치(`refs/remotes/origin/main`)이고, 대화상자를 열 때 묻지 않는 가져오기를 한 번 한다
+- [ ] 제목·본문 채우기: 기준과 갈라진 뒤 커밋이 하나면 그 요약과 본문(Co-authored-by 꼬리말은 그대로 둔다). 여러 개면 제목은 브랜치 이름을 읽기 좋게(`feat/tag-list` → "Feat/tag list"), 본문은 커밋 요약 목록. 기준 브랜치에 PR 템플릿(`.github/pull_request_template.md`, 루트·`docs/`의 같은 이름, 대소문자 무시)이 있으면 본문은 템플릿으로 채운다(웹에서 PR을 만들 때와 같다. API는 템플릿을 채워 주지 않는다). 사용자가 고친 뒤에 기준 브랜치를 바꾸면 덮어쓰지 않는다
+- [ ] 만들기 전 확인(버튼 이름이 상황을 말한다): 게시하지 않은 브랜치면 "게시하고 만들기", 푸시하지 않은 커밋이 있으면 "푸시하고 만들기"(PR은 원격 브랜치로 만들어지므로 빠진다). 같은 head의 열린 PR이 이미 있으면 대화상자 대신 "이미 PR #12가 있습니다 · 브라우저에서 열기". 기준과 차이가 없으면 만들기를 끄고 이유를 보인다. 무료 플랜 비공개 저장소에서 초안이 거부되면 오류를 번역해 보이고 초안을 끈 채 다시 시도할 수 있게 한다
+- [ ] 만든 뒤: 알림 "PR #12를 만들었습니다"와 동작 버튼 "브라우저에서 열기", 배지를 바로 갱신
+- [ ] 상태 배지(툴바): 현재 브랜치 버튼 옆에 `#12`, CI 아이콘(성공·실패·진행 중, 없으면 표시 안 함), 리뷰 상태(승인됨·변경 요청, 그 외는 표시 안 함). 초안은 흐리게. 누르면 브라우저에서 PR을 연다. 툴팁에 상태를 문장으로("PR #12 · 검사 3개 중 1개 실패 · 변경 요청됨"). 병합됐거나 닫힌 PR은 브랜치 끝 커밋이 그 PR의 마지막 커밋과 같을 때만 "병합됨"·"닫힘"으로 보인다(그 뒤로 커밋했으면 새 PR을 만들 수 있게 숨긴다)
+- [ ] 상태 배지(브랜치 목록): 로컬 브랜치 행 오른쪽에 열린 PR의 `#12`와 CI 점. 업스트림 브랜치 이름으로 짝짓는다(로컬 이름과 다를 수 있다)
+- [ ] 조회 시점: 저장소를 열 때, 창이 포커스를 얻을 때(마지막 조회 뒤 1분이 지났으면), 백그라운드 가져오기 주기마다, 푸시·게시·PR 만들기 뒤. 현재 브랜치 PR의 CI가 진행 중이면 창이 앞에 있는 동안 1분마다. 실패하면 배지를 조용히 숨긴다(배지 때문에 오류 알림을 띄우지 않는다)
+- [ ] 용어(GLOSSARY): 처음 나올 때 "풀 리퀘스트(PR)", 메뉴·배지처럼 좁은 곳은 "PR". GLOSSARY의 외래어 음역 원칙을 따른다
+
+**엔진**
+
+- [ ] 호스팅 계층: 프론트에는 호스트에 묶이지 않는 타입(`PullRequestSummary`: 번호, URL, 상태, 초안, head 이름·소유자, 마지막 커밋, 검사 상태, 리뷰 상태)만 보낸다. 지금은 github.com 구현 하나뿐이라 trait는 v0.3 GitLab을 붙일 때 만든다
+- [ ] `garam-github`: GraphQL 호출 도우미와 세 가지 조회·한 가지 쓰기
+  - `repository(owner, name)`: 포크 여부, 상위 저장소와 그 기본 브랜치, 내 권한
+  - `open_pull_requests(owner, name)`: 열린 PR 최근 100개(브랜치 목록 배지용). 커서로 더 받지는 않는다
+  - `pull_requests_for_branch(owner, name, head_owner, branch)`: 상태 전부, 최근 것부터(툴바 배지와 "이미 있음" 확인)
+  - `create_pull_request(owner, name, {title, body, head, base, draft})`: REST `POST /pulls`. 번호와 URL을 돌려준다
+  - 원격 URL에서 호스트·소유자·이름 읽기(`https`·`ssh://`·`git@host:` 형식, `.git` 꼬리 제거). 지금 프론트의 `parseRemote`와 같은 규칙
+- [ ] 오류(`ErrorKind`에 더함): `not_found`(404, 저장소가 없거나 계정에 권한이 없음), `oauth_app_restricted`(403 + 접근 제한 메시지, 조직 소유자에게 승인을 요청하라고 Garam의 권한 설정 페이지로 안내), `sso_required`(403 + `X-GitHub-SSO`, 헤더의 URL을 연다), `validation`(422의 `field`·`code`를 params로), `rate_limited`(403·429 + `X-RateLimit-Remaining: 0`). 기존 `unauthorized`는 "다시 로그인"으로 이어진다
+- [ ] `garam-git`: 기준 ref에서 PR 템플릿 읽기(`git ls-tree`로 후보 경로를 찾고 `git cat-file blob`), 제목·본문 채우기에 쓸 갈라진 뒤 커밋 목록(브랜치 비교의 세 점 커밋 목록을 그대로 쓴다)
+- [ ] Tauri 명령(`commands/pull_requests.rs`): `pull_request_context(repo)`(보낼 수 있는 저장소들과 기본 기준 브랜치, 계정 유무), `pull_requests(repo)`(로컬 브랜치별 PR 요약), `pull_request_template(repo, base_ref)`, `pull_request_create(repo, input)`. 토큰은 저장소에 연결된 계정의 것을 `AccountStore::token`으로 꺼내고 프론트로 보내지 않는다
+- [ ] 테스트: API는 mockito로(만들기 성공, 422의 세 모양, 접근 제한 403, SSO 헤더, rate limit, rollup이 `null`인 PR, 포크의 같은 이름 브랜치 거르기), 템플릿 찾기와 커밋 목록은 `TestRepo`로. 실제 PR을 만들어 보는 확인은 사용자가 고른 테스트 저장소에서 한 번 한다
+- [ ] ARCHITECTURE.md 2.10에 GitHub API 사용(호출 목록, 조회 주기, 오류 매핑)을 적는다
+
+**제외**: PR 체크아웃(다른 사람의 PR, 포크 원격 추가가 따라와 범위가 크다. v0.3 후보), 리뷰어·담당자·라벨 지정(GitHub에서 한다), 앱 안에서 PR 내용·리뷰·댓글 보기, 병합 버튼, 본문 마크다운 미리 보기, 열린 PR 100개를 넘는 저장소의 브랜치 목록 배지(현재 브랜치 배지는 따로 조회하므로 영향 없음).
 
 ### 상황 알려 주기 (v0.2)
 
