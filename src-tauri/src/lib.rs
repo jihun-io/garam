@@ -6,6 +6,7 @@ mod external;
 mod locale;
 mod logins;
 mod operations;
+mod relaunch;
 mod repositories;
 mod settings;
 mod storage;

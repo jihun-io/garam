@@ -55,7 +55,7 @@ pub const SETTINGS_CHANGED_EVENT: &str = "settings-changed";
 pub fn app_restart(app: AppHandle) {
     // Restarting skips the exit event that saves the window layout.
     app.state::<Arc<RepoWindows>>().flush();
-    app.restart();
+    crate::relaunch::restart(&app);
 }
 
 /// The operating system's accent color as `#rrggbb`, if it can be read.
