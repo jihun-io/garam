@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 
 import { CommandError, commands, unwrap, type PullOutcome } from "../../ipc";
 import { changesKeys, indexScope } from "../changes/api";
+import { tagKeys } from "../tags/keys";
 import { networkChannel } from "./networkChannel";
 import { useSyncStore, type SyncAction } from "./syncStore";
 
@@ -67,6 +68,8 @@ export async function runSync(
   } finally {
     useSyncStore.getState().finish(repo, operationId);
     await client.invalidateQueries({ queryKey: changesKeys.all(repo) });
+    // Fetching and pushing are when the remote's tags change.
+    await client.invalidateQueries({ queryKey: tagKeys.states(repo) });
   }
 }
 

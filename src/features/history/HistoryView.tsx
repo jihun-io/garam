@@ -31,6 +31,7 @@ import {
   useRevert,
 } from "./api";
 import { StashDetail } from "../stashes/StashDetail";
+import { useTagPush, useTagStates } from "../tags/api";
 import { CommitDetailView } from "./CommitDetailView";
 import { CompareView } from "./CompareView";
 import { CommitList, type CommitActions, type SelectHow } from "./CommitList";
@@ -51,7 +52,12 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
   const { t } = useTranslation("history");
   const status = useStatus(repo);
   const markers = useHistoryMarkers(repo);
-  const marks = useMemo(() => toMarks(markers.data), [markers.data]);
+  const tagStates = useTagStates(repo);
+  const marks = useMemo(
+    () => ({ ...toMarks(markers.data), tags: tagStates.states }),
+    [markers.data, tagStates.states],
+  );
+  const pushTags = useTagPush(repo);
   const filter = useSettledFilter(useHistoryFilter(repo));
   const resetFilter = useHistoryFilters((s) => s.reset);
   const unfiltered = isUnfiltered(filter);
@@ -131,8 +137,26 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
     createBranch: (commit) => openBranchDialog({ kind: "create", from: commit }),
     createTag: (commit) => openDialog({ kind: "tag", commit }),
     deleteTag: (commit, tag) => openDialog({ kind: "deleteTag", commit, tag }),
+    pushTag: (tag, differs) => {
+      const remote = tagStates.remote;
+      if (!remote) return;
+      if (differs) {
+        openDialog({ kind: "overwriteTag", tag, remote });
+        return;
+      }
+      pushTags.mutate(
+        { remote, names: [tag], force: false },
+        {
+          onSuccess: () => showInfo(t("done.tagPushed", { name: tag, remote })),
+          onError: showError,
+        },
+      );
+    },
     tagsAt: (commit) =>
-      (marks.refs.get(commit.oid) ?? []).filter((r) => r.kind === "tag").map((r) => r.name),
+      (marks.refs.get(commit.oid) ?? [])
+        .filter((r) => r.kind === "tag")
+        .map((r) => ({ name: r.name, sync: marks.tags?.get(r.name) ?? null })),
+    hasRemote: tagStates.remote !== null,
     checkout: (commit) => openDialog({ kind: "checkout", commit }),
     reset: (commit) => openDialog({ kind: "reset", commit }),
     cherryPick: (commit) =>
@@ -395,6 +419,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
         repo={repo}
         oid={selected.id}
         badges={marks.refs.get(selected.id) ?? []}
+        tags={marks.tags}
         sync={marks.sync.get(selected.id)}
         onCopyHash={copyHash}
       />
@@ -415,7 +440,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
     <div className={changesStyles.root}>
       <aside className={changesStyles.sidebar}>
         {tabs}
-        <HistorySearch repo={repo} />
+        <HistorySearch repo={repo} tagStates={tagStates} />
         <CommitList
           rows={rows}
           graph={graph}

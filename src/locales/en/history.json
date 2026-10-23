@@ -32,6 +32,8 @@
     "cherryPickOnto": "Cherry-pick onto Another Branch…",
     "cherryPickOntoMany_one": "Cherry-pick {{count}} Commit onto Another Branch…",
     "cherryPickOntoMany_other": "Cherry-pick {{count}} Commits onto Another Branch…",
+    "pushTag": "Push {{name}} to Remote",
+    "overwriteTag": "Replace {{name}} on Remote…",
     "deleteTag": "Delete Tag {{name}}…"
   },
   "detail": {
@@ -57,7 +59,9 @@
     "tag": "Tag {{name}}",
     "head": "Detached HEAD",
     "alsoRemote": "{{names}} also points here.",
-    "more": "+{{count}}"
+    "more": "+{{count}}",
+    "tagMissing": "Not on the remote yet.",
+    "tagDiffers": "The remote's tag of this name points elsewhere."
   },
   "sync": {
     "unpushed": "Not pushed yet",
@@ -114,7 +118,10 @@
     "cherryPickedOnto_other": "Switched to {{branch}} and cherry-picked {{count}} commits.",
     "reordered": "Reordered the commits.",
     "tagDeleted": "Deleted tag {{name}}.",
-    "tagDeletedEverywhere": "Deleted tag {{name}} here and on {{remote}}."
+    "tagDeletedEverywhere": "Deleted tag {{name}} here and on {{remote}}.",
+    "tagPushed": "Pushed tag {{name}} to {{remote}}.",
+    "tagsPushed_one": "Pushed {{count}} tag to {{remote}}.",
+    "tagsPushed_other": "Pushed {{count}} tags to {{remote}}."
   },
   "reset": {
     "title": "Reset to This Commit",
@@ -159,6 +166,12 @@
     "alsoRemoteHint": "Otherwise the next fetch brings the tag back if {{remote}} has it.",
     "cancel": "Cancel",
     "submit": "Delete Tag"
+  },
+  "overwriteTag": {
+    "title": "Replace tag {{name}} on {{remote}}?",
+    "body": "The {{name}} tag on {{remote}} points elsewhere. It will be replaced with this computer's {{name}}. Anyone who already fetched the old one keeps it, so for a tag others use, like a release, a new name is safer.",
+    "submit": "Replace",
+    "cancel": "Cancel"
   },
   "wip": {
     "title_one": "Uncommitted changes ({{count}} file)",
@@ -265,5 +278,22 @@
     "recover": "If it goes wrong, Recover Lost Commits… in the Repository menu brings them back.",
     "cancel": "Cancel",
     "submit": "Reorder"
+  },
+  "tags": {
+    "label": "Tags",
+    "search": "Search tags",
+    "order": "Sort",
+    "orders": {
+      "version": "By version",
+      "newest": "Newest"
+    },
+    "list": "Tags",
+    "pushMissing_one": "Push {{count}} tag missing on {{remote}}",
+    "pushMissing_other": "Push {{count}} tags missing on {{remote}}",
+    "unknown": "Couldn't check the tags on {{remote}}. It may need you to sign in.",
+    "recheck": "Check again",
+    "showHistory": "Show history from this tag",
+    "copyName": "Copy tag name",
+    "noMatch": "No tags match."
   }
 }

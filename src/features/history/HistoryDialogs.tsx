@@ -24,6 +24,7 @@ import { useBranchDialog } from "../branches/branchDialogStore";
 import { useStatus } from "../changes/api";
 import { useNotify } from "../notify/notifyStore";
 import { useRemoteInfo } from "../sync/api";
+import { useTagPush } from "../tags/api";
 import { useCommitActions, useHistoryMarkers, useLostCommits } from "./api";
 import { CommitTitle } from "./CommitTitle";
 import { CompareModeSwitch } from "./CompareView";
@@ -45,6 +46,10 @@ export function HistoryDialogs({ repo }: { repo: string }) {
     case "deleteTag":
       return (
         <DeleteTagDialog repo={repo} commit={dialog.commit} tag={dialog.tag} onClose={close} />
+      );
+    case "overwriteTag":
+      return (
+        <OverwriteTagDialog repo={repo} tag={dialog.tag} remote={dialog.remote} onClose={close} />
       );
     case "cherryPickOnto":
       return <CherryPickOntoDialog repo={repo} commits={dialog.commits} onClose={close} />;
@@ -310,6 +315,55 @@ function DeleteTagDialog({ repo, commit, tag, onClose }: DialogProps & { tag: st
           </span>
         </label>
       )}
+      {error && <ErrorMessage error={error} />}
+    </FormDialog>
+  );
+}
+
+/**
+ * Replaces the remote's tag of the same name. Anyone who fetched the old
+ * one keeps it, so this asks first.
+ */
+function OverwriteTagDialog({
+  repo,
+  tag,
+  remote,
+  onClose,
+}: {
+  repo: string;
+  tag: string;
+  remote: string;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation("history");
+  const push = useTagPush(repo);
+  const showInfo = useNotify((s) => s.showInfo);
+  const { busy, error, submit } = useSubmit(
+    () => push.mutateAsync({ remote, names: [tag], force: true }),
+    () => {
+      showInfo(t("done.tagPushed", { name: tag, remote }));
+      onClose();
+    },
+  );
+  return (
+    <FormDialog
+      open
+      onOpenChange={(open) => !open && !busy && onClose()}
+      title={t("overwriteTag.title", { name: tag, remote })}
+      onSubmit={submit}
+      dismissible={!busy}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={busy} autoFocus>
+            {t("overwriteTag.cancel")}
+          </Button>
+          <Button type="submit" variant="danger" disabled={busy}>
+            {t("overwriteTag.submit")}
+          </Button>
+        </>
+      }
+    >
+      <p>{t("overwriteTag.body", { name: tag, remote })}</p>
       {error && <ErrorMessage error={error} />}
     </FormDialog>
   );

@@ -8,6 +8,7 @@ use garam_git::log::{
     self, CherryPickOutcome, CommitDetail, CommitFile, CommitSummary, HistoryFilter,
     HistoryMarkers, ResetMode, Signature,
 };
+use garam_git::tag::{Tag, TagOrder};
 use garam_git::{ChangeKind, Git, blob, commit_graph, tag};
 use tauri::State;
 
@@ -290,6 +291,13 @@ pub async fn tag_create(
         )?)
     })
     .await
+}
+
+/// Every tag, in `order`.
+#[tauri::command]
+#[specta::specta]
+pub async fn tag_list(repo: String, order: TagOrder) -> AppResult<Vec<Tag>> {
+    blocking(move || Ok(tag::list(&Git::locate()?, Path::new(&repo), order)?)).await
 }
 
 /// Deletes the tag `name` from this repository only.

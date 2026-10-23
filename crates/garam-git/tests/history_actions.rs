@@ -445,3 +445,63 @@ fn refuses_reorders_it_cannot_do_cleanly() {
     log::reorder(git, repo.path(), &[three, two, one]).unwrap();
     assert_eq!(subjects(&repo), ["three", "two", "one", "base"]);
 }
+
+#[test]
+fn lists_tags_by_version_or_date() {
+    use garam_git::tag::TagOrder;
+    let repo = TestRepo::new();
+    repo.write("a.txt", "a\n");
+    let first = repo.commit_all("first");
+    // An annotated tag's own date counts (set through the committer date);
+    // these are later than the commit the plain tags take theirs from.
+    let tag_at = |date: &str, args: &[&str]| {
+        repo.git_handle()
+            .command()
+            .cwd(repo.path())
+            .env("GIT_COMMITTER_DATE", date)
+            .arg("tag")
+            .args(args)
+            .run()
+            .unwrap();
+    };
+    tag_at(
+        "2030-03-01T00:00:00",
+        &["-a", "v1.10.0", "-m", "Big release", &first],
+    );
+    tag_at(
+        "2030-02-01T00:00:00",
+        &["-a", "v1.9.0", "-m", "Fixes", &first],
+    );
+    repo.git(["tag", "v1.2.0", &first]);
+    repo.git(["tag", "v1.10.0-rc.2", &first]);
+    repo.git(["tag", "v1.10.0-rc.10", &first]);
+    repo.git(["tag", "nightly", &first]);
+    let names = |order| -> Vec<String> {
+        tag::list(repo.git_handle(), repo.path(), order)
+            .unwrap()
+            .into_iter()
+            .map(|t| t.name)
+            .collect()
+    };
+    // A release comes before its pre-releases, which are in version order.
+    assert_eq!(
+        names(TagOrder::Version),
+        [
+            "v1.10.0",
+            "v1.10.0-rc.10",
+            "v1.10.0-rc.2",
+            "v1.9.0",
+            "v1.2.0",
+            "nightly"
+        ]
+    );
+    assert_eq!(names(TagOrder::Newest)[..2], ["v1.10.0", "v1.9.0"]);
+
+    let tags = tag::list(repo.git_handle(), repo.path(), TagOrder::Version).unwrap();
+    let big = tags.iter().find(|t| t.name == "v1.10.0").unwrap();
+    assert!(big.annotated);
+    assert_eq!(big.message.as_deref(), Some("Big release"));
+    assert_eq!(big.target, first);
+    assert_eq!(big.summary, "first");
+    assert_ne!(big.oid, first, "an annotated tag is an object of its own");
+}

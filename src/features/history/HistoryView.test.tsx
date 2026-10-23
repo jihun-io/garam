@@ -37,6 +37,9 @@ vi.mock("../../ipc/bindings", () => ({
     historyList: vi.fn(),
     historyMarkers: vi.fn(),
     historyPreparePaths: vi.fn(),
+    tagList: vi.fn(),
+    remoteTagStates: vi.fn(),
+    remoteTagPush: vi.fn(),
     settingsGet: vi.fn(),
     settingsSet: vi.fn(),
     branchList: vi.fn(),
@@ -637,6 +640,140 @@ describe("HistoryView", () => {
 
     await user.click(submit);
     expect(await screen.findByText("Created tag v1.0.")).toBeVisible();
+  });
+
+  describe("tags and the remote", () => {
+    const V1 = {
+      name: "v1",
+      oid: commits[1].oid,
+      target: commits[1].oid,
+      annotated: false,
+      message: null,
+      summary: "Commit number 2",
+      createdAt: now - 60,
+      unpushed: false,
+    };
+    const withStates = (sync: "same" | "missing" | "differs") => {
+      vi.mocked(commands.tagList).mockResolvedValue(ok([V1]));
+      vi.mocked(commands.remoteTagStates).mockResolvedValue(ok([{ name: "v1", sync }]));
+      vi.mocked(commands.remoteTagPush).mockResolvedValue(ok(null));
+    };
+
+    it("marks a tag the remote lacks and pushes it from the commit menu", async () => {
+      const user = userEvent.setup();
+      withStates("missing");
+      setup();
+      const list = await screen.findByRole("listbox", { name: "Commits" });
+      // Asked without a sign-in prompt.
+      await waitFor(() =>
+        expect(commands.remoteTagStates).toHaveBeenCalledWith(
+          expect.any(String),
+          "/repo",
+          "origin",
+          false,
+          expect.anything(),
+        ),
+      );
+      expect(await within(list).findByText(/Not on the remote yet/)).toBeInTheDocument();
+
+      const menu = await openMenu(user, "Commit number 2");
+      await user.click(within(menu).getByRole("menuitem", { name: "Push v1 to Remote" }));
+      expect(commands.remoteTagPush).toHaveBeenCalledWith(
+        expect.any(String),
+        "/repo",
+        "origin",
+        ["v1"],
+        false,
+        expect.anything(),
+      );
+      expect(await screen.findByText("Pushed tag v1 to origin.")).toBeVisible();
+    });
+
+    it("asks before replacing a tag the remote has elsewhere", async () => {
+      const user = userEvent.setup();
+      withStates("differs");
+      setup();
+      const list = await screen.findByRole("listbox", { name: "Commits" });
+      expect(await within(list).findByText(/points elsewhere/)).toBeInTheDocument();
+      const menu = await openMenu(user, "Commit number 2");
+      await user.click(within(menu).getByRole("menuitem", { name: "Replace v1 on Remote…" }));
+      const dialog = await screen.findByRole("dialog", { name: "Replace tag v1 on origin?" });
+      expect(commands.remoteTagPush).not.toHaveBeenCalled();
+      await user.click(within(dialog).getByRole("button", { name: "Replace" }));
+      expect(commands.remoteTagPush).toHaveBeenCalledWith(
+        expect.any(String),
+        "/repo",
+        "origin",
+        ["v1"],
+        true,
+        expect.anything(),
+      );
+    });
+
+    it("offers no push for a tag the remote already has", async () => {
+      const user = userEvent.setup();
+      withStates("same");
+      setup();
+      await waitFor(() => expect(commands.remoteTagStates).toHaveBeenCalled());
+      const menu = await openMenu(user, "Commit number 2");
+      expect(within(menu).queryByRole("menuitem", { name: /to Remote|on Remote/ })).toBeNull();
+    });
+
+    it("lists tags beside the search and shows the history from one", async () => {
+      const user = userEvent.setup();
+      withStates("missing");
+      const { container } = setup();
+      await user.click(await screen.findByRole("button", { name: "Tags" }));
+      const panel = await screen.findByRole("dialog", { name: "Tags" });
+      expect(await axeViolations(container)).toEqual([]);
+      expect(
+        await within(panel).findByRole("button", { name: "Push 1 tag missing on origin" }),
+      ).toBeVisible();
+      await user.click(within(panel).getByRole("radio", { name: "Newest" }));
+      expect(commands.tagList).toHaveBeenLastCalledWith("/repo", "newest");
+
+      await user.click(within(panel).getByRole("button", { name: /^v1/ }));
+      await waitFor(() =>
+        expect(commands.historyList).toHaveBeenLastCalledWith(
+          expect.any(String),
+          "/repo",
+          { ...DEFAULT_FILTER, scope: { kind: "ref", refname: "refs/tags/v1" } },
+          0,
+          100,
+        ),
+      );
+    });
+
+    it("checks again with a sign-in when the remote wanted one", async () => {
+      const user = userEvent.setup();
+      withStates("same");
+      vi.mocked(commands.remoteTagStates)
+        .mockResolvedValueOnce({
+          status: "error",
+          error: { kind: "authentication_failed", params: {}, detail: null },
+        })
+        .mockResolvedValueOnce(ok([{ name: "v1", sync: "same" }]));
+      setup();
+      await user.click(await screen.findByRole("button", { name: "Tags" }));
+      const panel = await screen.findByRole("dialog", { name: "Tags" });
+      expect(await within(panel).findByText(/Couldn't check the tags on origin/)).toBeVisible();
+      await user.click(within(panel).getByRole("button", { name: "Check again" }));
+      expect(commands.remoteTagStates).toHaveBeenLastCalledWith(
+        expect.any(String),
+        "/repo",
+        "origin",
+        true,
+        expect.anything(),
+      );
+      await waitFor(() => expect(within(panel).queryByText(/Couldn't check/)).toBeNull());
+    });
+
+    it("hides the tag button without tags", async () => {
+      vi.mocked(commands.tagList).mockResolvedValue(ok([]));
+      setup();
+      await screen.findByRole("listbox", { name: "Commits" });
+      expect(screen.queryByRole("button", { name: "Tags" })).toBeNull();
+    });
   });
 
   it("deletes a tag here, and on the remote when asked", async () => {

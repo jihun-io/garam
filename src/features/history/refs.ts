@@ -1,4 +1,4 @@
-import type { HistoryMarkers, RefKind, RefLabel } from "../../ipc";
+import type { HistoryMarkers, RefKind, RefLabel, TagSync } from "../../ipc";
 
 /** One badge next to a commit. */
 export type RefBadge = {
@@ -55,6 +55,8 @@ export type SyncState = "unpushed" | "incoming";
 export type HistoryMarks = {
   refs: Map<string, RefBadge[]>;
   sync: Map<string, SyncState>;
+  /** How each tag compares with the remote's, once known. */
+  tags?: Map<string, TagSync> | null;
 };
 
 export const NO_MARKS: HistoryMarks = { refs: new Map(), sync: new Map() };

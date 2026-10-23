@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Icon } from "../../components/Icon";
 import type { IconName } from "../../components/icons";
 import { Tooltip } from "../../components/ui/Tooltip";
-import type { RefKind } from "../../ipc";
+import type { RefKind, TagSync } from "../../ipc";
 import styles from "./History.module.css";
 import type { RefBadge, SyncState } from "./refs";
 
@@ -22,34 +22,50 @@ const ICONS: Record<RefKind, IconName> = {
  * Branch, remote branch and tag names at a commit. The visible names are
  * hidden from screen readers, which read the full description instead.
  */
-export function RefBadges({ badges, max = MAX_VISIBLE }: { badges: RefBadge[]; max?: number }) {
+export function RefBadges({
+  badges,
+  max = MAX_VISIBLE,
+  tags,
+}: {
+  badges: RefBadge[];
+  max?: number;
+  /** How tags compare with the remote's; marks the ones it lacks or has elsewhere. */
+  tags?: Map<string, TagSync> | null;
+}) {
   const { t } = useTranslation("history");
+  const describe = (badge: RefBadge) => describeBadge(t, badge, tags);
   if (badges.length === 0) return null;
   const shown = badges.slice(0, max);
   const hidden = badges.slice(max);
   return (
     <span className={styles.refs}>
       {shown.map((badge) => (
-        <Tooltip key={`${badge.kind}:${badge.name}`} content={describe(t, badge)}>
+        <Tooltip key={`${badge.kind}:${badge.name}`} content={describe(badge)}>
           <span className={styles.ref} data-current={badge.current || undefined}>
             <Icon name={ICONS[badge.kind]} size={12} filled={badge.current} />
             <span className={styles.refName} aria-hidden>
               {badge.name}
             </span>
             {badge.remotes.length > 0 && <Icon name="remoteBranch" size={12} />}
-            <span className="sr-only">{describe(t, badge)}</span>
+            {badge.kind === "tag" && tags?.get(badge.name) === "missing" && (
+              <Icon name="notOnRemote" size={12} />
+            )}
+            {badge.kind === "tag" && tags?.get(badge.name) === "differs" && (
+              <Icon name="differsOnRemote" size={12} />
+            )}
+            <span className="sr-only">{describe(badge)}</span>
           </span>
         </Tooltip>
       ))}{" "}
       {hidden.length > 0 && (
         <Tooltip
           content={hidden.map((badge) => (
-            <div key={`${badge.kind}:${badge.name}`}>{describe(t, badge)}</div>
+            <div key={`${badge.kind}:${badge.name}`}>{describe(badge)}</div>
           ))}
         >
           <span className={styles.ref}>
             <span aria-hidden>{t("refs.more", { count: hidden.length })}</span>
-            <span className="sr-only">{hidden.map((badge) => describe(t, badge)).join(", ")}</span>
+            <span className="sr-only">{hidden.map(describe).join(", ")}</span>
           </span>
         </Tooltip>
       )}
@@ -57,7 +73,11 @@ export function RefBadges({ badges, max = MAX_VISIBLE }: { badges: RefBadge[]; m
   );
 }
 
-function describe(t: TFunction<"history">, badge: RefBadge): string {
+function describeBadge(
+  t: TFunction<"history">,
+  badge: RefBadge,
+  tags: Map<string, TagSync> | null | undefined,
+): string {
   const { name } = badge;
   let text;
   switch (badge.kind) {
@@ -77,6 +97,9 @@ function describe(t: TFunction<"history">, badge: RefBadge): string {
   if (badge.remotes.length > 0) {
     text += ` ${t("refs.alsoRemote", { names: badge.remotes.join(", ") })}`;
   }
+  const sync = badge.kind === "tag" ? tags?.get(badge.name) : undefined;
+  if (sync === "missing") text += ` ${t("refs.tagMissing")}`;
+  if (sync === "differs") text += ` ${t("refs.tagDiffers")}`;
   return text;
 }
 

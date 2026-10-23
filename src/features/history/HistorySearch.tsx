@@ -7,6 +7,8 @@ import { Button } from "../../components/ui/Button";
 import { Checkbox } from "../../components/ui/Checkbox";
 import { Field } from "../../components/ui/Field";
 import { IconButton } from "../../components/ui/IconButton";
+import type { TagStates } from "../tags/api";
+import { TagsButton } from "../tags/TagsButton";
 import segmented from "../../components/ui/Segmented.module.css";
 import { Select, type SelectOption } from "../../components/ui/Select";
 import type { HistoryScope, SearchField } from "../../ipc";
@@ -18,7 +20,7 @@ import styles from "./History.module.css";
 const FIELDS: SearchField[] = ["message", "author", "content"];
 
 /** Search box over the commit list, with the rest of the filter in a popover. */
-export function HistorySearch({ repo }: { repo: string }) {
+export function HistorySearch({ repo, tagStates }: { repo: string; tagStates: TagStates }) {
   const { t } = useTranslation("history");
   const filter = useHistoryFilter(repo);
   const update = useHistoryFilters((s) => s.update);
@@ -55,6 +57,7 @@ export function HistorySearch({ repo }: { repo: string }) {
           }}
         />
       </div>
+      <TagsButton repo={repo} states={tagStates} />
       <IconButton
         icon="compare"
         size={16}

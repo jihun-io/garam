@@ -312,6 +312,124 @@ fn deletes_tags_on_the_remote() {
     remote::delete_tag(git, s.local.path(), "origin", "v1.0", &cancel).unwrap();
 }
 
+fn states(repo: &TestRepo) -> Vec<(String, remote::TagSync)> {
+    remote::tag_states(
+        repo.git_handle(),
+        repo.path(),
+        "origin",
+        &CancelToken::new(),
+    )
+    .unwrap()
+    .into_iter()
+    .map(|t| (t.name, t.sync))
+    .collect()
+}
+
+#[test]
+fn compares_tags_with_the_remote() {
+    use remote::TagSync::{Differs, Missing, Same};
+    let s = Setup::new();
+    let commit = head(&s.local);
+    s.local.git(["tag", "same", &commit]);
+    s.local
+        .git(["tag", "-a", "annotated", "-m", "release", &commit]);
+    s.local.git(["tag", "moved", &commit]);
+    s.local
+        .git(["push", "--quiet", "origin", "same", "annotated", "moved"]);
+    // Made again: a new tag object, though on the same commit.
+    s.local
+        .git(["tag", "-f", "-a", "annotated", "-m", "again", &commit]);
+    s.local.write("new.txt", "new\n");
+    let newer = s.local.commit_all("newer");
+    s.local.git(["tag", "-f", "moved", &newer]);
+    s.local.git(["tag", "terminal"]);
+    // Deleted on the remote; fetching keeps the local copy.
+    s.local.git(["tag", "dropped", &commit]);
+    s.local.git(["push", "--quiet", "origin", "dropped"]);
+    s.local
+        .git(["push", "--quiet", "origin", ":refs/tags/dropped"]);
+    s.local.git(["fetch", "--quiet", "--prune", "origin"]);
+
+    let mut got = states(&s.local);
+    got.sort_by(|a, b| a.0.cmp(&b.0));
+    assert_eq!(
+        got,
+        [
+            ("annotated".to_owned(), Differs),
+            ("dropped".to_owned(), Missing),
+            ("moved".to_owned(), Differs),
+            ("same".to_owned(), Same),
+            ("terminal".to_owned(), Missing),
+        ]
+    );
+}
+
+#[test]
+fn pushes_chosen_tags_made_anywhere() {
+    let s = Setup::new();
+    let git = s.local.git_handle();
+    let commit = head(&s.local);
+    s.local.git(["tag", "terminal-1", &commit]);
+    s.local
+        .git(["tag", "-a", "terminal-2", "-m", "release", &commit]);
+    s.local.git(["tag", "stays", &commit]);
+    tag::create(git, s.local.path(), "app", &commit, None).unwrap();
+
+    let names = [
+        "terminal-1".to_owned(),
+        "terminal-2".to_owned(),
+        "app".to_owned(),
+    ];
+    remote::push_tags(
+        git,
+        s.local.path(),
+        "origin",
+        &names,
+        false,
+        &CancelToken::new(),
+        |_| {},
+    )
+    .unwrap();
+    assert_eq!(
+        tag_on(&s.remote, "terminal-1").as_deref(),
+        Some(commit.as_str())
+    );
+    assert!(tag_on(&s.remote, "terminal-2").is_some());
+    assert_eq!(tag_on(&s.remote, "stays"), None, "only the chosen tags go");
+    assert!(tag::unpushed(git, s.local.path()).unwrap().is_empty());
+}
+
+#[test]
+fn replaces_a_remote_tag_only_when_asked() {
+    let s = Setup::new();
+    let git = s.local.git_handle();
+    let commit = head(&s.local);
+    s.local.git(["tag", "v1", &commit]);
+    s.local.git(["push", "--quiet", "origin", "v1"]);
+    s.local.write("fix.txt", "fix\n");
+    let fixed = s.local.commit_all("fix");
+    s.local.git(["push", "--quiet", "origin", "main"]);
+    s.local.git(["tag", "-f", "v1", &fixed]);
+
+    let names = ["v1".to_owned()];
+    let cancel = CancelToken::new();
+    let err = remote::push_tags(
+        git,
+        s.local.path(),
+        "origin",
+        &names,
+        false,
+        &cancel,
+        |_| {},
+    )
+    .unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::RemoteTagExists, "{err}");
+    assert_eq!(tag_on(&s.remote, "v1").as_deref(), Some(commit.as_str()));
+
+    remote::push_tags(git, s.local.path(), "origin", &names, true, &cancel, |_| {}).unwrap();
+    assert_eq!(tag_on(&s.remote, "v1").as_deref(), Some(fixed.as_str()));
+}
+
 #[test]
 fn publish_creates_remote_branch_and_upstream() {
     let s = Setup::new();

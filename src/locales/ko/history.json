@@ -32,6 +32,8 @@
     "cherryPickOnto": "다른 브랜치로 체리픽…",
     "cherryPickOntoMany_one": "커밋 {{count}}개를 다른 브랜치로 체리픽…",
     "cherryPickOntoMany_other": "커밋 {{count}}개를 다른 브랜치로 체리픽…",
+    "pushTag": "{{name}} 원격에 푸시",
+    "overwriteTag": "{{name}} 원격에 덮어쓰기…",
     "deleteTag": "{{name}} 태그 삭제…"
   },
   "detail": {
@@ -57,7 +59,9 @@
     "tag": "태그 {{name}}",
     "head": "분리된 HEAD",
     "alsoRemote": "{{names}}도 이 커밋을 가리킵니다.",
-    "more": "+{{count}}"
+    "more": "+{{count}}",
+    "tagMissing": "원격에 아직 없습니다.",
+    "tagDiffers": "원격에 있는 같은 이름의 태그는 다른 곳을 가리킵니다."
   },
   "sync": {
     "unpushed": "아직 푸시하지 않은 커밋",
@@ -114,7 +118,10 @@
     "cherryPickedOnto_other": "{{branch}} 브랜치로 전환해서 커밋 {{count}}개를 체리픽했습니다.",
     "reordered": "커밋 순서를 바꿨습니다.",
     "tagDeleted": "{{name}} 태그를 삭제했습니다.",
-    "tagDeletedEverywhere": "{{name}} 태그를 여기와 {{remote}}에서 삭제했습니다."
+    "tagDeletedEverywhere": "{{name}} 태그를 여기와 {{remote}}에서 삭제했습니다.",
+    "tagPushed": "{{name}} 태그를 {{remote}}에 푸시했습니다.",
+    "tagsPushed_one": "태그 {{count}}개를 {{remote}}에 푸시했습니다.",
+    "tagsPushed_other": "태그 {{count}}개를 {{remote}}에 푸시했습니다."
   },
   "reset": {
     "title": "이 커밋으로 리셋",
@@ -159,6 +166,12 @@
     "alsoRemoteHint": "삭제하지 않으면 {{remote}}에 이 태그가 있을 때 다음 가져오기에서 다시 생깁니다.",
     "cancel": "취소",
     "submit": "태그 삭제"
+  },
+  "overwriteTag": {
+    "title": "{{remote}}의 {{name}} 태그를 덮어쓸까요?",
+    "body": "{{remote}}에 있는 {{name}} 태그는 다른 곳을 가리킵니다. 이 컴퓨터의 {{name}}으로 바꿉니다. 이미 예전 태그를 받아 간 사람에게는 그대로 남아 있으니, 릴리스처럼 다른 사람이 쓰는 태그라면 새 이름으로 다는 편이 안전합니다.",
+    "submit": "덮어쓰기",
+    "cancel": "취소"
   },
   "wip": {
     "title_one": "커밋하지 않은 변경 사항 (파일 {{count}}개)",
@@ -265,5 +278,22 @@
     "recover": "잘못 바꿨다면 저장소 메뉴의 \"잃어버린 커밋 복구…\"에서 되살릴 수 있습니다.",
     "cancel": "취소",
     "submit": "순서 바꾸기"
+  },
+  "tags": {
+    "label": "태그",
+    "search": "태그 검색",
+    "order": "정렬",
+    "orders": {
+      "version": "버전 순",
+      "newest": "최신 순"
+    },
+    "list": "태그 목록",
+    "pushMissing_one": "원격에 없는 태그 {{count}}개를 {{remote}}에 푸시",
+    "pushMissing_other": "원격에 없는 태그 {{count}}개를 {{remote}}에 푸시",
+    "unknown": "{{remote}}의 태그를 확인하지 못했습니다. 로그인이 필요할 수 있습니다.",
+    "recheck": "다시 확인",
+    "showHistory": "이 태그부터 기록 보기",
+    "copyName": "태그 이름 복사",
+    "noMatch": "일치하는 태그가 없습니다."
   }
 }

@@ -9,7 +9,95 @@ use std::fs;
 use std::io::ErrorKind as IoErrorKind;
 use std::path::{Path, PathBuf};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{Git, GitError};
+
+/// How the tag list is sorted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "snake_case")]
+pub enum TagOrder {
+    /// Highest version first (`v1.10.0` before `v1.9.0`), a pre-release
+    /// below its release (`v1.0.0` before `v1.0.0-rc.1`); names that
+    /// aren't versions come last.
+    Version,
+    /// Most recently tagged first: an annotated tag's date, or a plain
+    /// tag's commit date.
+    Newest,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct Tag {
+    pub name: String,
+    /// The tag object for an annotated tag, the commit for a plain one;
+    /// what the remote's copy is compared with.
+    pub oid: String,
+    /// The commit it points at.
+    pub target: String,
+    pub annotated: bool,
+    /// An annotated tag's first message line.
+    pub message: Option<String>,
+    /// The first line of the commit it points at.
+    pub summary: String,
+    /// Seconds since the Unix epoch.
+    pub created_at: u32,
+    /// Made here and not pushed yet.
+    pub unpushed: bool,
+}
+
+/// Every tag in the repository.
+pub fn list(git: &Git, repo: &Path, order: TagOrder) -> Result<Vec<Tag>, GitError> {
+    // An annotated tag's own subject is its message; the commit's is
+    // behind the `*` (peeled) fields. A plain tag's subject is the commit's.
+    const FORMAT: &str = "%(refname:lstrip=2)%00%(objectname)%00%(*objectname)%00\
+                          %(objecttype)%00%(creatordate:unix)%00%(*contents:subject)%00\
+                          %(contents:subject)";
+    let sort = match order {
+        TagOrder::Version => "--sort=-v:refname",
+        TagOrder::Newest => "--sort=-creatordate",
+    };
+    let output = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        // git puts `v1.0.0-rc.1` after `v1.0.0` unless told that a `-`
+        // suffix marks a pre-release, the way SemVer reads it.
+        .config("versionsort.suffix", "-")
+        .args([
+            "for-each-ref",
+            sort,
+            &format!("--format={FORMAT}"),
+            "refs/tags",
+        ])
+        .run()?;
+    let unpushed = read_unpushed(git, repo)?;
+    Ok(output
+        .stdout_str()
+        .lines()
+        .filter_map(|line| parse_tag(line, &unpushed))
+        .collect())
+}
+
+fn parse_tag(line: &str, unpushed: &[String]) -> Option<Tag> {
+    let fields: Vec<&str> = line.splitn(7, '\0').collect();
+    let [name, oid, peeled, kind, date, peeled_subject, subject] = fields[..] else {
+        return None;
+    };
+    let annotated = kind == "tag";
+    Some(Tag {
+        name: name.to_owned(),
+        oid: oid.to_owned(),
+        target: if peeled.is_empty() { oid } else { peeled }.to_owned(),
+        annotated,
+        message: (annotated && !subject.is_empty()).then(|| subject.to_owned()),
+        summary: if annotated { peeled_subject } else { subject }.to_owned(),
+        created_at: date.parse().unwrap_or(0),
+        unpushed: unpushed.iter().any(|n| n == name),
+    })
+}
 
 /// Checks a new tag name the way git does.
 pub fn validate_name(git: &Git, name: &str) -> Result<(), GitError> {
@@ -141,4 +229,36 @@ fn write_unpushed(git: &Git, repo: &Path, names: &[String]) -> Result<(), GitErr
     fs::write(&temp, text)?;
     fs::rename(&temp, &file)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_plain_and_annotated_tags() {
+        let unpushed = ["v2".to_owned()];
+        let plain = parse_tag(
+            "v1\x00aaa\x00\x00commit\x001700000000\x00\x00Commit subject",
+            &unpushed,
+        )
+        .unwrap();
+        assert_eq!(plain.target, "aaa");
+        assert!(!plain.annotated);
+        assert_eq!(plain.message, None, "a plain tag has no message of its own");
+        assert_eq!(plain.summary, "Commit subject");
+        assert!(!plain.unpushed);
+
+        let annotated = parse_tag(
+            "v2\x00ttt\x00ccc\x00tag\x001700000100\x00Fix it\x00Release 2",
+            &unpushed,
+        )
+        .unwrap();
+        assert_eq!(annotated.oid, "ttt");
+        assert_eq!(annotated.target, "ccc");
+        assert_eq!(annotated.message.as_deref(), Some("Release 2"));
+        assert_eq!(annotated.summary, "Fix it");
+        assert_eq!(annotated.created_at, 1_700_000_100);
+        assert!(annotated.unpushed);
+    }
 }

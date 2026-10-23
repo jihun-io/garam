@@ -193,6 +193,8 @@ export const commands = {
 	commitCheckout: (repo: string, oid: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_checkout", { repo, oid })),
 	/**  Tags `oid`; annotated when `message` is given. */
 	tagCreate: (repo: string, name: string, oid: string, message: string | null) => typedError<null, AppError>(__TAURI_INVOKE("tag_create", { repo, name, oid, message })),
+	/**  Every tag, in `order`. */
+	tagList: (repo: string, order: TagOrder) => typedError<Tag[], AppError>(__TAURI_INVOKE("tag_list", { repo, order })),
 	/**  Deletes the tag `name` from this repository only. */
 	tagDelete: (repo: string, name: string) => typedError<null, AppError>(__TAURI_INVOKE("tag_delete", { repo, name })),
 	/**  Compares two commits or branches (commit ids or full ref names). */
@@ -215,6 +217,16 @@ export const commands = {
 	remotePublish: (operationId: string, repo: string, remote: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_publish", { operationId, repo, remote, onEvent })),
 	/**  Deletes the tag `name` on `remote`. */
 	remoteTagDelete: (operationId: string, repo: string, remote: string, name: string, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_tag_delete", { operationId, repo, remote, name, onEvent })),
+	/**
+	 *  How each local tag compares with `remote`'s. With `interactive: false`
+	 *  (checked in the background), nothing asks the user to sign in.
+	 */
+	remoteTagStates: (operationId: string, repo: string, remote: string, interactive: boolean, onEvent: Channel<RemoteEvent>) => typedError<TagState[], AppError>(__TAURI_INVOKE("remote_tag_states", { operationId, repo, remote, interactive, onEvent })),
+	/**
+	 *  Pushes the tags `names` to `remote`; with `force`, replaces the
+	 *  remote's tags of the same names.
+	 */
+	remoteTagPush: (operationId: string, repo: string, remote: string, names: string[], force: boolean, onEvent: Channel<RemoteEvent>) => typedError<null, AppError>(__TAURI_INVOKE("remote_tag_push", { operationId, repo, remote, names, force, onEvent })),
 	/**  Logins remembered on this computer, newest first. */
 	loginsList: () => __TAURI_INVOKE<SavedLogin[]>("logins_list"),
 	/**  Forgets a remembered login; git asks for it again next time. */
@@ -929,6 +941,55 @@ export type SwitchMode =
 "bring_changes" | 
 /**  Stash the changes on the current branch first. */
 "leave_changes";
+
+export type Tag = {
+	name: string,
+	/**
+	 *  The tag object for an annotated tag, the commit for a plain one;
+	 *  what the remote's copy is compared with.
+	 */
+	oid: string,
+	/**  The commit it points at. */
+	target: string,
+	annotated: boolean,
+	/**  An annotated tag's first message line. */
+	message: string | null,
+	/**  The first line of the commit it points at. */
+	summary: string,
+	/**  Seconds since the Unix epoch. */
+	createdAt: number,
+	/**  Made here and not pushed yet. */
+	unpushed: boolean,
+};
+
+/**  How the tag list is sorted. */
+export type TagOrder = 
+/**
+ *  Highest version first (`v1.10.0` before `v1.9.0`), a pre-release
+ *  below its release (`v1.0.0` before `v1.0.0-rc.1`); names that
+ *  aren't versions come last.
+ */
+"version" | 
+/**
+ *  Most recently tagged first: an annotated tag's date, or a plain
+ *  tag's commit date.
+ */
+"newest";
+
+export type TagState = {
+	name: string,
+	sync: TagSync,
+};
+
+/**  How a local tag compares with the remote's tag of the same name. */
+export type TagSync = "same" | 
+/**  The remote's tag points elsewhere, or was made again. */
+"differs" | 
+/**
+ *  Not pushed yet, or deleted on the remote: fetching keeps tags the
+ *  remote dropped.
+ */
+"missing";
 
 export type Theme = "system" | "light" | "dark";
 

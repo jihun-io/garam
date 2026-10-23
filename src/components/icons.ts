@@ -17,6 +17,8 @@ import { CircleNotch } from "@phosphor-icons/react/dist/csr/CircleNotch";
 import { ClockCounterClockwise } from "@phosphor-icons/react/dist/csr/ClockCounterClockwise";
 import { Cloud } from "@phosphor-icons/react/dist/csr/Cloud";
 import { CloudArrowUp } from "@phosphor-icons/react/dist/csr/CloudArrowUp";
+import { CloudSlash } from "@phosphor-icons/react/dist/csr/CloudSlash";
+import { CloudWarning } from "@phosphor-icons/react/dist/csr/CloudWarning";
 import { Code } from "@phosphor-icons/react/dist/csr/Code";
 import { Copy } from "@phosphor-icons/react/dist/csr/Copy";
 import { DotsThree } from "@phosphor-icons/react/dist/csr/DotsThree";
@@ -79,6 +81,10 @@ export const Icons = {
   // Refs in the history
   remoteBranch: Cloud,
   tag: Tag,
+  /** A tag the remote doesn't have. */
+  notOnRemote: CloudSlash,
+  /** A tag the remote has pointing elsewhere. */
+  differsOnRemote: CloudWarning,
   detachedHead: GitCommit,
   commit: GitCommit,
   stash: Archive,

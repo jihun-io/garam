@@ -15,6 +15,7 @@ import {
   type CommitDetail,
   type CommitFile,
   type SignatureStatus,
+  type TagSync,
 } from "../../ipc";
 import { shortHash } from "../../lib/hash";
 import { useRelativeTime } from "../../lib/time";
@@ -60,12 +61,14 @@ export function CommitDetailView({
   repo,
   oid,
   badges,
+  tags,
   sync,
   onCopyHash,
 }: {
   repo: string;
   oid: string;
   badges: RefBadge[];
+  tags?: Map<string, TagSync> | null;
   sync: SyncState | undefined;
   onCopyHash: (oid: string) => void;
 }) {
@@ -84,6 +87,7 @@ export function CommitDetailView({
       repo={repo}
       commit={detail.data}
       badges={badges}
+      tags={tags}
       sync={sync}
       onCopyHash={onCopyHash}
     />
@@ -94,12 +98,14 @@ function Loaded({
   repo,
   commit,
   badges,
+  tags,
   sync,
   onCopyHash,
 }: {
   repo: string;
   commit: CommitDetail;
   badges: RefBadge[];
+  tags?: Map<string, TagSync> | null;
   sync: SyncState | undefined;
   onCopyHash: (oid: string) => void;
 }) {
@@ -152,7 +158,7 @@ function Loaded({
               {t(sync === "unpushed" ? "sync.unpushed" : "detail.incoming")}
             </span>
           )}
-          <RefBadges badges={badges} max={badges.length} />
+          <RefBadges badges={badges} max={badges.length} tags={tags} />
           <SignatureBadge repo={repo} oid={commit.oid} />
           <Tooltip content={t("detail.copyHash", { hash })}>
             <button

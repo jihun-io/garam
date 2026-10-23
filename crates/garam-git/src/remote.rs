@@ -309,6 +309,95 @@ fn tag_refspec(name: &str) -> String {
     format!("refs/tags/{name}:refs/tags/{name}")
 }
 
+/// How a local tag compares with the remote's tag of the same name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "snake_case")]
+pub enum TagSync {
+    Same,
+    /// The remote's tag points elsewhere, or was made again.
+    Differs,
+    /// Not pushed yet, or deleted on the remote: fetching keeps tags the
+    /// remote dropped.
+    Missing,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct TagState {
+    pub name: String,
+    pub sync: TagSync,
+}
+
+/// How each local tag compares with `remote`'s, by tag object id
+/// (`ls-remote --tags --refs`).
+pub fn tag_states(
+    git: &Git,
+    repo: &Path,
+    remote: &str,
+    cancel: &CancelToken,
+) -> Result<Vec<TagState>, GitError> {
+    let output = git
+        .command()
+        .cwd(repo)
+        .args(["ls-remote", "--tags", "--refs", "--"])
+        .arg(remote)
+        .run_streaming(cancel, |_| {})?;
+    let stdout = output.stdout_str();
+    let remote_tags: Vec<(&str, &str)> = stdout
+        .lines()
+        .filter_map(|line| {
+            let (oid, refname) = line.split_once('\t')?;
+            Some((refname.strip_prefix("refs/tags/")?, oid))
+        })
+        .collect();
+    Ok(crate::tag::list(git, repo, crate::tag::TagOrder::Version)?
+        .into_iter()
+        .map(|tag| {
+            let sync = match remote_tags.iter().find(|(name, _)| *name == tag.name) {
+                Some((_, oid)) if *oid == tag.oid => TagSync::Same,
+                Some(_) => TagSync::Differs,
+                None => TagSync::Missing,
+            };
+            TagState {
+                name: tag.name,
+                sync,
+            }
+        })
+        .collect())
+}
+
+/// Pushes the tags `names` to `remote`, and with `force` replaces the
+/// remote's tags of the same names. Without it, a remote tag pointing
+/// elsewhere is [`crate::ErrorKind::RemoteTagExists`]. Pushed tags leave
+/// the unpushed list.
+pub fn push_tags(
+    git: &Git,
+    repo: &Path,
+    remote: &str,
+    names: &[String],
+    force: bool,
+    cancel: &CancelToken,
+    on_progress: impl FnMut(Progress),
+) -> Result<(), GitError> {
+    for name in names {
+        crate::tag::validate_name(git, name)?;
+    }
+    let plus = if force { "+" } else { "" };
+    let command = git
+        .command()
+        .cwd(repo)
+        .args(["push", "--progress", "--"])
+        .arg(remote)
+        .args(
+            names
+                .iter()
+                .map(|name| format!("{plus}{}", tag_refspec(name))),
+        );
+    transfer(command, TransferKind::Push, cancel, on_progress)?;
+    crate::tag::forget(git, repo, names)
+}
+
 /// Deletes the tag `name` on `remote`. A tag the remote doesn't have
 /// counts as deleted.
 pub fn delete_tag(

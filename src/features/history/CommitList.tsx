@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Icon } from "../../components/Icon";
 import menu from "../../components/ui/Menu.module.css";
 import { Tooltip } from "../../components/ui/Tooltip";
-import type { CommitSummary } from "../../ipc";
+import type { CommitSummary, TagSync } from "../../ipc";
 import { currentPlatform } from "../../lib/platform";
 import { useRelativeTime } from "../../lib/time";
 import { branchUnder, rowUnder, useCommitDrag, type CommitDrag } from "./commitDragStore";
@@ -35,8 +35,12 @@ export type CommitActions = {
   createBranch: Action;
   createTag: Action;
   deleteTag: (commit: CommitSummary, tag: string) => void;
-  /** Tags at the commit, for the menu. */
-  tagsAt: (commit: CommitSummary) => string[];
+  /** Sends a tag the remote lacks; `differs` asks before replacing the remote's. */
+  pushTag: (tag: string, differs: boolean) => void;
+  /** Tags at the commit, for the menu, with how each compares with the remote. */
+  tagsAt: (commit: CommitSummary) => { name: string; sync: TagSync | null }[];
+  /** Whether there is a remote to push tags to. */
+  hasRemote: boolean;
   checkout: Action;
   cherryPick: Action;
   cherryPickOnto: Action;
@@ -320,7 +324,7 @@ function RowText({ row, marks }: { row: HistoryRow; marks: HistoryMarks }) {
             {row.kind === "stash" ? title : <CommitTitle summary={title} />}
           </span>
         </Tooltip>{" "}
-        <RefBadges badges={marks.refs.get(commit.oid) ?? []} />
+        <RefBadges badges={marks.refs.get(commit.oid) ?? []} tags={marks.tags} />
       </span>
       {/* Keeps the two lines apart in the row's accessible name. */}{" "}
       <span className={styles.meta}>
@@ -351,14 +355,20 @@ function CommitMenu({ commit, actions }: { commit: CommitSummary; actions: Commi
       <ContextMenu.Separator className={menu.separator} />
       {item(t("menu.createBranch"), actions.createBranch)}
       {item(t("menu.createTag"), actions.createTag)}
-      {actions.tagsAt(commit).map((tag) => (
-        <ContextMenu.Item
-          key={tag}
-          className={menu.item}
-          onSelect={() => actions.deleteTag(commit, tag)}
-        >
-          {t("menu.deleteTag", { name: tag })}
-        </ContextMenu.Item>
+      {actions.tagsAt(commit).map(({ name, sync }) => (
+        <Fragment key={name}>
+          {actions.hasRemote && sync !== "same" && (
+            <ContextMenu.Item
+              className={menu.item}
+              onSelect={() => actions.pushTag(name, sync === "differs")}
+            >
+              {sync === "differs" ? t("menu.overwriteTag", { name }) : t("menu.pushTag", { name })}
+            </ContextMenu.Item>
+          )}
+          <ContextMenu.Item className={menu.item} onSelect={() => actions.deleteTag(commit, name)}>
+            {t("menu.deleteTag", { name })}
+          </ContextMenu.Item>
+        </Fragment>
       ))}
       {item(t("menu.checkout"), actions.checkout)}
       <ContextMenu.Separator className={menu.separator} />

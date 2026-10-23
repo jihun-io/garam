@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use garam_git::credential;
-use garam_git::remote::{self, PullOutcome, RemoteInfo};
+use garam_git::remote::{self, PullOutcome, RemoteInfo, TagState};
 use garam_git::{CancelToken, Git, GitError, Progress};
 use serde::Serialize;
 use tauri::State;
@@ -247,6 +247,55 @@ pub async fn remote_tag_delete(
     NetworkContext::new(&operations, &askpass, operation_id, true, on_event)
         .for_repo(&repositories, &accounts, &repo)
         .run(move |git, cancel, _| remote::delete_tag(git, &repo, &remote, &name, cancel))
+        .await
+}
+
+/// How each local tag compares with `remote`'s. With `interactive: false`
+/// (checked in the background), nothing asks the user to sign in.
+#[tauri::command]
+#[specta::specta]
+#[allow(clippy::too_many_arguments)]
+pub async fn remote_tag_states(
+    operations: State<'_, Arc<Operations>>,
+    askpass: State<'_, Arc<Askpass>>,
+    repositories: State<'_, Arc<RepositoryStore>>,
+    accounts: State<'_, Arc<AccountStore>>,
+    operation_id: String,
+    repo: String,
+    remote: String,
+    interactive: bool,
+    on_event: Channel<RemoteEvent>,
+) -> AppResult<Vec<TagState>> {
+    let repo = PathBuf::from(repo);
+    NetworkContext::new(&operations, &askpass, operation_id, interactive, on_event)
+        .for_repo(&repositories, &accounts, &repo)
+        .run(move |git, cancel, _| remote::tag_states(git, &repo, &remote, cancel))
+        .await
+}
+
+/// Pushes the tags `names` to `remote`; with `force`, replaces the
+/// remote's tags of the same names.
+#[tauri::command]
+#[specta::specta]
+#[allow(clippy::too_many_arguments)]
+pub async fn remote_tag_push(
+    operations: State<'_, Arc<Operations>>,
+    askpass: State<'_, Arc<Askpass>>,
+    repositories: State<'_, Arc<RepositoryStore>>,
+    accounts: State<'_, Arc<AccountStore>>,
+    operation_id: String,
+    repo: String,
+    remote: String,
+    names: Vec<String>,
+    force: bool,
+    on_event: Channel<RemoteEvent>,
+) -> AppResult<()> {
+    let repo = PathBuf::from(repo);
+    NetworkContext::new(&operations, &askpass, operation_id, true, on_event)
+        .for_repo(&repositories, &accounts, &repo)
+        .run(move |git, cancel, progress| {
+            remote::push_tags(git, &repo, &remote, &names, force, cancel, progress)
+        })
         .await
 }
 
