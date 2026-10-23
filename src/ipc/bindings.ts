@@ -139,6 +139,12 @@ export const commands = {
 	 *  quickly. Returns whether it wrote the file from scratch.
 	 */
 	historyPrepare: (repo: string) => typedError<boolean, AppError>(__TAURI_INVOKE("history_prepare", { repo })),
+	/**
+	 *  Adds changed-path Bloom filters to the commit-graph so history filtered
+	 *  by a path loads quickly, unless they are there already. Returns whether
+	 *  it wrote them. Slow on a large repository; the history doesn't wait.
+	 */
+	historyPreparePaths: (repo: string) => typedError<boolean, AppError>(__TAURI_INVOKE("history_prepare_paths", { repo })),
 	/**  Refs, unpushed and incoming commits, shown alongside the history. */
 	historyMarkers: (repo: string) => typedError<HistoryMarkers, AppError>(__TAURI_INVOKE("history_markers", { repo })),
 	commitDetail: (repo: string, oid: string) => typedError<CommitDetail, AppError>(__TAURI_INVOKE("commit_detail", { repo, oid })),

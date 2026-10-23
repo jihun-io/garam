@@ -52,6 +52,21 @@ pub async fn history_prepare(repo: String) -> AppResult<bool> {
     blocking(move || Ok(commit_graph::update(&Git::locate()?, Path::new(&repo))?)).await
 }
 
+/// Adds changed-path Bloom filters to the commit-graph so history filtered
+/// by a path loads quickly, unless they are there already. Returns whether
+/// it wrote them. Slow on a large repository; the history doesn't wait.
+#[tauri::command]
+#[specta::specta]
+pub async fn history_prepare_paths(repo: String) -> AppResult<bool> {
+    blocking(move || {
+        Ok(commit_graph::add_changed_paths(
+            &Git::locate()?,
+            Path::new(&repo),
+        )?)
+    })
+    .await
+}
+
 /// Refs, unpushed and incoming commits, shown alongside the history.
 #[tauri::command]
 #[specta::specta]

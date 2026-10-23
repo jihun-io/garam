@@ -152,3 +152,52 @@ fn fetching_adds_the_fetched_commits() {
     .unwrap();
     assert_eq!(graph_commits(&clone), 2);
 }
+
+#[test]
+fn adds_changed_path_filters_once() {
+    let repo = TestRepo::new();
+    repo.write("a.txt", "a\n");
+    repo.commit_all("first");
+    repo.write("b.txt", "b\n");
+    repo.commit_all("second");
+    let git = repo.git_handle();
+    commit_graph::update(git, repo.path()).unwrap();
+    assert!(!commit_graph::has_changed_paths(git, repo.path()).unwrap());
+
+    assert!(commit_graph::add_changed_paths(git, repo.path()).unwrap());
+    assert!(commit_graph::has_changed_paths(git, repo.path()).unwrap());
+    assert_eq!(graph_commits(&repo), 2);
+    repo.git(["commit-graph", "verify"]);
+    assert!(
+        !commit_graph::add_changed_paths(git, repo.path()).unwrap(),
+        "already there"
+    );
+
+    let history = repo.git(["log", "--format=%s", "--", "a.txt"]);
+    assert_eq!(history.stdout_str().trim(), "first");
+}
+
+#[test]
+fn layers_added_later_keep_changed_path_filters() {
+    let repo = TestRepo::new();
+    repo.write("a.txt", "a\n");
+    repo.commit_all("first");
+    let git = repo.git_handle();
+    commit_graph::add_changed_paths(git, repo.path()).unwrap();
+
+    repo.write("a.txt", "b\n");
+    repo.commit_all("second");
+    commit_graph::update(git, repo.path()).unwrap();
+    assert_eq!(graph_commits(&repo), 2);
+    assert!(commit_graph::has_changed_paths(git, repo.path()).unwrap());
+}
+
+#[test]
+fn changed_path_filters_respect_commit_graph_turned_off() {
+    let repo = TestRepo::new();
+    repo.write("a.txt", "a\n");
+    repo.commit_all("first");
+    repo.git(["config", "core.commitGraph", "false"]);
+    assert!(!commit_graph::add_changed_paths(repo.git_handle(), repo.path()).unwrap());
+    assert!(!commit_graph::exists(repo.git_handle(), repo.path()).unwrap());
+}

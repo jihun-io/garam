@@ -76,6 +76,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         conflicts::conflict_abort,
         history::history_list,
         history::history_prepare,
+        history::history_prepare_paths,
         history::history_markers,
         history::commit_detail,
         history::commit_file_diff,

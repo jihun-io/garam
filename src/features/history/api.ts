@@ -39,6 +39,7 @@ export const historyKeys = {
     ["repo", repo, "comparison", base, target, mode] as const,
   lost: (repo: string) => ["repo", repo, "lost-commits"] as const,
   prepare: (repo: string) => ["history", repo, "prepare"] as const,
+  preparePaths: (repo: string) => ["history", repo, "prepare-paths"] as const,
   signature: (repo: string, oid: string) => ["history", repo, "commit", oid, "signature"] as const,
 };
 
@@ -87,6 +88,21 @@ export function useHistoryPrepare(repo: string | null) {
     queryKey: historyKeys.prepare(repo ?? ""),
     queryFn: () => unwrap(commands.historyPrepare(repo!)),
     enabled: repo !== null,
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+/**
+ * Adds changed-path Bloom filters to the commit-graph the first time the
+ * history is filtered by a path, so later path filters don't read every
+ * commit's tree. Runs in the background; the filtered list doesn't wait.
+ */
+export function useHistoryPreparePaths(repo: string, filtered: boolean) {
+  useQuery({
+    queryKey: historyKeys.preparePaths(repo),
+    queryFn: () => unwrap(commands.historyPreparePaths(repo)),
+    enabled: filtered,
     staleTime: Infinity,
     retry: false,
   });

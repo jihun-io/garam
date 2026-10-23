@@ -22,7 +22,14 @@ import { useCommitDrafts } from "../changes/commitDraftStore";
 import changesStyles from "../changes/ChangesView.module.css";
 import { useNotify } from "../notify/notifyStore";
 import { SidebarSplitter } from "../settings/SidebarSplitter";
-import { useCommitActions, useHistory, useHistoryMarkers, useRemoteWebUrl, useRevert } from "./api";
+import {
+  useCommitActions,
+  useHistory,
+  useHistoryMarkers,
+  useHistoryPreparePaths,
+  useRemoteWebUrl,
+  useRevert,
+} from "./api";
 import { CommitDetailView } from "./CommitDetailView";
 import { CompareView } from "./CompareView";
 import { CommitList, type CommitActions, type SelectHow } from "./CommitList";
@@ -53,6 +60,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
       ? ""
       : markers.data?.refs.map((r) => `${r.name}@${r.oid}`).join(" ");
   const history = useHistory(repo, status.data?.branch.oid, filter, refs);
+  useHistoryPreparePaths(repo, filter.path.trim() !== "");
   const revert = useRevert(repo);
   const commitActions = useCommitActions(repo);
   const openBranchDialog = useBranchDialog((s) => s.open);

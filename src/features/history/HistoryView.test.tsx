@@ -36,6 +36,7 @@ vi.mock("../../ipc/bindings", () => ({
     statusGet: vi.fn(),
     historyList: vi.fn(),
     historyMarkers: vi.fn(),
+    historyPreparePaths: vi.fn(),
     branchList: vi.fn(),
     commitDetail: vi.fn(),
     commitFileDiff: vi.fn(),
@@ -110,6 +111,7 @@ function setup(historyMarkers: HistoryMarkers = markers, files: FileChange[] = [
     }),
   );
   vi.mocked(commands.historyList).mockResolvedValue(ok(commits));
+  vi.mocked(commands.historyPreparePaths).mockResolvedValue(ok(true));
   vi.mocked(commands.historyMarkers).mockResolvedValue(ok(historyMarkers));
   vi.mocked(commands.commitSignature).mockResolvedValue(
     ok({ status: "none", signer: null, key: null }),
@@ -378,6 +380,8 @@ describe("HistoryView", () => {
 
     await user.click(within(panel).getByRole("combobox", { name: "Scope" }));
     await user.click(await screen.findByRole("option", { name: "origin/main" }));
+    // Path filters get Bloom filters written once, in the background.
+    expect(commands.historyPreparePaths).not.toHaveBeenCalled();
     await user.type(within(panel).getByRole("textbox", { name: "Path" }), "src/");
     await user.click(
       within(panel).getByRole("checkbox", { name: "Follow only the first parent of merges" }),
@@ -399,6 +403,8 @@ describe("HistoryView", () => {
       ),
     );
     expect(screen.getByRole("button", { name: "Filter (on)" })).toBeVisible();
+    expect(commands.historyPreparePaths).toHaveBeenCalledTimes(1);
+    expect(commands.historyPreparePaths).toHaveBeenCalledWith("/repo");
 
     // Back to the plain history at once, from the cache.
     const calls = vi.mocked(commands.historyList).mock.calls.length;
