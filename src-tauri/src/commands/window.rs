@@ -56,9 +56,12 @@ pub async fn window_open(
 
 /// Opens the settings window, or brings it forward if it is already open.
 /// There is one for the whole app.
+///
+/// Async because creating a window from a synchronous command deadlocks
+/// WebView2 on Windows: the window appears but its page never loads.
 #[tauri::command]
 #[specta::specta]
-pub fn window_open_settings(app: AppHandle) -> AppResult<()> {
+pub async fn window_open_settings(app: AppHandle) -> AppResult<()> {
     if let Some(window) = app.get_webview_window(SETTINGS_WINDOW) {
         let _ = window.unminimize();
         let _ = window.set_focus();

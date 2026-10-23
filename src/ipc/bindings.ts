@@ -58,6 +58,9 @@ export const commands = {
 	/**
 	 *  Opens the settings window, or brings it forward if it is already open.
 	 *  There is one for the whole app.
+	 * 
+	 *  Async because creating a window from a synchronous command deadlocks
+	 *  WebView2 on Windows: the window appears but its page never loads.
 	 */
 	windowOpenSettings: () => typedError<null, AppError>(__TAURI_INVOKE("window_open_settings")),
 	statusGet: (repo: string) => typedError<RepoStatus, AppError>(__TAURI_INVOKE("status_get", { repo })),
