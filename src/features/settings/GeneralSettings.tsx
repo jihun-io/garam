@@ -15,7 +15,7 @@ const OPEN_REPOSITORY_IN: OpenRepositoryIn[] = ["ask", "current_window", "new_wi
 
 export function GeneralSettings() {
   const { t } = useTranslation(["settings", "common"]);
-  const { language, openRepositoryIn, checkForUpdates } = useSettings();
+  const { language, openRepositoryIn, checkForUpdates, commitChecks } = useSettings();
   const update = useUpdateSettings();
   const launchLanguage = useLaunchLanguage();
   // macOS adds some menu items itself and localizes them only at launch.
@@ -43,6 +43,19 @@ export function GeneralSettings() {
               label: t(`general.openRepositoryInChoices.${value}`),
             }))}
             onChange={(value) => update({ openRepositoryIn: value as OpenRepositoryIn })}
+          />
+        )}
+      </Setting>
+      <Setting label={t("general.commitChecks")} hint={t("general.commitChecksHint")}>
+        {(id) => (
+          <Select
+            id={id}
+            value={commitChecks ? "on" : "off"}
+            options={(["on", "off"] as const).map((value) => ({
+              value,
+              label: t(`general.commitChecksChoices.${value}`),
+            }))}
+            onChange={(value) => update({ commitChecks: value === "on" })}
           />
         )}
       </Setting>

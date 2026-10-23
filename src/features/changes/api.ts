@@ -95,6 +95,13 @@ export function useChangeActions(repo: string) {
       onSettled,
       scope,
     }),
+    /** Adds `.gitignore` lines and leaves the files they cover out of the commit. */
+    ignore: useMutation({
+      mutationFn: ({ patterns, paths }: { patterns: string[]; paths: string[] }) =>
+        unwrap(commands.commitIgnore(repo, patterns, paths)),
+      onSettled,
+      scope,
+    }),
     commit: useMutation({
       mutationFn: (input: {
         summary: string;

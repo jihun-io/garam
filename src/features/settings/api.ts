@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   detailFilesWidth: 260,
   openRepositoryIn: "ask",
   checkForUpdates: true,
+  commitChecks: true,
 };
 
 export function useSettings(): AppSettings {

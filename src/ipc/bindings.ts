@@ -79,6 +79,16 @@ export const commands = {
 	changesDiscard: (repo: string, files: FileChange[]) => typedError<null, AppError>(__TAURI_INVOKE("changes_discard", { repo, files })),
 	/**  Commits the index. Returns the new commit id. */
 	commitCreate: (repo: string, summary: string, description: string, coAuthors: CoAuthor[], amend: boolean) => typedError<string, AppError>(__TAURI_INVOKE("commit_create", { repo, summary, description, coAuthors, amend })),
+	/**
+	 *  What to warn about before committing the index: secrets, large files
+	 *  and newly added files that are usually ignored.
+	 */
+	commitCheck: (repo: string) => typedError<Finding[], AppError>(__TAURI_INVOKE("commit_check", { repo })),
+	/**
+	 *  Adds `patterns` to the root `.gitignore` and leaves `paths` out of the
+	 *  commit.
+	 */
+	commitIgnore: (repo: string, patterns: string[], paths: string[]) => typedError<null, AppError>(__TAURI_INVOKE("commit_ignore", { repo, patterns, paths })),
 	commitHead: (repo: string) => typedError<{
 	oid: string,
 	summary: string,
@@ -381,6 +391,11 @@ export type AppSettings = {
 	openRepositoryIn: OpenRepositoryIn,
 	/**  Look for a new version in the background. */
 	checkForUpdates: boolean,
+	/**
+	 *  Look for secrets, large files and usually-ignored files before a
+	 *  commit.
+	 */
+	commitChecks: boolean,
 };
 
 /**  How applying a stash went. */
@@ -671,6 +686,17 @@ export type FileDiff =
 { type: "text"; hunks: Hunk[]; 
 /**  Whether individual lines can be staged (see `patch::stage_lines`). */
 selectable: boolean } | { type: "binary" } | { type: "too_large" };
+
+export type Finding = 
+/**
+ *  Something that looks like a secret. `line` and `preview` (the value
+ *  with its middle hidden) are set when it was found in the content.
+ */
+{ kind: "secret"; path: string; secret: SecretKind; line: number | null; preview: string | null } | 
+/**  A blob of at least [`LARGE_FILE`] bytes, `mib` rounded down. */
+{ kind: "large_file"; path: string; mib: number } | 
+/**  Newly added files a `.gitignore` line (`pattern`) would leave out. */
+{ kind: "ignorable"; pattern: string; paths: string[] };
 
 export type GitInfo = {
 	version: string,
@@ -1032,6 +1058,14 @@ export type SearchField =
 "author" | 
 /**  Added or removed text in the changes (`git log -S`). */
 "content";
+
+export type SecretKind = 
+/**  A `.env` file. */
+"env_file" | 
+/**  A file named like a private key (`id_rsa`, `*.pem`, ...). */
+"key_file" | 
+/**  A `-----BEGIN ... PRIVATE KEY-----` line. */
+"private_key" | "github_token" | "aws_key" | "slack_token" | "stripe_key" | "google_api_key" | "anthropic_key" | "openai_key";
 
 /**  Which version to keep for a conflicted file. */
 export type Side = "mine" | "theirs";

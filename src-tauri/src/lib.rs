@@ -54,6 +54,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         changes::changes_stage_lines,
         changes::changes_discard,
         changes::commit_create,
+        changes::commit_check,
+        changes::commit_ignore,
         changes::commit_head,
         changes::identity_get,
         changes::identity_set,

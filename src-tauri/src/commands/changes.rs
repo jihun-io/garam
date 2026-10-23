@@ -5,6 +5,7 @@ use garam_git::commit::{self, CoAuthor, HeadCommit};
 use garam_git::diff::{self, FileDiff};
 use garam_git::identity::{self, RepoIdentity};
 use garam_git::patch::{self, LineRef};
+use garam_git::precommit::{self, Finding};
 use garam_git::{FileChange, Git, RepoStatus, blob, index, status};
 use serde::Serialize;
 
@@ -143,6 +144,34 @@ pub async fn commit_create(
             Path::new(&repo),
             &message,
             amend,
+        )?)
+    })
+    .await
+}
+
+/// What to warn about before committing the index: secrets, large files
+/// and newly added files that are usually ignored.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_check(repo: String) -> AppResult<Vec<Finding>> {
+    blocking(move || Ok(precommit::check(&Git::locate()?, Path::new(&repo))?)).await
+}
+
+/// Adds `patterns` to the root `.gitignore` and leaves `paths` out of the
+/// commit.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_ignore(
+    repo: String,
+    patterns: Vec<String>,
+    paths: Vec<String>,
+) -> AppResult<()> {
+    blocking(move || {
+        Ok(precommit::ignore(
+            &Git::locate()?,
+            Path::new(&repo),
+            &patterns,
+            &paths,
         )?)
     })
     .await

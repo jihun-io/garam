@@ -18,7 +18,13 @@
       "manual": "Only when I ask"
     },
     "updatesHint": "You are using Garam {{version}}.",
-    "checkNow": "Check Now"
+    "checkNow": "Check Now",
+    "commitChecks": "Safety checks before a commit",
+    "commitChecksHint": "Before committing, Garam looks for secrets, large files and files that usually aren't committed.",
+    "commitChecksChoices": {
+      "on": "Check",
+      "off": "Don't check"
+    }
   },
   "appearance": {
     "title": "Appearance",

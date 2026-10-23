@@ -75,6 +75,9 @@ pub struct AppSettings {
     pub open_repository_in: OpenRepositoryIn,
     /// Look for a new version in the background.
     pub check_for_updates: bool,
+    /// Look for secrets, large files and usually-ignored files before a
+    /// commit.
+    pub commit_checks: bool,
 }
 
 impl Default for AppSettings {
@@ -91,6 +94,7 @@ impl Default for AppSettings {
             detail_files_width: 260,
             open_repository_in: OpenRepositoryIn::default(),
             check_for_updates: true,
+            commit_checks: true,
         }
     }
 }

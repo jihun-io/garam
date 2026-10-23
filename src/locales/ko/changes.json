@@ -113,5 +113,48 @@
     "author": "커밋 작성자",
     "accountEmails": "이 계정의 이메일",
     "mismatch": "{{email}}은 @{{login}} 계정에 없는 이메일이라 GitHub가 커밋을 이 계정과 연결하지 않습니다."
+  },
+  "check": {
+    "title": "커밋하기 전에 확인하세요",
+    "intro": "이 커밋에는 한 번 들어가면 되돌리기 어려운 것이 있습니다. 커밋에서 제외하거나, 확인했다면 그대로 커밋하세요.",
+    "groups": {
+      "secret": "비밀 값",
+      "large_file": "큰 파일",
+      "ignorable": "보통 커밋하지 않는 파일"
+    },
+    "secret": {
+      "env_file": "환경 변수 파일입니다. 보통 비밀번호나 키를 담습니다.",
+      "key_file": "개인 키 파일로 보입니다.",
+      "private_key": "{{line}}번째 줄: 개인 키",
+      "token": "{{line}}번째 줄: {{name}} 형태의 값 {{preview}}",
+      "names": {
+        "github_token": "GitHub 토큰",
+        "aws_key": "AWS 액세스 키",
+        "slack_token": "Slack 토큰",
+        "stripe_key": "Stripe 키",
+        "google_api_key": "Google API 키",
+        "anthropic_key": "Anthropic API 키",
+        "openai_key": "OpenAI API 키"
+      },
+      "hint": "한 번 푸시하면 나중에 지워도 기록에 남습니다. 이미 푸시한 키라면 폐기하고 새로 만드세요."
+    },
+    "large": {
+      "size": "{{size}}MB",
+      "overLimit": "GitHub은 100MB가 넘는 파일의 푸시를 거부합니다.",
+      "heavy": "한 번 커밋하면 지워도 기록에 남아 저장소가 계속 무거워집니다. 큰 파일은 Git LFS로 다루세요."
+    },
+    "ignorable": {
+      "files_one": "파일 {{count}}개",
+      "files_other": "파일 {{count}}개",
+      "hint": ".gitignore에 넣으면 앞으로 변경 사항에도 나타나지 않습니다."
+    },
+    "exclude": "커밋에서 제외",
+    "ignore": ".gitignore에 추가하고 제외",
+    "learnLfs": "Git LFS 알아보기",
+    "cancel": "취소",
+    "commitAnyway": "그래도 커밋",
+    "commit": "커밋",
+    "resolved": "모두 처리했습니다. 남은 변경 사항으로 커밋합니다.",
+    "nothingLeft": "커밋할 변경 사항이 남지 않았습니다."
   }
 }

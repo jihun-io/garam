@@ -18,7 +18,13 @@
       "manual": "직접 확인할 때만"
     },
     "updatesHint": "지금 버전은 Garam {{version}}입니다.",
-    "checkNow": "지금 확인"
+    "checkNow": "지금 확인",
+    "commitChecks": "커밋 전 안전 검사",
+    "commitChecksHint": "커밋하기 전에 비밀 값, 큰 파일, 보통 커밋하지 않는 파일이 들어가는지 확인합니다.",
+    "commitChecksChoices": {
+      "on": "확인하기",
+      "off": "확인하지 않기"
+    }
   },
   "appearance": {
     "title": "모양",

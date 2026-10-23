@@ -113,5 +113,48 @@
     "author": "Commit author",
     "accountEmails": "Emails on this account",
     "mismatch": "{{email}} isn't on the @{{login}} account, so GitHub won't link these commits to it."
+  },
+  "check": {
+    "title": "Check before committing",
+    "intro": "This commit holds things that are hard to take back once committed. Exclude them, or commit as it is if you have checked.",
+    "groups": {
+      "secret": "Secrets",
+      "large_file": "Large files",
+      "ignorable": "Files that usually aren't committed"
+    },
+    "secret": {
+      "env_file": "An environment file. These usually hold passwords or keys.",
+      "key_file": "Looks like a private key file.",
+      "private_key": "Line {{line}}: a private key",
+      "token": "Line {{line}}: what looks like a {{name}}, {{preview}}",
+      "names": {
+        "github_token": "GitHub token",
+        "aws_key": "AWS access key",
+        "slack_token": "Slack token",
+        "stripe_key": "Stripe key",
+        "google_api_key": "Google API key",
+        "anthropic_key": "Anthropic API key",
+        "openai_key": "OpenAI API key"
+      },
+      "hint": "Once pushed, it stays in the history even if you delete it later. If you already pushed this key, revoke it and make a new one."
+    },
+    "large": {
+      "size": "{{size}} MB",
+      "overLimit": "GitHub refuses to push files larger than 100 MB.",
+      "heavy": "Once committed, it stays in the history even if you delete it, and keeps the repository heavy. Git LFS is made for large files."
+    },
+    "ignorable": {
+      "files_one": "{{count}} file",
+      "files_other": "{{count}} files",
+      "hint": "In .gitignore, they won't show up in your changes again either."
+    },
+    "exclude": "Exclude from commit",
+    "ignore": "Add to .gitignore and exclude",
+    "learnLfs": "About Git LFS",
+    "cancel": "Cancel",
+    "commitAnyway": "Commit anyway",
+    "commit": "Commit",
+    "resolved": "All taken care of. The rest of your changes will be committed.",
+    "nothingLeft": "No changes are left to commit."
   }
 }

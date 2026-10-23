@@ -21,6 +21,7 @@ pub mod identity;
 pub mod index;
 pub mod log;
 pub mod patch;
+pub mod precommit;
 mod progress;
 pub mod pull_request;
 pub mod remote;

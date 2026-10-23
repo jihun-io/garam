@@ -5,11 +5,20 @@ import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
 import { Checkbox } from "../../components/ui/Checkbox";
 import { Tooltip } from "../../components/ui/Tooltip";
-import { toAppError, type AppError, type BranchStatus, type Identity } from "../../ipc";
+import {
+  commands,
+  toAppError,
+  type AppError,
+  type BranchStatus,
+  type Finding,
+  type Identity,
+} from "../../ipc";
 import { currentPlatform } from "../../lib/platform";
 import { useRepoAccount } from "../accounts/api";
 import { emailBelongsTo } from "../accounts/repoAccount";
+import { useSettings } from "../settings/api";
 import { useChangeActions, useHeadCommit, useIdentity } from "./api";
+import { CommitCheckDialog } from "./CommitCheckDialog";
 import { useCommitDrafts } from "./commitDraftStore";
 import styles from "./CommitForm.module.css";
 import { parseCoAuthors } from "./fileState";
@@ -47,12 +56,19 @@ export function CommitForm({
   const [error, setError] = useState<AppError>();
   const [askIdentity, setAskIdentity] = useState(false);
   const [editRepoIdentity, setEditRepoIdentity] = useState(false);
+  const { commitChecks } = useSettings();
+  const [checking, setChecking] = useState(false);
+  const [findings, setFindings] = useState<Finding[] | null>(null);
   const head = useHeadCommit(repo, amend);
   const canAmend = branch.oid !== null;
 
   const coAuthors = parseCoAuthors(showCoAuthors ? coAuthorsText : "");
   const ready =
-    summary.trim() !== "" && coAuthors.ok && (stagedCount > 0 || amend) && !commit.isPending;
+    summary.trim() !== "" &&
+    coAuthors.ok &&
+    (stagedCount > 0 || amend) &&
+    !commit.isPending &&
+    !checking;
 
   const toggleAmend = (next: boolean) => {
     setAmend(next);
@@ -92,6 +108,24 @@ export function CommitForm({
       return;
     }
     setError(undefined);
+    if (!commitChecks) {
+      createCommit();
+      return;
+    }
+    setChecking(true);
+    // A check that fails to run shouldn't stand between the user and their
+    // commit.
+    void commands
+      .commitCheck(repo)
+      .then((result) => {
+        if (result.status === "ok" && result.data.length > 0) setFindings(result.data);
+        else createCommit();
+      }, createCommit)
+      .finally(() => setChecking(false));
+  };
+
+  const createCommit = () => {
+    if (!coAuthors.ok) return;
     commit.mutate(
       { summary, description, coAuthors: coAuthors.coAuthors, amend },
       {
@@ -251,6 +285,18 @@ export function CommitForm({
             setAskIdentity(false);
             submit(true);
           }}
+        />
+      )}
+      {findings && (
+        <CommitCheckDialog
+          repo={repo}
+          findings={findings}
+          canCommit={stagedCount > 0 || amend}
+          onCommit={() => {
+            setFindings(null);
+            createCommit();
+          }}
+          onClose={() => setFindings(null)}
         />
       )}
       {editRepoIdentity && identity.data && (

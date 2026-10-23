@@ -23,6 +23,7 @@ import { CloudWarning } from "@phosphor-icons/react/dist/csr/CloudWarning";
 import { Code } from "@phosphor-icons/react/dist/csr/Code";
 import { Copy } from "@phosphor-icons/react/dist/csr/Copy";
 import { DotsThree } from "@phosphor-icons/react/dist/csr/DotsThree";
+import { EyeSlash } from "@phosphor-icons/react/dist/csr/EyeSlash";
 import { FolderSimple } from "@phosphor-icons/react/dist/csr/FolderSimple";
 import { Files } from "@phosphor-icons/react/dist/csr/Files";
 import { Funnel } from "@phosphor-icons/react/dist/csr/Funnel";
@@ -31,7 +32,9 @@ import { GitBranch } from "@phosphor-icons/react/dist/csr/GitBranch";
 import { GitCommit } from "@phosphor-icons/react/dist/csr/GitCommit";
 import { GitDiff } from "@phosphor-icons/react/dist/csr/GitDiff";
 import { GitPullRequest } from "@phosphor-icons/react/dist/csr/GitPullRequest";
+import { HardDrives } from "@phosphor-icons/react/dist/csr/HardDrives";
 import { Info } from "@phosphor-icons/react/dist/csr/Info";
+import { Key } from "@phosphor-icons/react/dist/csr/Key";
 import { MagnifyingGlass } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
 import { MinusCircle } from "@phosphor-icons/react/dist/csr/MinusCircle";
 import { NotePencil } from "@phosphor-icons/react/dist/csr/NotePencil";
@@ -116,6 +119,11 @@ export const Icons = {
 
   // Diff
   noNewline: Prohibit,
+
+  // Checks before a commit
+  secret: Key,
+  largeFile: HardDrives,
+  ignorable: EyeSlash,
 } as const;
 
 export type IconName = keyof typeof Icons;

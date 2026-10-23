@@ -74,6 +74,8 @@ vi.mock("../../ipc/bindings", () => ({
     changesStageLines: vi.fn(),
     changesDiscard: vi.fn(),
     commitCreate: vi.fn(),
+    commitCheck: vi.fn(),
+    commitIgnore: vi.fn(),
     commitHead: vi.fn(),
     identityGet: vi.fn(),
     identitySet: vi.fn(),
@@ -163,6 +165,8 @@ function setup(files: FileChange[]) {
     vi.mocked(fn).mockResolvedValue(ok(null));
   }
   vi.mocked(commands.commitCreate).mockResolvedValue(ok("def"));
+  vi.mocked(commands.commitCheck).mockResolvedValue(ok([]));
+  vi.mocked(commands.commitIgnore).mockResolvedValue(ok(null));
   return renderWithQuery(<ChangesView repo="/repo" />);
 }
 
@@ -615,6 +619,81 @@ describe("ChangesView", () => {
       target: screen.getByRole("option", { name: /c\.txt/ }),
     });
     expect(await screen.findByRole("menuitem", { name: "Discard changes…" })).toBeVisible();
+  });
+
+  it("warns before committing a secret and commits anyway when asked", async () => {
+    const user = userEvent.setup();
+    setup([change("config.js", "modified", null)]);
+    vi.mocked(commands.commitCheck).mockResolvedValue(
+      ok([
+        {
+          kind: "secret",
+          path: "config.js",
+          secret: "github_token",
+          line: 2,
+          preview: "ghp_…6789",
+        },
+      ]),
+    );
+    await user.type(await screen.findByPlaceholderText("Summary (required)"), "Configure");
+    await user.click(screen.getByRole("button", { name: /Commit to/ }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Check before committing" });
+    expect(
+      within(dialog).getByText("Line 2: what looks like a GitHub token, ghp_…6789"),
+    ).toBeInTheDocument();
+    expect(commands.commitCreate).not.toHaveBeenCalled();
+    expect(await axeViolations(dialog)).toEqual([]);
+
+    await user.click(within(dialog).getByRole("button", { name: "Commit anyway" }));
+    expect(commands.commitCreate).toHaveBeenCalledWith("/repo", "Configure", "", [], false);
+    // The dialog's submit stays in the dialog: the commit form must not
+    // check (and open the dialog) again.
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Check before committing" })).toBeNull(),
+    );
+    expect(commands.commitCheck).toHaveBeenCalledTimes(1);
+  });
+
+  it("excludes a flagged file, checks again and then commits as planned", async () => {
+    const user = userEvent.setup();
+    setup([change("a.txt", "modified", null), change("video.mov", "added", null)]);
+    vi.mocked(commands.commitCheck)
+      .mockResolvedValueOnce(ok([{ kind: "large_file", path: "video.mov", mib: 120 }]))
+      .mockResolvedValueOnce(ok([]));
+    await user.type(await screen.findByPlaceholderText("Summary (required)"), "Add clip");
+    await user.click(screen.getByRole("button", { name: /Commit to/ }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Check before committing" });
+    expect(
+      within(dialog).getByText(/GitHub refuses to push files larger than 100 MB/),
+    ).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Exclude from commit" }));
+    expect(commands.changesUnstage).toHaveBeenCalledWith("/repo", [
+      change("video.mov", "added", null),
+    ]);
+    await user.click(await within(dialog).findByRole("button", { name: "Commit" }));
+    expect(commands.commitCreate).toHaveBeenCalledWith("/repo", "Add clip", "", [], false);
+  });
+
+  it("adds usually-ignored files to .gitignore and leaves them out", async () => {
+    const user = userEvent.setup();
+    setup([change("node_modules/a/index.js", "added", null)]);
+    const paths = ["node_modules/a/index.js", "node_modules/b/index.js"];
+    vi.mocked(commands.commitCheck)
+      .mockResolvedValueOnce(ok([{ kind: "ignorable", pattern: "node_modules/", paths }]))
+      .mockResolvedValueOnce(ok([]));
+    await user.type(await screen.findByPlaceholderText("Summary (required)"), "Init");
+    await user.click(screen.getByRole("button", { name: /Commit to/ }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Check before committing" });
+    expect(within(dialog).getByText("2 files")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Add to .gitignore and exclude" }));
+    expect(commands.commitIgnore).toHaveBeenCalledWith("/repo", ["node_modules/"], paths);
+    expect(await within(dialog).findByRole("status")).toHaveTextContent(
+      "All taken care of. The rest of your changes will be committed.",
+    );
+    expect(commands.commitCreate).not.toHaveBeenCalled();
   });
 
   it("shows an empty state when the working folder is clean", async () => {

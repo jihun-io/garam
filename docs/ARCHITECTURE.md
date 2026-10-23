@@ -88,6 +88,7 @@ garam-git/src/
 ├── diff.rs        # unified diff 파서 → 구조화된 hunk/line
 ├── patch.rs       # 선택한 줄로 부분 패치 생성 (줄 단위 스테이징)
 ├── commit.rs      # commit/amend
+├── precommit.rs   # 커밋 전 안전 검사(비밀 값·큰 파일·무시할 만한 파일), .gitignore에 더하기
 ├── branch.rs      # 브랜치 목록·생성·전환·삭제·병합
 ├── remote.rs      # fetch/pull/push/publish, 원격 저장소 정보
 ├── credential.rs  # askpass로 들어온 git·ssh 프롬프트 분류
@@ -102,7 +103,8 @@ garam-git/src/
 - **index가 기준이다.** 파일 체크박스는 index 상태를 그대로 보여주고, 누르는 즉시 `git add`/`git restore --staged`를 실행한다. 그래서 터미널에서 함께 git을 써도 화면이 어긋나지 않는다. (GitHub Desktop은 선택을 앱 상태로 들고 있다가 커밋할 때 스테이징한다. Garam은 이 방식을 따르지 않는다.)
 - 체크박스 상태: 전부 스테이지됨 = 체크, 일부만 = 혼합, 없음 = 빈칸.
 - diff 뷰어는 **HEAD → 작업 폴더** 전체 변경을 보여준다(스테이지 여부와 무관). 커밋이 없는 저장소는 빈 트리와 비교한다.
-- 경로 목록은 `--pathspec-from-file=- --pathspec-file-nul`로 stdin에 넘긴다. 명령줄 길이 제한과 특수 문자 문제를 피하기 위해서다.
+- 경로 목록은 `--pathspec-from-file=- --pathspec-file-nul`로 stdin에 넘긴다. 명령줄 길이 제한과 특수 문자 문제를 피하기 위해서다. `git diff`는 이 옵션이 없으므로, 많은 파일을 diff할 때는 전체를 diff하고 뺄 파일만 `:(exclude,literal)` 패스스펙으로 넘긴다(`precommit.rs`, 그 명령만 `GIT_LITERAL_PATHSPECS=0`).
+- 커밋 버튼은 커밋 전에 index와 HEAD의 차이를 검사한다(`precommit::check`). 걸린 것이 있으면 프론트가 확인 대화상자를 보이고, 검사가 실패하면 커밋을 막지 않는다.
 - 변경 취소는 작업 폴더에 있는 파일을 먼저 시스템 휴지통으로 옮긴 뒤 HEAD 상태로 되돌린다. 휴지통 이동이 실패하면 아무것도 되돌리지 않는다.
 
 ### 2.5 줄 단위 스테이징 (`patch.rs`)
