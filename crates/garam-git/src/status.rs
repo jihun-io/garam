@@ -149,6 +149,9 @@ pub fn parse(output: &str) -> Result<RepoStatus, GitError> {
             _ => {}
         }
     }
+    // git lists untracked files after all the others, so a new file would
+    // jump up the list once included. Path order keeps every file in place.
+    status.files.sort_by(|a, b| a.path.cmp(&b.path));
     Ok(status)
 }
 
@@ -236,25 +239,44 @@ mod tests {
             "1 .M SC.. 160000 160000 160000 fff fff vendor/lib\0",
         );
         let files = parse(out).unwrap().files;
+        let file = |path: &str| files.iter().find(|f| f.path == path).unwrap();
         assert_eq!(files.len(), 6);
 
-        assert_eq!(files[0].path, "src/main.rs");
-        assert_eq!(files[0].staged, None);
-        assert_eq!(files[0].unstaged, Some(ChangeKind::Modified));
+        assert_eq!(file("src/main.rs").staged, None);
+        assert_eq!(file("src/main.rs").unstaged, Some(ChangeKind::Modified));
 
-        assert_eq!(files[1].path, "새 파일.txt");
-        assert_eq!(files[1].staged, Some(ChangeKind::Added));
-        assert!(!files[1].exists_in_head());
+        assert_eq!(file("새 파일.txt").staged, Some(ChangeKind::Added));
+        assert!(!file("새 파일.txt").exists_in_head());
 
-        assert_eq!(files[2].path, "new name.rs");
-        assert_eq!(files[2].orig_path.as_deref(), Some("old name.rs"));
-        assert_eq!(files[2].staged, Some(ChangeKind::Renamed));
-        assert!(files[2].exists_in_head());
+        let renamed = file("new name.rs");
+        assert_eq!(renamed.orig_path.as_deref(), Some("old name.rs"));
+        assert_eq!(renamed.staged, Some(ChangeKind::Renamed));
+        assert!(renamed.exists_in_head());
 
-        assert!(files[3].is_conflicted());
-        assert_eq!(files[4].path, "untracked dir/file with spaces.md");
-        assert_eq!(files[4].unstaged, Some(ChangeKind::Untracked));
-        assert!(files[5].is_submodule);
+        assert!(file("conflict.txt").is_conflicted());
+        assert_eq!(
+            file("untracked dir/file with spaces.md").unstaged,
+            Some(ChangeKind::Untracked)
+        );
+        assert!(file("vendor/lib").is_submodule);
+    }
+
+    #[test]
+    fn lists_files_in_path_order_whether_tracked_or_not() {
+        // git puts untracked files last.
+        let out = concat!(
+            "1 .M N... 100644 100644 100644 aaa bbb b.txt ",
+            "1 .M N... 100644 100644 100644 aaa bbb d.txt ",
+            "? a.txt ",
+            "? c.txt ",
+        );
+        let paths: Vec<_> = parse(out)
+            .unwrap()
+            .files
+            .into_iter()
+            .map(|f| f.path)
+            .collect();
+        assert_eq!(paths, ["a.txt", "b.txt", "c.txt", "d.txt"]);
     }
 
     #[test]
