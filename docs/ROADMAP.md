@@ -69,7 +69,9 @@
 
 **확인함**(2026-10-23, macOS 릴리스 빌드 rc.2, 로컬 시험 서버): SSH는 처음 보는 호스트 키 확인, 암호 걸린 키의 암호 입력, 다시 푸시할 때 암호만 묻기, 세 번 틀리면 인증 실패 안내까지. HTTP Basic 인증(사용자 이름 + 토큰)은 가져오기·푸시, 틀린 토큰, 취소까지. GitHub 계정 로그인(Device Flow)과 키체인 저장, 그 계정으로 푸시도 확인했다. "이 컴퓨터에 기억"은 개발 빌드에서 helper를 비운 저장소로 확인했다.
 
-**남은 확인**: Windows에서 GUI 서브시스템 실행 파일이 askpass로 stdout을 제대로 넘기는지, Linux에서의 로그인도 확인이 필요하다.
+**확인함**(2026-10-23, Windows 11 ARM의 UTM 가상 머신, 릴리스 워크플로를 손으로 실행해 만든 x64 NSIS 빌드, Mac에 띄운 시험 서버): GUI 서브시스템 실행 파일이 askpass와 credential helper로 실행될 때 답을 git에 제대로 넘긴다. HTTP 토큰 로그인과 "이 컴퓨터에 기억"(Windows 자격 증명 관리자), SSH 키 암호와 처음 보는 호스트 키 확인 모두 동작했다. Git for Windows는 Git Credential Manager를 기본으로 켜 두므로, Garam 창이 뜨려면 저장소에서 `credential.helper`를 비워야 했다(GCM이 있으면 GCM이 로그인을 맡는다)
+
+**남은 확인**: Linux에서의 로그인(대개 helper가 없어 "이 컴퓨터에 기억"이 실제로 쓰이는 환경, Secret Service가 없을 때 키체인 저장이 실패하면 어떻게 보이는지 포함).
 
 ## M6. 히스토리
 
