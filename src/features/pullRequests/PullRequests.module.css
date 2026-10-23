@@ -152,3 +152,21 @@
   color: var(--color-ink-muted);
   font-size: var(--text-sm);
 }
+
+/* Checks still running: the dashed circle turns, like other work in
+   progress (the loading spinner). Reduced motion keeps it still. */
+.running {
+  animation: checks-running 2400ms linear infinite;
+}
+
+@keyframes checks-running {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .running {
+    animation: none;
+  }
+}

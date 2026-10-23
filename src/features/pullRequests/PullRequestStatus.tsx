@@ -44,7 +44,8 @@ const CHECK_ICONS: Record<string, IconName> = {
 
 /**
  * The checks' and review's icons. Shapes tell them apart; only a failure
- * takes a color (danger), the rest stay muted ink.
+ * takes a color (danger), the rest stay muted ink. Checks still running
+ * turn slowly, as long as they run.
  */
 export function PullRequestMarks({ pr, size = 14 }: { pr: PullRequest; size?: 12 | 14 | 16 }) {
   const check = pr.checks?.state ? CHECK_ICONS[pr.checks.state] : null;
@@ -60,7 +61,13 @@ export function PullRequestMarks({ pr, size = 14 }: { pr: PullRequest; size?: 12
         <Icon
           name={check}
           size={size}
-          className={pr.checks?.state === "failure" ? styles.failed : undefined}
+          className={
+            pr.checks?.state === "failure"
+              ? styles.failed
+              : pr.checks?.state === "pending"
+                ? styles.running
+                : undefined
+          }
         />
       )}
       {review && <Icon name={review} size={size} />}
