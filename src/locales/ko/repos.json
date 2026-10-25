@@ -69,6 +69,12 @@
     "name": "폴더 이름",
     "parent": "위치",
     "submit": "복제",
+    "account": "GitHub 계정",
+    "noAccount": "지정 안 함 (내 Git 설정 사용)",
+    "suggested": "{{account}} — 추천",
+    "noAccountHint": "Git 설정대로 로그인해 복제합니다(credential helper 또는 입력 창).",
+    "accountHint": "HTTPS로 @{{login}}에 로그인해 복제하고, 이 저장소는 계속 이 계정을 씁니다.",
+    "sshHint": "이 URL은 SSH라서 복제에는 SSH 키를 쓰고, 계정은 이 저장소의 PR에 씁니다.",
     "cancelClone": "복제 취소",
     "cloning": "{{name}} 복제 중…",
     "phase": {
@@ -79,6 +85,15 @@
       "resolving": "델타 처리하는 중",
       "writing": "개체 보내는 중",
       "checking_out": "파일 꺼내는 중"
+    },
+    "author": {
+      "title": "커밋 작성자 고르기",
+      "mismatch": "이 저장소의 커밋 작성자는 {{email}}인데, 이 주소는 @{{login}} 계정에 없어 GitHub가 커밋을 계정과 연결하지 않습니다. 이 저장소에서 어떤 작성자를 쓸까요?",
+      "missing": "이 저장소에 쓸 작성자 이메일이 Git 설정에 없습니다. @{{login}} 계정의 어떤 주소를 쓸까요?",
+      "noreplyHint": "커밋에 실제 주소를 남기지 않습니다",
+      "keep": "{{email}} 그대로 쓰기",
+      "keepHint": "Git 설정을 바꾸지 않습니다. 나중에 커밋 영역의 작성자 줄에서 바꿀 수 있습니다.",
+      "continue": "계속"
     }
   },
   "drop": {

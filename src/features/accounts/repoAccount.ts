@@ -30,6 +30,11 @@ export function parseRemote(url: string): GitHubRemote | null {
   return null;
 }
 
+/** "@login (Name)", or "@login" when the account has no name. */
+export function accountLabel(account: Account): string {
+  return account.name ? `@${account.login} (${account.name})` : `@${account.login}`;
+}
+
 /** Addresses GitHub links to the account: verified emails and noreply. */
 export function accountEmails(account: Account): string[] {
   return [...account.emails, account.noreplyEmail];
@@ -43,7 +48,8 @@ export function emailBelongsTo(account: Account, email: string): boolean {
 
 /**
  * The account that most likely fits a repository: the user name in the
- * remote URL, then the remote's owner, then the commit author's email.
+ * remote URL, then the remote's owner, then a member of the owning
+ * organization, then the commit author's email.
  */
 export function suggestAccount(
   accounts: Account[],
@@ -53,10 +59,19 @@ export function suggestAccount(
   const onHost = remote ? accounts.filter((a) => a.host === remote.host) : accounts;
   const byLogin = (login: string | null) =>
     login ? onHost.find((a) => a.login.toLowerCase() === login.toLowerCase()) : undefined;
+  const byEmail = (candidates: Account[]) =>
+    authorEmail ? candidates.find((a) => emailBelongsTo(a, authorEmail)) : undefined;
+  const owner = remote?.owner.toLowerCase();
+  const members = owner
+    ? onHost.filter((a) => (a.orgs ?? []).some((o) => o.toLowerCase() === owner))
+    : [];
   return (
     byLogin(remote?.urlUser ?? null) ??
     byLogin(remote?.owner ?? null) ??
-    (authorEmail ? onHost.find((a) => emailBelongsTo(a, authorEmail)) : undefined) ??
+    // When several accounts are members, the author email picks one.
+    byEmail(members) ??
+    members[0] ??
+    byEmail(onHost) ??
     null
   );
 }
