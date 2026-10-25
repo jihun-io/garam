@@ -15,7 +15,7 @@ Garam (from 가람, an old Korean word for "river") is a free, open-source Git c
 - **Branches and sync**: create, switch (bring changes along or stash them), merge, fetch, pull and push with progress, plus background fetch. Tags made in Garam go up with the next push, and tags can be deleted on the remote too.
 - **Sign-in inside the app**: HTTPS usernames and tokens, SSH key passphrases and first-time host keys are asked in Garam's own windows. Without a Git credential helper, Garam can remember a login in the system keychain.
 - **Conflicts**: a banner that follows merges, rebases, cherry-picks and reverts, with per-file "mine / theirs" and an external editor.
-- **GitHub accounts**: sign in with your browser, keep several accounts, and pick one per repository so the right account pushes and the right email authors.
+- **GitHub accounts**: sign in with your browser, keep several accounts, and pick one per repository so the right account pushes and the right email authors. GitHub Enterprise Server sign-in, with a personal access token, is in beta.
 - **Your language**: Git's errors are explained in your language with the original output one click away. Korean input (IME) and Korean file names work as you'd expect.
 - **Fast on big repositories**: tested with 100,000 files and 500,000 commits.
 

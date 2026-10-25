@@ -98,9 +98,9 @@
     "openBrowser": "브라우저 다시 열기",
     "cancel": "취소",
     "enterprise": {
-      "open": "GitHub Enterprise Server에 로그인",
-      "title": "GitHub Enterprise Server에 로그인",
-      "description": "GitHub Enterprise Server에는 그 서버에서 만든 개인 액세스 토큰으로 로그인합니다.",
+      "open": "GitHub Enterprise Server에 로그인 (베타)",
+      "title": "GitHub Enterprise Server에 로그인 (베타)",
+      "description": "GitHub Enterprise Server에는 그 서버에서 만든 개인 액세스 토큰으로 로그인합니다. 베타 기능이라 아직 실제 서버에서 확인하지 못했습니다. 동작하지 않으면 GitHub 이슈로 알려 주세요. 데이터 레지던시를 쓰는 GitHub Enterprise Cloud(ghe.com)는 아직 지원하지 않습니다.",
       "host": "서버 주소",
       "hostHint": "GitHub Enterprise를 여는 주소입니다.",
       "token": "개인 액세스 토큰",

@@ -98,9 +98,9 @@
     "openBrowser": "Open browser again",
     "cancel": "Cancel",
     "enterprise": {
-      "open": "Sign in to GitHub Enterprise Server",
-      "title": "Sign in to GitHub Enterprise Server",
-      "description": "GitHub Enterprise Server signs in with a personal access token you make on the server.",
+      "open": "Sign in to GitHub Enterprise Server (beta)",
+      "title": "Sign in to GitHub Enterprise Server (beta)",
+      "description": "GitHub Enterprise Server signs in with a personal access token you make on the server. This is in beta and hasn't been tried on a real server yet; if something doesn't work, please open an issue on GitHub. GitHub Enterprise Cloud with data residency (ghe.com) isn't supported yet.",
       "host": "Server address",
       "hostHint": "The address you open GitHub Enterprise at.",
       "token": "Personal access token",

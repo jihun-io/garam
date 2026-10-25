@@ -170,10 +170,10 @@ describe("AccountsSettings", () => {
     const { container } = renderWithQuery(<AccountsSettings />);
 
     await user.click(
-      await screen.findByRole("button", { name: "Sign in to GitHub Enterprise Server" }),
+      await screen.findByRole("button", { name: "Sign in to GitHub Enterprise Server (beta)" }),
     );
     const dialog = await screen.findByRole("dialog", {
-      name: "Sign in to GitHub Enterprise Server",
+      name: "Sign in to GitHub Enterprise Server (beta)",
     });
     const create = within(dialog).getByRole("button", { name: "Create token" });
     expect(create).toBeDisabled();
@@ -207,7 +207,7 @@ describe("AccountsSettings", () => {
     renderWithQuery(<AccountsSettings />);
 
     await user.click(
-      await screen.findByRole("button", { name: "Sign in to GitHub Enterprise Server" }),
+      await screen.findByRole("button", { name: "Sign in to GitHub Enterprise Server (beta)" }),
     );
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Server address"), "github.com");
