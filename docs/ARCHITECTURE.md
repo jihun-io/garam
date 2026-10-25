@@ -205,6 +205,7 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - 도우미 값은 git이 셸로 실행하므로 `!`로 시작하고 경로와 인수를 작은따옴표로 감싼다(공백·따옴표가 있는 경로). `!`가 없으면 git이 `git credential-<값>`으로 해석한다.
 - 이 설정은 Garam이 실행하는 git에만 붙는다. 터미널에서 실행하는 git은 사용자의 설정(`gh auth git-credential`, 원격 URL의 사용자 이름 등)을 그대로 따른다.
 - **추천**: 원격 URL의 사용자 이름(`https://me@github.com/...`) → 원격 소유자 → 작성자 이메일이 계정의 인증된 이메일·noreply 주소인 계정 순서.
+- **SSH 원격의 키**: SSH 원격은 계정 토큰이 아니라 SSH 키로 로그인하므로, 저장소마다 `~/.ssh`의 키를 고를 수 있다(`garam-git`의 `ssh` 모듈). 키 목록은 옆에 `<이름>.pub`가 있는 파일만 센다(개인 키 파일 내용은 읽지 않는다). 고르면 저장소 설정에 `git config --local core.sshCommand "ssh -i '<키>' -o IdentitiesOnly=yes"`를 쓴다. git이 이 값을 셸로 실행하므로(Git for Windows도) 경로는 작은따옴표로 감싸고, Windows에서는 `/`로 바꾼다. 앱이 쓴 형식이 아닌 `core.sshCommand`는 `custom`으로 읽어 그대로 두고, 다른 항목을 고를 때만 바꾼다. 앱이 실행하는 git에는 `GIT_SSH_COMMAND`를 붙이지 않으므로 터미널과 같은 키를 쓴다. 공개 키의 주석이 저장소 계정의 이메일이면 그 키를 추천한다.
 - **불일치 경고**: 저장소에 계정이 있고 작성자 이메일이 그 계정의 인증된 이메일·noreply 주소가 아니면 GitHub가 커밋을 그 계정과 연결하지 않는다. 커밋 영역과 대화상자에 알리되 커밋을 막지는 않는다.
 
 - **Pull Request (GitHub API)**: 저장소에 연결된 계정의 토큰으로 부른다(`commands/pull_requests.rs`, 토큰은 프론트로 가지 않는다). 지금 scope(`repo`)로 충분하다.

@@ -64,6 +64,37 @@ export function useRepoAccount(repo: string, authorEmail: string | null): RepoAc
   };
 }
 
+export const sshKeys = {
+  all: ["ssh", "keys"] as const,
+  repo: (repo: string) => ["repo", repo, "sshKey"] as const,
+};
+
+/** Private keys in `~/.ssh`. Only read when `enabled` (an SSH remote). */
+export function useSshKeys(enabled: boolean) {
+  return useQuery({
+    queryKey: sshKeys.all,
+    queryFn: () => unwrap(commands.sshKeys()),
+    enabled,
+  });
+}
+
+/** The SSH command the repository sets in its own config. */
+export function useRepoSshKey(repo: string, enabled: boolean) {
+  return useQuery({
+    queryKey: sshKeys.repo(repo),
+    queryFn: () => unwrap(commands.sshRepoKey(repo)),
+    enabled,
+  });
+}
+
+export function useSetRepoSshKey(repo: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string | null) => unwrap(commands.sshSetRepoKey(repo, key)),
+    onSettled: () => client.invalidateQueries({ queryKey: sshKeys.repo(repo) }),
+  });
+}
+
 /**
  * Signs in with the device flow. `onCode` gets the code to enter on
  * GitHub; the promise settles once the user approves, declines, or the

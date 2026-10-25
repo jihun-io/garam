@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use garam_git::credential;
 use garam_git::remote::{self, PullOutcome, RemoteInfo, TagState};
+use garam_git::ssh::{self, RepoSshKey, SshKey};
 use garam_git::{CancelToken, Git, GitError, Progress};
 use serde::Serialize;
 use tauri::State;
@@ -176,6 +177,40 @@ impl NetworkContext {
 #[specta::specta]
 pub async fn remote_info(repo: String) -> AppResult<RemoteInfo> {
     blocking(move || Ok(remote::info(&Git::locate()?, Path::new(&repo))?)).await
+}
+
+/// Private keys in `~/.ssh`, for choosing one per repository.
+#[tauri::command]
+#[specta::specta]
+pub async fn ssh_keys() -> AppResult<Vec<SshKey>> {
+    blocking(move || {
+        Ok(std::env::home_dir()
+            .map(|home| ssh::list_keys(&home.join(".ssh")))
+            .unwrap_or_default())
+    })
+    .await
+}
+
+/// The SSH command `repo` sets in its own config.
+#[tauri::command]
+#[specta::specta]
+pub async fn ssh_repo_key(repo: String) -> AppResult<RepoSshKey> {
+    blocking(move || Ok(ssh::repo_key(&Git::locate()?, Path::new(&repo))?)).await
+}
+
+/// Makes `repo`'s SSH remotes use the key at `key`, or the usual SSH setup
+/// with `None`.
+#[tauri::command]
+#[specta::specta]
+pub async fn ssh_set_repo_key(repo: String, key: Option<String>) -> AppResult<()> {
+    blocking(move || {
+        Ok(ssh::set_repo_key(
+            &Git::locate()?,
+            Path::new(&repo),
+            key.as_deref().map(Path::new),
+        )?)
+    })
+    .await
 }
 
 /// Fetches `remote`. With `interactive: false` (background fetch), nothing

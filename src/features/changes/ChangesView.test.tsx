@@ -75,6 +75,9 @@ function repoIdentity(inherited: Identity, local: Identity = NONE): RepoIdentity
 vi.mock("../../ipc/bindings", () => ({
   commands: {
     statusGet: vi.fn(),
+    sshKeys: vi.fn(),
+    sshRepoKey: vi.fn(),
+    sshSetRepoKey: vi.fn(),
     diffGet: vi.fn(),
     diffImages: vi.fn(),
     changesStage: vi.fn(),
@@ -392,6 +395,67 @@ describe("ChangesView", () => {
 
     expect(commands.repoSetAccount).toHaveBeenCalledWith("/repo", "github.com/1");
     expect(commands.identitySetLocal).toHaveBeenCalledWith("/repo", "Garam", "kim@jihun.io");
+  });
+
+  it("chooses an SSH key for an SSH remote, suggesting the account's", async () => {
+    const user = userEvent.setup();
+    setup([change("a.txt", "added", null)]);
+    mockAccounts([WORK, PERSONAL], "github.com/1");
+    vi.mocked(commands.remoteInfo).mockResolvedValue(
+      ok({
+        remotes: [{ name: "origin", url: "git@github.com:jihun-io/garam.git" }],
+        defaultRemote: "origin",
+        lastFetchedAt: null,
+      }),
+    );
+    vi.mocked(commands.sshKeys).mockResolvedValue(
+      ok([
+        { path: "/Users/me/.ssh/id_ed25519", kind: "ssh-ed25519", comment: "kim@jihun.io" },
+        { path: "/Users/me/.ssh/work", kind: "ssh-ed25519", comment: "jh.kim@causeworks.co.kr" },
+      ]),
+    );
+    vi.mocked(commands.sshRepoKey).mockResolvedValue(ok({ type: "none" }));
+    vi.mocked(commands.sshSetRepoKey).mockResolvedValue(ok(null));
+
+    await user.click(await screen.findByRole("button", { name: /Author/ }));
+    const dialog = await screen.findByRole("dialog");
+    const picker = await within(dialog).findByRole("combobox", { name: "SSH key" });
+    expect(picker).toHaveTextContent("My SSH settings");
+    await user.click(picker);
+    // The chosen account is jihun-io, whose email is on id_ed25519.
+    await user.click(
+      await screen.findByRole("option", { name: "id_ed25519 (kim@jihun.io) — suggested" }),
+    );
+    expect(within(dialog).getByText(/use only this key/)).toBeVisible();
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(commands.sshSetRepoKey).toHaveBeenCalledWith("/repo", "/Users/me/.ssh/id_ed25519");
+  });
+
+  it("keeps an SSH command the user wrote unless they pick another", async () => {
+    const user = userEvent.setup();
+    setup([change("a.txt", "added", null)]);
+    vi.mocked(commands.remoteInfo).mockResolvedValue(
+      ok({
+        remotes: [{ name: "origin", url: "git@github.com:jihun-io/garam.git" }],
+        defaultRemote: "origin",
+        lastFetchedAt: null,
+      }),
+    );
+    vi.mocked(commands.sshKeys).mockResolvedValue(ok([]));
+    vi.mocked(commands.sshRepoKey).mockResolvedValue(
+      ok({ type: "custom", command: "ssh -F ~/.ssh/work_config" }),
+    );
+    vi.mocked(commands.sshSetRepoKey).mockReset();
+
+    await user.click(await screen.findByRole("button", { name: /Author/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByRole("combobox", { name: "SSH key" })).toHaveTextContent(
+      "Keep the current command",
+    );
+    expect(within(dialog).getByText(/run “ssh -F ~\/.ssh\/work_config”/)).toBeVisible();
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(commands.sshSetRepoKey).not.toHaveBeenCalled();
   });
 
   it("warns when the author email isn't on the repository's account", async () => {
