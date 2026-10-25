@@ -59,7 +59,7 @@
     "files_other": "파일 {{count}}개",
     "more_one": "외 {{count}}개",
     "more_other": "외 {{count}}개",
-    "unsupported": "PR은 github.com의 저장소에서 쓸 수 있습니다.",
+    "unsupported": "PR은 github.com이나, 로그인한 GitHub Enterprise Server의 저장소에서 쓸 수 있습니다.",
     "noAccount": "먼저 이 저장소에서 쓸 GitHub 계정을 고르세요.",
     "notSignedIn": "먼저 설정에서 GitHub에 로그인하세요.",
     "chooseAccount": "계정 고르기…",

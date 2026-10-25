@@ -87,6 +87,16 @@ export function useSignIn() {
   });
 }
 
+/** Signs in to a GitHub Enterprise Server with a personal access token. */
+export function useSignInWithToken() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ host, token }: { host: string; token: string }) =>
+      unwrap(commands.githubSignInWithToken(host, token)),
+    onSuccess: () => client.invalidateQueries({ queryKey: accountKeys.all }),
+  });
+}
+
 export function useSignOut() {
   const client = useQueryClient();
   return useMutation({

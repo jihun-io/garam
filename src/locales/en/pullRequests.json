@@ -59,7 +59,7 @@
     "files_other": "{{count}} files",
     "more_one": "and {{count}} more",
     "more_other": "and {{count}} more",
-    "unsupported": "Pull requests work with repositories on github.com.",
+    "unsupported": "Pull requests work with repositories on github.com, or on a GitHub Enterprise Server you've signed in to.",
     "noAccount": "Choose the GitHub account to use for this repository first.",
     "notSignedIn": "Sign in to GitHub in Settings first.",
     "chooseAccount": "Choose Account…",

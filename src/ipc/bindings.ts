@@ -288,6 +288,15 @@ export const commands = {
 	 */
 	githubSignIn: (operationId: string, onCode: Channel<SignInCode>) => typedError<Account, AppError>(__TAURI_INVOKE("github_sign_in", { operationId, onCode })),
 	/**
+	 *  Signs in to a GitHub Enterprise Server with a personal access token.
+	 *  The device flow needs an OAuth App registered on each server, so a
+	 *  token the user makes there stands in for it. `host` may be pasted as a
+	 *  URL; only its host name is kept.
+	 */
+	githubSignInWithToken: (host: string, token: string) => typedError<Account, AppError>(__TAURI_INVOKE("github_sign_in_with_token", { host, token })),
+	/**  The page on `host` that makes a token with the scopes Garam needs. */
+	githubNewTokenUrl: (host: string) => typedError<string, AppError>(__TAURI_INVOKE("github_new_token_url", { host })),
+	/**
 	 *  Signs out: forgets the account and deletes its token from the keychain.
 	 *  The authorization stays on GitHub until the user revokes it there.
 	 */
@@ -407,7 +416,9 @@ export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "exter
 /**  GitHub refused the input; params `field`, `code`, `message`. */
 "github_validation" | 
 /**  The repository has no signed-in account chosen. */
-"github_no_account" | "github_unexpected" | 
+"github_no_account" | 
+/**  The GitHub Enterprise Server address isn't a host name. */
+"github_invalid_host" | "github_unexpected" | 
 /**  The release feed couldn't be reached or read. */
 "update_check_failed" | 
 /**  Downloading, verifying or installing the update failed. */
@@ -999,7 +1010,10 @@ export type PullRequest = {
 
 /**  Whether the repository can use pull requests, and where they can go. */
 export type PullRequestContext = 
-/**  The remote isn't on github.com, or there is no remote. */
+/**
+ *  The remote isn't on github.com or a signed-in account's host, or
+ *  there is no remote.
+ */
 { status: "unsupported" } | 
 /**
  *  No account is chosen for the repository, or it was signed out.

@@ -1,4 +1,4 @@
-//! Pull requests on github.com: where one can go, which branches have
+//! Pull requests on github.com and GitHub Enterprise Server: where one can go, which branches have
 //! one, and opening a new one. The token stays here; only results go to
 //! the frontend.
 
@@ -23,7 +23,8 @@ type Accounts<'a> = State<'a, Arc<AccountStore>>;
 #[derive(Debug, Serialize, specta::Type)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum PullRequestContext {
-    /// The remote isn't on github.com, or there is no remote.
+    /// The remote isn't on github.com or a signed-in account's host, or
+    /// there is no remote.
     Unsupported,
     /// No account is chosen for the repository, or it was signed out.
     /// Only what git knows locally is there.
@@ -80,13 +81,14 @@ pub struct BranchPullRequest {
 }
 
 /// The default remote's repository and the account's token, when both are
-/// on github.com.
+/// on the same GitHub host.
 enum Access {
     Unsupported,
     NoAccount {
         remote: String,
     },
     Ready {
+        client: Box<Client>,
         token: String,
         remote: String,
         head: RepoId,
@@ -99,13 +101,14 @@ fn access(
     accounts: &AccountStore,
     repo: &str,
 ) -> AppResult<Access> {
-    let client = Client::github_com();
     let info = remote::info(&Git::locate()?, Path::new(repo))?;
+    // github.com, or a GitHub Enterprise Server someone signed in to.
+    let known = |host: &str| host == "github.com" || accounts.list().iter().any(|a| a.host == host);
     let remotes: Vec<(String, RepoId)> = info
         .remotes
         .iter()
         .filter_map(|r| Some((r.name.clone(), RepoId::from_remote_url(&r.url)?)))
-        .filter(|(_, id)| id.host == client.host())
+        .filter(|(_, id)| known(&id.host))
         .collect();
     let Some((remote, head)) = info
         .default_remote
@@ -114,6 +117,11 @@ fn access(
     else {
         return Ok(Access::Unsupported);
     };
+    // Only remotes on the same host can be pull request targets.
+    let remotes: Vec<_> = remotes
+        .into_iter()
+        .filter(|(_, id)| id.host == head.host)
+        .collect();
     let token = match repositories.account(repo) {
         Some(key) if accounts.get(&key).is_some_and(|a| a.host == head.host) => {
             accounts.token(&key)?
@@ -122,6 +130,7 @@ fn access(
     };
     Ok(match token {
         Some(token) => Access::Ready {
+            client: Box::new(Client::for_host(&head.host)),
             token,
             remote,
             head,
@@ -181,11 +190,12 @@ pub async fn pull_request_context(
                 PullRequestContext::NoAccount(local_remote(&repo, remote)?)
             }
             Access::Ready {
+                client,
                 token,
                 remote,
                 head,
                 remotes,
-            } => match targets(&Client::github_com(), &token, &head, &remotes) {
+            } => match targets(&client, &token, &head, &remotes) {
                 Ok(targets) => PullRequestContext::Ready(PullRequestTargets { head, targets }),
                 Err(error) => PullRequestContext::Blocked(BlockedAccess {
                     local: local_remote(&repo, remote)?,
@@ -210,6 +220,7 @@ pub async fn pull_request_list(
     let (repositories, accounts) = (Arc::clone(&repositories), Arc::clone(&accounts));
     blocking(move || {
         let Access::Ready {
+            client,
             token,
             head,
             remotes,
@@ -218,7 +229,6 @@ pub async fn pull_request_list(
         else {
             return Ok(Vec::new());
         };
-        let client = Client::github_com();
         let targets = targets(&client, &token, &head, &remotes)?;
         let upstreams = branch::upstreams(&Git::locate()?, Path::new(&repo))?;
         let owner_of = |remote: &str| {
@@ -315,13 +325,13 @@ pub async fn pull_request_create(
 ) -> AppResult<CreatedPullRequest> {
     let (repositories, accounts) = (Arc::clone(&repositories), Arc::clone(&accounts));
     blocking(move || {
-        let Access::Ready { token, .. } = access(&repositories, &accounts, &repo)? else {
+        let Access::Ready { client, token, .. } = access(&repositories, &accounts, &repo)? else {
             return Err(crate::error::AppError::app(
                 crate::error::AppErrorKind::GithubNoAccount,
                 None,
             ));
         };
-        Ok(Client::github_com().create_pull_request(&token, &owner, &name, &pull_request)?)
+        Ok(client.create_pull_request(&token, &owner, &name, &pull_request)?)
     })
     .await
 }

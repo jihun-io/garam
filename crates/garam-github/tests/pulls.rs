@@ -85,6 +85,24 @@ fn reads_a_fork_and_its_parent() {
 }
 
 #[test]
+fn asks_an_enterprise_server_at_its_graphql_path() {
+    let mut server = Server::new();
+    let m = server
+        .mock("POST", "/api/graphql")
+        .match_header("authorization", "Bearer gho_test")
+        .with_header("content-type", "application/json")
+        .with_body(
+            r#"{"data":{"repository":{"owner":{"login":"team"},"name":"r","defaultBranchRef":{"name":"main"},"parent":null}}}"#,
+        )
+        .create();
+    let repo = Client::enterprise(&server.url())
+        .repository("gho_test", "team", "r")
+        .unwrap();
+    assert_eq!(repo.repo.owner, "team");
+    m.assert();
+}
+
+#[test]
 fn a_missing_repository_is_not_found() {
     let mut server = Server::new();
     let _m = graphql(

@@ -48,6 +48,7 @@
   "github_rate_limited": "GitHub에 요청을 너무 많이 보냈습니다. 잠시 뒤에 다시 시도하세요.",
   "github_validation": "GitHub가 요청을 받아들이지 않았습니다.",
   "github_no_account": "먼저 이 저장소에서 쓸 GitHub 계정을 고르세요.",
+  "github_invalid_host": "github.example.com처럼 서버 주소를 입력하세요. github.com은 “GitHub 계정 추가”로 로그인합니다.",
   "github_unexpected": "GitHub에서 예상하지 못한 응답을 받았습니다.",
   "cherry_pick_conflict": "충돌 때문에 체리픽이 멈췄습니다. 충돌한 파일을 해결한 뒤 계속하세요.",
   "cherry_pick_empty": "이 브랜치에 이미 같은 변경이 있어서 체리픽할 것이 없습니다.",
