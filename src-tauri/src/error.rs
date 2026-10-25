@@ -36,6 +36,8 @@ pub enum AppErrorKind {
     GithubValidation,
     /// The repository has no signed-in account chosen.
     GithubNoAccount,
+    /// The GitHub Enterprise Server address isn't a host name.
+    GithubInvalidHost,
     GithubUnexpected,
     /// The release feed couldn't be reached or read.
     UpdateCheckFailed,

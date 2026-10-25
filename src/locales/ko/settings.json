@@ -97,6 +97,17 @@
     "copyCode": "코드 복사",
     "openBrowser": "브라우저 다시 열기",
     "cancel": "취소",
+    "enterprise": {
+      "open": "GitHub Enterprise Server에 로그인",
+      "title": "GitHub Enterprise Server에 로그인",
+      "description": "GitHub Enterprise Server에는 그 서버에서 만든 개인 액세스 토큰으로 로그인합니다.",
+      "host": "서버 주소",
+      "hostHint": "GitHub Enterprise를 여는 주소입니다.",
+      "token": "개인 액세스 토큰",
+      "tokenHint": "repo, workflow, read:org, user:email 권한이 필요하고, 시스템 키체인에 저장합니다. 로그아웃하면 이 컴퓨터에서 지우므로 서버에서도 지우세요.",
+      "createToken": "토큰 만들기",
+      "submit": "로그인"
+    },
     "revokeHint": "로그아웃하면 이 컴퓨터에서 토큰이 지워집니다. Garam의 접근 권한까지 취소하려면 <settings>GitHub 설정</settings>에서 취소하세요.",
     "saved": {
       "title": "이 컴퓨터에 기억한 로그인",

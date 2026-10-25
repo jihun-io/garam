@@ -6,7 +6,7 @@ use tauri::State;
 use tauri::ipc::Channel;
 
 use crate::accounts::{Account, AccountStore};
-use crate::error::{AppResult, blocking};
+use crate::error::{AppError, AppErrorKind, AppResult, blocking};
 use crate::operations::Operations;
 
 type Store<'a> = State<'a, Arc<AccountStore>>;
@@ -71,6 +71,63 @@ pub async fn github_sign_in(
     .await
 }
 
+/// Signs in to a GitHub Enterprise Server with a personal access token.
+/// The device flow needs an OAuth App registered on each server, so a
+/// token the user makes there stands in for it. `host` may be pasted as a
+/// URL; only its host name is kept.
+#[tauri::command]
+#[specta::specta]
+pub async fn github_sign_in_with_token(
+    store: Store<'_>,
+    host: String,
+    token: String,
+) -> AppResult<Account> {
+    let store = Arc::clone(&store);
+    blocking(move || {
+        let host = enterprise_host(&host)?;
+        let token = token.trim();
+        let client = Client::for_host(&host);
+        let user = client.user(token)?;
+        // A token without `user:email` can't list emails; the noreply
+        // address still works for the author.
+        let emails = client.emails(token).unwrap_or_default();
+        let account = Account::new(client.host(), &user, &emails);
+        store.save(account.clone(), token)?;
+        Ok(account)
+    })
+    .await
+}
+
+/// The page on `host` that makes a token with the scopes Garam needs.
+#[tauri::command]
+#[specta::specta]
+pub fn github_new_token_url(host: String) -> AppResult<String> {
+    Ok(Client::for_host(&enterprise_host(&host)?).new_token_url())
+}
+
+/// The host name in what the user typed: `git.example.com`,
+/// `https://git.example.com/` or a page on it. github.com has its own
+/// sign-in, so it isn't accepted here.
+fn enterprise_host(input: &str) -> AppResult<String> {
+    let input = input.trim();
+    let rest = input.split_once("://").map_or(input, |(_, rest)| rest);
+    let host = rest
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let valid = !host.is_empty()
+        && host != "github.com"
+        && host
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | ':'));
+    if valid {
+        Ok(host)
+    } else {
+        Err(AppError::app(AppErrorKind::GithubInvalidHost, None))
+    }
+}
+
 /// Signs out: forgets the account and deletes its token from the keychain.
 /// The authorization stays on GitHub until the user revokes it there.
 #[tauri::command]
@@ -78,4 +135,24 @@ pub async fn github_sign_in(
 pub async fn github_sign_out(store: Store<'_>, key: String) -> AppResult<()> {
     let store = Arc::clone(&store);
     blocking(move || store.remove(&key)).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_the_host_from_what_was_typed() {
+        for input in [
+            "git.example.com",
+            " https://Git.Example.com/ ",
+            "https://git.example.com/team/repo?tab=1",
+        ] {
+            assert_eq!(enterprise_host(input).unwrap(), "git.example.com");
+        }
+        assert_eq!(enterprise_host("ghe.local:8443").unwrap(), "ghe.local:8443");
+        for input in ["", "https://", "github.com", "git example.com", "user@host"] {
+            assert!(enterprise_host(input).is_err(), "{input}");
+        }
+    }
 }

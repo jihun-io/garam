@@ -19,6 +19,8 @@ vi.mock("../../ipc/bindings", () => ({
     githubAccounts: vi.fn(),
     githubSignIn: vi.fn(),
     githubSignOut: vi.fn(),
+    githubSignInWithToken: vi.fn(),
+    githubNewTokenUrl: vi.fn(),
     loginsList: vi.fn(),
     loginForget: vi.fn(),
     operationCancel: vi.fn(async () => null),
@@ -152,5 +154,65 @@ describe("AccountsSettings", () => {
     await screen.findByLabelText("One-time code");
     signIn.fail("github_login_expired");
     expect(await screen.findByText(/The code expired before it was approved/)).toBeVisible();
+  });
+
+  it("signs in to an Enterprise Server with a token", async () => {
+    const user = userEvent.setup();
+    const ghes: Account = {
+      ...account(7, "kim", null),
+      key: "git.example.com/7",
+      host: "git.example.com",
+    };
+    vi.mocked(commands.githubNewTokenUrl).mockResolvedValue(
+      ok("https://git.example.com/settings/tokens/new?description=Garam"),
+    );
+    vi.mocked(commands.githubSignInWithToken).mockResolvedValue(ok(ghes));
+    const { container } = renderWithQuery(<AccountsSettings />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Sign in to GitHub Enterprise Server" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Sign in to GitHub Enterprise Server",
+    });
+    const create = within(dialog).getByRole("button", { name: "Create token" });
+    expect(create).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "Sign in" })).toBeDisabled();
+    expect(await axeViolations(container)).toEqual([]);
+
+    await user.type(within(dialog).getByLabelText("Server address"), "https://git.example.com/");
+    await user.click(create);
+    expect(commands.githubNewTokenUrl).toHaveBeenCalledWith("https://git.example.com/");
+    expect(openUrl).toHaveBeenCalledWith(
+      "https://git.example.com/settings/tokens/new?description=Garam",
+    );
+
+    const token = within(dialog).getByLabelText("Personal access token");
+    expect(token).toHaveAttribute("type", "password");
+    await user.type(token, "ghp_secret");
+    await user.click(within(dialog).getByRole("button", { name: "Sign in" }));
+    expect(commands.githubSignInWithToken).toHaveBeenCalledWith(
+      "https://git.example.com/",
+      "ghp_secret",
+    );
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("explains an address that isn't a server", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.githubSignInWithToken).mockResolvedValue({
+      status: "error",
+      error: { kind: "github_invalid_host", params: {}, detail: null },
+    });
+    renderWithQuery(<AccountsSettings />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Sign in to GitHub Enterprise Server" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Server address"), "github.com");
+    await user.type(within(dialog).getByLabelText("Personal access token"), "ghp_x");
+    await user.click(within(dialog).getByRole("button", { name: "Sign in" }));
+    expect(await within(dialog).findByText(/Enter the server's address/)).toBeVisible();
   });
 });

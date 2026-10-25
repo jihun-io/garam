@@ -84,7 +84,7 @@ impl Client {
         query: &str,
         variables: serde_json::Value,
     ) -> Result<T, GitHubError> {
-        let request = self.agent.post(format!("{}/graphql", self.api_url));
+        let request = self.agent.post(self.graphql_url.as_str());
         let body = serde_json::json!({ "query": query, "variables": variables });
         let response: GraphQlResponse<T> = read_json(with_auth(request, token).send_json(body)?)?;
         if let Some(error) = response.errors.into_iter().next() {

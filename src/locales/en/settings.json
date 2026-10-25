@@ -97,6 +97,17 @@
     "copyCode": "Copy code",
     "openBrowser": "Open browser again",
     "cancel": "Cancel",
+    "enterprise": {
+      "open": "Sign in to GitHub Enterprise Server",
+      "title": "Sign in to GitHub Enterprise Server",
+      "description": "GitHub Enterprise Server signs in with a personal access token you make on the server.",
+      "host": "Server address",
+      "hostHint": "The address you open GitHub Enterprise at.",
+      "token": "Personal access token",
+      "tokenHint": "It needs the repo, workflow, read:org and user:email scopes, and is kept in the system keychain. Signing out removes it from this computer; delete it on the server too.",
+      "createToken": "Create token",
+      "submit": "Sign in"
+    },
     "revokeHint": "Signing out removes the token from this computer. To also revoke Garam's access, go to <settings>GitHub settings</settings>.",
     "saved": {
       "title": "Logins remembered on this computer",

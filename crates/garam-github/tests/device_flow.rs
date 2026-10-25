@@ -147,3 +147,24 @@ fn derives_the_host_and_settings_page() {
         )
     );
 }
+
+#[test]
+fn uses_the_enterprise_api_paths() {
+    let mut server = Server::new();
+    let user = server
+        .mock("GET", "/api/v3/user")
+        .match_header("authorization", "Bearer ghp_enterprise")
+        .with_body(r#"{"id":7,"login":"kim","name":null,"avatar_url":""}"#)
+        .create();
+    let client = Client::enterprise(&server.url());
+
+    assert_eq!(client.user("ghp_enterprise").unwrap().login, "kim");
+    user.assert();
+    assert_eq!(Client::for_host("GitHub.com").host(), "github.com");
+    let ghes = Client::for_host("git.example.com");
+    assert_eq!(ghes.host(), "git.example.com");
+    assert_eq!(
+        ghes.new_token_url(),
+        "https://git.example.com/settings/tokens/new?description=Garam&scopes=repo,workflow,read:org,user:email"
+    );
+}

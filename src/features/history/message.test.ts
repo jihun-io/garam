@@ -86,4 +86,15 @@ describe("githubWebUrl", () => {
     }
     expect(githubWebUrl("git@gitlab.com:a/b.git")).toBeNull();
   });
+
+  it("reads remotes on a signed-in Enterprise Server", () => {
+    const hosts = ["git.example.com"];
+    expect(githubWebUrl("https://Git.Example.com/team/app.git", hosts)).toBe(
+      "https://git.example.com/team/app",
+    );
+    expect(githubWebUrl("git@git.example.com:team/app.git", hosts)).toBe(
+      "https://git.example.com/team/app",
+    );
+    expect(githubWebUrl("git@git.example.com:team/app.git")).toBeNull();
+  });
 });
