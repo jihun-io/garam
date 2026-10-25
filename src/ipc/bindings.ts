@@ -26,9 +26,10 @@ export const commands = {
 	/**
 	 *  Clones `url` into `parent/name`, streaming progress and credential
 	 *  prompts to `on_event`. Cancel with [`operation_cancel`] using the same
-	 *  `operation_id`.
+	 *  `operation_id`. With `account`, git signs in as that GitHub account and
+	 *  the new repository keeps using it.
 	 */
-	repoClone: (operationId: string, url: string, parent: string, name: string, onEvent: Channel<RemoteEvent>) => typedError<RepositoryEntry, AppError>(__TAURI_INVOKE("repo_clone", { operationId, url, parent, name, onEvent })),
+	repoClone: (operationId: string, url: string, parent: string, name: string, account: string | null, onEvent: Channel<RemoteEvent>) => typedError<RepositoryEntry, AppError>(__TAURI_INVOKE("repo_clone", { operationId, url, parent, name, account, onEvent })),
 	/**  Removes a repository from Garam's list. Files on disk are untouched. */
 	repoRemove: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("repo_remove", { path })),
 	/**  Shows the repository at `path` in the calling window. */
@@ -369,6 +370,11 @@ export type Account = {
 	emails: string[],
 	/**  GitHub's private `…@users.noreply.github.com` address. */
 	noreplyEmail: string,
+	/**
+	 *  Logins of the organizations the account belongs to, as of sign-in.
+	 *  Accounts signed in before Garam read them have none.
+	 */
+	orgs?: string[],
 };
 
 export type AccountList = {

@@ -64,7 +64,9 @@ pub async fn github_sign_in(
         let token = client.wait_for_token(&code, || guard.token.is_cancelled())?;
         let user = client.user(&token)?;
         let emails = client.emails(&token)?;
-        let account = Account::new(client.host(), &user, &emails);
+        // Only used to suggest an account; not worth failing sign-in over.
+        let orgs = client.organizations(&token).unwrap_or_default();
+        let account = Account::new(client.host(), &user, &emails, orgs);
         store.save(account.clone(), &token)?;
         Ok(account)
     })
