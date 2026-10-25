@@ -249,6 +249,15 @@ export const commands = {
 	/**  Commits HEAD was on that no branch, tag or remote branch holds now. */
 	lostCommits: (repo: string) => typedError<LostCommit[], AppError>(__TAURI_INVOKE("lost_commits", { repo })),
 	remoteInfo: (repo: string) => typedError<RemoteInfo, AppError>(__TAURI_INVOKE("remote_info", { repo })),
+	/**  Private keys in `~/.ssh`, for choosing one per repository. */
+	sshKeys: () => typedError<SshKey[], AppError>(__TAURI_INVOKE("ssh_keys")),
+	/**  The SSH command `repo` sets in its own config. */
+	sshRepoKey: (repo: string) => typedError<RepoSshKey, AppError>(__TAURI_INVOKE("ssh_repo_key", { repo })),
+	/**
+	 *  Makes `repo`'s SSH remotes use the key at `key`, or the usual SSH setup
+	 *  with `None`.
+	 */
+	sshSetRepoKey: (repo: string, key: string | null) => typedError<null, AppError>(__TAURI_INVOKE("ssh_set_repo_key", { repo, key })),
 	/**
 	 *  Fetches `remote`. With `interactive: false` (background fetch), nothing
 	 *  asks the user for credentials.
@@ -1099,6 +1108,15 @@ export type RepoRef = {
 	defaultBranch: string | null,
 };
 
+/**  The repository's own `core.sshCommand`. */
+export type RepoSshKey = 
+/**  Not set: ssh uses `~/.ssh/config` and the agent as usual. */
+{ type: "none" } | 
+/**  Set by Garam (or written the same way) to use this key. */
+{ type: "key"; path: string } | 
+/**  Some other command the user wrote; Garam doesn't take it apart. */
+{ type: "custom"; command: string };
+
 export type RepoStatus = {
 	branch: BranchStatus,
 	files: FileChange[],
@@ -1205,6 +1223,15 @@ export type SignatureStatus =
 "expired" | "revoked" | 
 /**  Signed, but the key isn't available to check it. */
 "cannot_check";
+
+/**  A private key in `~/.ssh` that has a matching `.pub` file. */
+export type SshKey = {
+	path: string,
+	/**  The key type, e.g. `ssh-ed25519`. */
+	kind: string,
+	/**  The public key's comment, often an email address. */
+	comment: string | null,
+};
 
 export type Stash = {
 	/**  Commit id; stable while `stash@{n}` shifts. */

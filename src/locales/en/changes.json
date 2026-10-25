@@ -110,6 +110,13 @@
     "noAccountHint": "Push and pull sign in the way your Git is set up (credential helper or a prompt).",
     "accountHint": "Push and pull over HTTPS sign in as @{{login}}, whatever your Git is set up to use.",
     "sshHint": "This repository's remote uses SSH: push and pull use your SSH keys, and the account is used for pull requests.",
+    "sshKey": "SSH key",
+    "sshDefault": "My SSH settings (~/.ssh/config and agent)",
+    "sshDefaultHint": "ssh picks the key the way it's set up on this computer.",
+    "sshNoKeys": "No keys with a .pub file were found in ~/.ssh, so ssh picks the key the way it's set up on this computer.",
+    "sshKeyHint": "Push and pull over SSH use only this key. It's saved in this repository's Git settings (core.sshCommand), so the terminal uses it too.",
+    "sshCustom": "Keep the current command",
+    "sshCustomHint": "This repository's Git settings run “{{command}}”. Choosing another option replaces it.",
     "author": "Commit author",
     "accountEmails": "Emails on this account",
     "mismatch": "{{email}} isn't on the @{{login}} account, so GitHub won't link these commits to it."

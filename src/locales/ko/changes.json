@@ -110,6 +110,13 @@
     "noAccountHint": "푸시와 풀은 Git 설정대로 로그인합니다(credential helper 또는 입력 창).",
     "accountHint": "HTTPS로 푸시와 풀을 할 때 Git 설정과 상관없이 @{{login}}으로 로그인합니다.",
     "sshHint": "이 저장소의 원격은 SSH라서 푸시와 풀에는 SSH 키를 쓰고, 계정은 PR에 씁니다.",
+    "sshKey": "SSH 키",
+    "sshDefault": "내 SSH 설정 사용 (~/.ssh/config와 에이전트)",
+    "sshDefaultHint": "이 컴퓨터의 SSH 설정대로 키를 고릅니다.",
+    "sshNoKeys": "~/.ssh에 .pub 파일이 있는 키가 없어, 이 컴퓨터의 SSH 설정대로 키를 고릅니다.",
+    "sshKeyHint": "SSH로 푸시와 풀을 할 때 이 키만 씁니다. 이 저장소의 Git 설정(core.sshCommand)에 저장되므로 터미널에서도 같은 키를 씁니다.",
+    "sshCustom": "지금 명령 유지",
+    "sshCustomHint": "이 저장소의 Git 설정이 “{{command}}”를 실행합니다. 다른 항목을 고르면 바뀝니다.",
     "author": "커밋 작성자",
     "accountEmails": "이 계정의 이메일",
     "mismatch": "{{email}}은 @{{login}} 계정에 없는 이메일이라 GitHub가 커밋을 이 계정과 연결하지 않습니다."
