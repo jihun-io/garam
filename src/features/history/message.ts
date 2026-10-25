@@ -77,15 +77,19 @@ export function linkIssues(text: string): MessagePart[] {
 }
 
 /**
- * The web page of a github.com repository from its remote URL, for links
- * to issues and commits. Other hosts get none for now.
+ * The web page of a repository on github.com, or on another GitHub host
+ * in `hosts` (an Enterprise Server someone signed in to), from its remote
+ * URL, for links to issues and commits. Other hosts get none.
  */
-export function githubWebUrl(remoteUrl: string): string | null {
+export function githubWebUrl(remoteUrl: string, hosts: string[] = []): string | null {
   const match =
-    /^https?:\/\/(?:[^@/]+@)?github\.com(?::\d+)?\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/i.exec(
+    /^https?:\/\/(?:[^@/]+@)?([^/:@]+)(?::\d+)?\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/i.exec(
       remoteUrl,
     ) ??
-    /^ssh:\/\/(?:[^@/]+@)?github\.com(?::\d+)?\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/i.exec(remoteUrl) ??
-    /^(?:[^@/]+@)?github\.com:([^/]+)\/([^/]+?)(?:\.git)?\/?$/i.exec(remoteUrl);
-  return match ? `https://github.com/${match[1]}/${match[2]}` : null;
+    /^ssh:\/\/(?:[^@/]+@)?([^/:@]+)(?::\d+)?\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/i.exec(remoteUrl) ??
+    /^(?:[^@/]+@)?([^/:@]+):([^/]+)\/([^/]+?)(?:\.git)?\/?$/i.exec(remoteUrl);
+  if (!match) return null;
+  const host = match[1].toLowerCase();
+  const known = host === "github.com" || hosts.some((h) => h.toLowerCase() === host);
+  return known ? `https://${host}/${match[2]}/${match[3]}` : null;
 }

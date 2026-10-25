@@ -34,6 +34,7 @@ pub struct Client {
     agent: ureq::Agent,
     web_url: String,
     api_url: String,
+    graphql_url: String,
     client_id: String,
 }
 
@@ -42,7 +43,25 @@ impl Client {
         Self::new("https://github.com", "https://api.github.com", CLIENT_ID)
     }
 
-    /// A client for other URLs (a test server, later GitHub Enterprise).
+    /// The client for `host`: github.com, or a GitHub Enterprise Server,
+    /// whose API lives under `/api/v3` and `/api/graphql` on the same host.
+    pub fn for_host(host: &str) -> Self {
+        if host.eq_ignore_ascii_case("github.com") {
+            return Self::github_com();
+        }
+        Self::enterprise(&format!("https://{host}"))
+    }
+
+    /// A GitHub Enterprise Server at `web_url`.
+    pub fn enterprise(web_url: &str) -> Self {
+        let web_url = web_url.trim_end_matches('/');
+        let mut client = Self::new(web_url, &format!("{web_url}/api/v3"), CLIENT_ID);
+        client.graphql_url = format!("{web_url}/api/graphql");
+        client
+    }
+
+    /// A client for other URLs (a test server). GraphQL is at
+    /// `<api_url>/graphql`, as on github.com.
     pub fn new(web_url: &str, api_url: &str, client_id: &str) -> Self {
         let agent = ureq::Agent::config_builder()
             .timeout_global(Some(Duration::from_secs(30)))
@@ -51,10 +70,12 @@ impl Client {
             .user_agent(concat!("Garam/", env!("CARGO_PKG_VERSION")))
             .build()
             .into();
+        let api_url = api_url.trim_end_matches('/').to_owned();
         Self {
             agent,
             web_url: web_url.trim_end_matches('/').to_owned(),
-            api_url: api_url.trim_end_matches('/').to_owned(),
+            graphql_url: format!("{api_url}/graphql"),
+            api_url,
             client_id: client_id.to_owned(),
         }
     }
@@ -66,6 +87,16 @@ impl Client {
             .split_once("://")
             .map_or(self.web_url.as_str(), |(_, r)| r);
         rest.split('/').next().unwrap_or(rest)
+    }
+
+    /// Where the user makes a personal access token with Garam's scopes,
+    /// for hosts where the device flow isn't available.
+    pub fn new_token_url(&self) -> String {
+        format!(
+            "{}/settings/tokens/new?description=Garam&scopes={}",
+            self.web_url,
+            SCOPES.replace(' ', ",")
+        )
     }
 
     /// The page where the user reviews or revokes Garam's access.

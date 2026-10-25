@@ -5,6 +5,7 @@ use garam_git::{Git, GitError, repo};
 use tauri::ipc::Channel;
 use tauri::{State, WebviewWindow};
 
+use crate::accounts::AccountStore;
 use crate::askpass::Askpass;
 use crate::commands::remote::{NetworkContext, RemoteEvent};
 use crate::error::{AppError, AppErrorKind, AppResult, blocking};
@@ -91,7 +92,8 @@ pub async fn repo_create(
 
 /// Clones `url` into `parent/name`, streaming progress and credential
 /// prompts to `on_event`. Cancel with [`operation_cancel`] using the same
-/// `operation_id`.
+/// `operation_id`. With `account`, git signs in as that GitHub account and
+/// the new repository keeps using it.
 #[tauri::command]
 #[specta::specta]
 #[allow(clippy::too_many_arguments)]
@@ -99,18 +101,32 @@ pub async fn repo_clone(
     store: Store<'_>,
     operations: State<'_, Arc<Operations>>,
     askpass: State<'_, Arc<Askpass>>,
+    accounts: State<'_, Arc<AccountStore>>,
     operation_id: String,
     url: String,
     parent: String,
     name: String,
+    account: Option<String>,
     on_event: Channel<RemoteEvent>,
 ) -> AppResult<RepositoryEntry> {
     let store = Arc::clone(&store);
     let dest = destination(&parent, &name)?;
-    let info = NetworkContext::new(&operations, &askpass, operation_id, true, on_event)
+    let mut context = NetworkContext::new(&operations, &askpass, operation_id, true, on_event);
+    if let Some(key) = account.clone() {
+        context = context.with_account(&accounts, key);
+    }
+    let info = context
         .run(move |git, cancel, progress| repo::clone(git, url.trim(), &dest, cancel, progress))
         .await?;
-    blocking(move || store.add(info)).await
+    blocking(move || {
+        let entry = store.add(info)?;
+        if account.is_none() {
+            return Ok(entry);
+        }
+        store.set_account(&entry.path, account.clone())?;
+        Ok(RepositoryEntry { account, ..entry })
+    })
+    .await
 }
 
 /// Cancels a running operation, declining any credential prompt it shows.

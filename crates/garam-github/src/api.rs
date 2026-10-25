@@ -33,6 +33,11 @@ pub struct Email {
 }
 
 #[derive(Deserialize)]
+struct Organization {
+    login: String,
+}
+
+#[derive(Deserialize)]
 struct GraphQlResponse<T> {
     data: Option<T>,
     #[serde(default)]
@@ -55,6 +60,13 @@ impl Client {
     /// The user's email addresses, including private ones (`user:email`).
     pub fn emails(&self, token: &str) -> Result<Vec<Email>, GitHubError> {
         self.get(token, "/user/emails")
+    }
+
+    /// Logins of the organizations the user belongs to, private
+    /// memberships included (`read:org`). Only the first 100.
+    pub fn organizations(&self, token: &str) -> Result<Vec<String>, GitHubError> {
+        let orgs: Vec<Organization> = self.get(token, "/user/orgs?per_page=100")?;
+        Ok(orgs.into_iter().map(|o| o.login).collect())
     }
 
     pub(crate) fn get<T: DeserializeOwned>(
@@ -84,7 +96,7 @@ impl Client {
         query: &str,
         variables: serde_json::Value,
     ) -> Result<T, GitHubError> {
-        let request = self.agent.post(format!("{}/graphql", self.api_url));
+        let request = self.agent.post(self.graphql_url.as_str());
         let body = serde_json::json!({ "query": query, "variables": variables });
         let response: GraphQlResponse<T> = read_json(with_auth(request, token).send_json(body)?)?;
         if let Some(error) = response.errors.into_iter().next() {

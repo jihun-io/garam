@@ -38,16 +38,29 @@ pub struct NetworkContext {
 }
 
 pub struct AccountSource {
-    pub repositories: Arc<RepositoryStore>,
     pub accounts: Arc<AccountStore>,
-    pub repo: String,
+    pub choice: AccountChoice,
+}
+
+pub enum AccountChoice {
+    /// Whatever is chosen for the repository at this path in Garam's list.
+    Repository {
+        repositories: Arc<RepositoryStore>,
+        repo: String,
+    },
+    /// An account picked for a clone, before the repository is listed.
+    Key(String),
 }
 
 impl AccountSource {
     /// The login of the account chosen for the repository. `None` when
     /// there is none, or it was signed out since.
     fn credential(&self) -> AppResult<Option<HostCredential>> {
-        let Some(key) = self.repositories.account(&self.repo) else {
+        let key = match &self.choice {
+            AccountChoice::Repository { repositories, repo } => repositories.account(repo),
+            AccountChoice::Key(key) => Some(key.clone()),
+        };
+        let Some(key) = key else {
             return Ok(None);
         };
         let Some(account) = self.accounts.get(&key) else {
@@ -58,6 +71,14 @@ impl AccountSource {
             username: account.login,
             token,
         }))
+    }
+
+    /// The repository whose git settings apply, when it exists yet.
+    fn repo(&self) -> Option<&str> {
+        match &self.choice {
+            AccountChoice::Repository { repo, .. } => Some(repo),
+            AccountChoice::Key(_) => None,
+        }
     }
 }
 
@@ -87,9 +108,20 @@ impl NetworkContext {
         repo: &Path,
     ) -> Self {
         self.account = Some(AccountSource {
-            repositories: Arc::clone(repositories),
             accounts: Arc::clone(accounts),
-            repo: repo.to_string_lossy().into_owned(),
+            choice: AccountChoice::Repository {
+                repositories: Arc::clone(repositories),
+                repo: repo.to_string_lossy().into_owned(),
+            },
+        });
+        self
+    }
+
+    /// Uses the account with `key` (a clone, before the repository exists).
+    pub fn with_account(mut self, accounts: &State<'_, Arc<AccountStore>>, key: String) -> Self {
+        self.account = Some(AccountSource {
+            accounts: Arc::clone(accounts),
+            choice: AccountChoice::Key(key),
         });
         self
     }
@@ -121,8 +153,8 @@ impl NetworkContext {
             // Without a helper of the user's, git would forget every login
             // and ask each time; Garam remembers the ones the user chooses.
             // A clone has no repository yet, so only the user's settings count.
-            let dir = match &self.account {
-                Some(source) => PathBuf::from(&source.repo),
+            let dir = match self.account.as_ref().and_then(AccountSource::repo) {
+                Some(repo) => PathBuf::from(repo),
                 None => std::env::temp_dir(),
             };
             let remember = !credential::has_helper(&git, &dir).unwrap_or(true);

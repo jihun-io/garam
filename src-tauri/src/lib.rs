@@ -131,6 +131,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         remote::credential_respond,
         github::github_accounts,
         github::github_sign_in,
+        github::github_sign_in_with_token,
+        github::github_new_token_url,
         github::github_sign_out,
         pull_requests::pull_request_context,
         pull_requests::pull_request_list,

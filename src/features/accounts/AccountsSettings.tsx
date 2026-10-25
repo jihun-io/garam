@@ -9,6 +9,7 @@ import { commands, toAppError, type Account, type SavedLogin, type SignInCode } 
 import { useNotify } from "../notify/notifyStore";
 import { useAccounts, useForgetLogin, useSavedLogins, useSignIn, useSignOut } from "./api";
 import styles from "./AccountsSettings.module.css";
+import { EnterpriseSignInDialog } from "./EnterpriseSignInDialog";
 
 /** Signed-in GitHub accounts, and signing in another one. */
 export function AccountsSettings() {
@@ -143,6 +144,7 @@ function SignIn() {
   const [code, setCode] = useState<SignInCode | null>(null);
   const [copied, setCopied] = useState(false);
   const operation = useRef<string | null>(null);
+  const [enterprise, setEnterprise] = useState(false);
 
   // Leaving the settings stops the polling.
   useEffect(
@@ -193,10 +195,14 @@ function SignIn() {
   if (!signIn.isPending) {
     return (
       <div className={styles.signIn}>
-        <Button variant="primary" icon="create" onClick={start}>
-          {t("accounts.add")}
-        </Button>
+        <div className={styles.actions}>
+          <Button variant="primary" icon="create" onClick={start}>
+            {t("accounts.add")}
+          </Button>
+          <Button onClick={() => setEnterprise(true)}>{t("accounts.enterprise.open")}</Button>
+        </div>
         {error && error.kind !== "cancelled" && <ErrorMessage error={error} />}
+        {enterprise && <EnterpriseSignInDialog onClose={() => setEnterprise(false)} />}
       </div>
     );
   }

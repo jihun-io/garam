@@ -124,6 +124,25 @@ fn reads_the_user_and_emails() {
 }
 
 #[test]
+fn reads_the_users_organizations() {
+    let mut server = Server::new();
+    let _orgs = server
+        .mock("GET", "/user/orgs")
+        .match_query(Matcher::UrlEncoded("per_page".into(), "100".into()))
+        .match_header("authorization", "Bearer gho_abc")
+        .with_body(
+            r#"[{"login":"cw-team","id":1,"description":null},{"login":"garam-dev","id":2}]"#,
+        )
+        .create();
+    let client = client(&server);
+
+    assert_eq!(
+        client.organizations("gho_abc").unwrap(),
+        ["cw-team", "garam-dev"]
+    );
+}
+
+#[test]
 fn a_revoked_token_is_unauthorized() {
     let mut server = Server::new();
     let _user = server
@@ -145,5 +164,26 @@ fn derives_the_host_and_settings_page() {
             "https://github.com/settings/connections/applications/{}",
             garam_github::CLIENT_ID
         )
+    );
+}
+
+#[test]
+fn uses_the_enterprise_api_paths() {
+    let mut server = Server::new();
+    let user = server
+        .mock("GET", "/api/v3/user")
+        .match_header("authorization", "Bearer ghp_enterprise")
+        .with_body(r#"{"id":7,"login":"kim","name":null,"avatar_url":""}"#)
+        .create();
+    let client = Client::enterprise(&server.url());
+
+    assert_eq!(client.user("ghp_enterprise").unwrap().login, "kim");
+    user.assert();
+    assert_eq!(Client::for_host("GitHub.com").host(), "github.com");
+    let ghes = Client::for_host("git.example.com");
+    assert_eq!(ghes.host(), "git.example.com");
+    assert_eq!(
+        ghes.new_token_url(),
+        "https://git.example.com/settings/tokens/new?description=Garam&scopes=repo,workflow,read:org,user:email"
     );
 }

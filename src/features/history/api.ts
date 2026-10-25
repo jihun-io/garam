@@ -14,6 +14,7 @@ import {
   type HistoryFilter,
   type ResetMode,
 } from "../../ipc";
+import { useAccounts } from "../accounts/api";
 import { changesKeys, indexScope } from "../changes/api";
 import { deleteRemoteTag, useRemoteInfo } from "../sync/api";
 import { githubWebUrl } from "./message";
@@ -222,11 +223,15 @@ export function useCommitSignature(repo: string, oid: string, enabled: boolean) 
   });
 }
 
-/** The default remote's page on github.com, for links; `null` elsewhere. */
+/**
+ * The default remote's page on github.com or a signed-in GitHub
+ * Enterprise Server, for links; `null` elsewhere.
+ */
 export function useRemoteWebUrl(repo: string): string | null {
   const info = useRemoteInfo(repo).data;
+  const hosts = useAccounts().data?.accounts.map((a) => a.host) ?? [];
   const remote = info?.remotes.find((r) => r.name === info.defaultRemote);
-  return remote ? githubWebUrl(remote.url) : null;
+  return remote ? githubWebUrl(remote.url, hosts) : null;
 }
 
 /** Revert writes commits (newest first), so it queues with other index writes. */

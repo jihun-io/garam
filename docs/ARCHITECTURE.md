@@ -193,6 +193,7 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 ### 2.10 GitHub 계정
 
 - **로그인**: OAuth Device Flow(`garam-github`). client secret 없이 client ID만 쓴다. `github_sign_in`이 일회용 코드를 `Channel`로 보내고 승인될 때까지 기다린다. 취소는 다른 장시간 작업처럼 `operation_cancel`이다. 프론트는 코드를 클립보드에 복사하고 인증 페이지를 시스템 브라우저로 연다.
+- **GitHub Enterprise Server**: Device Flow는 서버마다 등록한 OAuth App의 client ID가 있어야 하므로, GHES에는 사용자가 그 서버에서 만든 개인 액세스 토큰으로 로그인한다(`github_sign_in_with_token`). 입력한 주소에서 호스트 이름만 남기고(`https://`나 경로를 붙여 넣어도 된다), github.com은 받지 않는다(`github_invalid_host`). `/user`로 토큰을 확인하고, `user:email`이 없어 이메일을 읽지 못하면 noreply 주소만 둔다. "토큰 만들기"는 Garam의 scope를 채운 `https://<호스트>/settings/tokens/new`를 연다(`github_new_token_url`). API는 `Client::for_host`가 고른다: github.com이 아니면 REST `https://<호스트>/api/v3`, GraphQL `https://<호스트>/api/graphql`. 계정 키(`<host>/<user id>`)와 credential helper는 원래 호스트별이라 그대로 쓴다. PR은 기본 원격의 호스트가 github.com이거나 로그인한 계정의 호스트일 때 쓸 수 있고, 같은 호스트의 원격만 대상으로 삼는다. 커밋·이슈 웹 링크도 같은 호스트에서 만든다. 아바타는 CSP `img-src`가 `avatars.githubusercontent.com`만 허용하므로 GHES 계정은 이름 첫 글자로 보인다.
 - **scope**: `repo`(비공개 저장소 push·pull), `workflow`(워크플로 파일 push), `read:org`(저장소별 계정 추천), `user:email`(작성자 이메일 추천).
 - **저장**: 계정 정보(로그인 이름, 이름, 아바타, 인증된 이메일, noreply 주소)는 앱 데이터 폴더의 `accounts.json`에, 토큰은 OS 키체인(`keyring`, 서비스 `io.jihun.garam.github`, 계정 `<host>/<user id>`)에 둔다. 키를 사용자 ID로 잡아 로그인 이름이 바뀌어도 같은 계정으로 본다.
 - 토큰은 백엔드 밖으로 나가지 않는다. 프론트로 보내는 타입에는 토큰이 없다.

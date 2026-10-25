@@ -29,10 +29,14 @@ pub struct Account {
     pub emails: Vec<String>,
     /// GitHub's private `…@users.noreply.github.com` address.
     pub noreply_email: String,
+    /// Logins of the organizations the account belongs to, as of sign-in.
+    /// Accounts signed in before Garam read them have none.
+    #[serde(default)]
+    pub orgs: Vec<String>,
 }
 
 impl Account {
-    pub fn new(host: &str, user: &User, emails: &[Email]) -> Self {
+    pub fn new(host: &str, user: &User, emails: &[Email], orgs: Vec<String>) -> Self {
         let mut verified: Vec<&Email> = emails.iter().filter(|e| e.verified).collect();
         verified.sort_by_key(|e| !e.primary);
         Self {
@@ -43,6 +47,7 @@ impl Account {
             avatar_url: user.avatar_url.clone(),
             emails: verified.into_iter().map(|e| e.email.clone()).collect(),
             noreply_email: user.noreply_email(host),
+            orgs,
         }
     }
 }
@@ -251,7 +256,7 @@ pub mod tests {
         vault.inner.set("github.com/1", "gho_saved").unwrap();
         AccountStore::load(file.clone(), Box::new(vault.clone()))
             .save(
-                Account::new("github.com", &user(1, "jihun-io"), &[]),
+                Account::new("github.com", &user(1, "jihun-io"), &[], vec![]),
                 "gho_saved",
             )
             .unwrap();
@@ -268,7 +273,10 @@ pub mod tests {
 
         // Signing in again doesn't need a read, and signing out forgets it.
         store
-            .save(Account::new("github.com", &user(2, "cw"), &[]), "gho_work")
+            .save(
+                Account::new("github.com", &user(2, "cw"), &[], vec![]),
+                "gho_work",
+            )
             .unwrap();
         assert_eq!(
             store.token("github.com/2").unwrap().as_deref(),
@@ -289,10 +297,28 @@ pub mod tests {
                 email("unverified@example.com", false, false),
                 email("kim@jihun.io", true, true),
             ],
+            vec![],
         );
         assert_eq!(account.key, "github.com/1");
         assert_eq!(account.emails, ["kim@jihun.io", "other@example.com"]);
         assert_eq!(account.noreply_email, "1+jihun-io@users.noreply.github.com");
+    }
+
+    #[test]
+    fn reads_accounts_saved_before_organizations() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("accounts.json");
+        std::fs::write(
+            &file,
+            r#"{"accounts":[{"key":"github.com/1","host":"github.com","login":"jihun-io",
+                "name":null,"avatarUrl":"","emails":[],
+                "noreplyEmail":"1+jihun-io@users.noreply.github.com"}]}"#,
+        )
+        .unwrap();
+        let store = AccountStore::load(file, Box::new(MemoryVault::default()));
+        let accounts = store.list();
+        assert_eq!(accounts.len(), 1);
+        assert!(accounts[0].orgs.is_empty());
     }
 
     #[test]
@@ -302,13 +328,13 @@ pub mod tests {
         let vault = MemoryVault::default();
         let store = AccountStore::load(file.clone(), Box::new(vault.clone()));
 
-        let personal = Account::new("github.com", &user(1, "jihun-io"), &[]);
-        let work = Account::new("github.com", &user(2, "cw-jihun-io"), &[]);
+        let personal = Account::new("github.com", &user(1, "jihun-io"), &[], vec![]);
+        let work = Account::new("github.com", &user(2, "cw-jihun-io"), &[], vec![]);
         store.save(personal.clone(), "gho_personal").unwrap();
         store.save(work.clone(), "gho_work").unwrap();
 
         // Signing in again (e.g. after a rename) replaces, not duplicates.
-        let renamed = Account::new("github.com", &user(1, "jihun"), &[]);
+        let renamed = Account::new("github.com", &user(1, "jihun"), &[], vec![]);
         store.save(renamed, "gho_personal2").unwrap();
 
         let reloaded = AccountStore::load(file.clone(), Box::new(vault.clone()));
