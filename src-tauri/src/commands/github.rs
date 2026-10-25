@@ -93,7 +93,8 @@ pub async fn github_sign_in_with_token(
         // A token without `user:email` can't list emails; the noreply
         // address still works for the author.
         let emails = client.emails(token).unwrap_or_default();
-        let account = Account::new(client.host(), &user, &emails);
+        let orgs = client.organizations(token).unwrap_or_default();
+        let account = Account::new(client.host(), &user, &emails, orgs);
         store.save(account.clone(), token)?;
         Ok(account)
     })
