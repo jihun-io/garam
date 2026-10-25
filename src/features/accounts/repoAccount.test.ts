@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 import type { Account } from "../../ipc";
 import { emailBelongsTo, parseRemote, suggestAccount } from "./repoAccount";
 
-const account = (id: number, login: string, emails: string[] = []): Account => ({
+const account = (
+  id: number,
+  login: string,
+  emails: string[] = [],
+  orgs: string[] = [],
+): Account => ({
   key: `github.com/${id}`,
   host: "github.com",
   login,
@@ -11,6 +16,7 @@ const account = (id: number, login: string, emails: string[] = []): Account => (
   avatarUrl: "",
   emails,
   noreplyEmail: `${id}+${login}@users.noreply.github.com`,
+  orgs,
 });
 
 const personal = account(1, "jihun-io", ["kim@jihun.io"]);
@@ -57,6 +63,18 @@ describe("suggestAccount", () => {
     expect(suggestAccount(accounts, org, "jh.kim@causeworks.co.kr")).toBe(work);
     expect(suggestAccount(accounts, org, "1+jihun-io@users.noreply.github.com")).toBe(personal);
     expect(suggestAccount(accounts, org, "someone@example.com")).toBeNull();
+  });
+
+  it("suggests a member of the organization that owns the repository", () => {
+    const member = account(3, "jihun-cw", [], ["Causeworks"]);
+    const remote = parseRemote("https://github.com/causeworks/app.git");
+    expect(suggestAccount([personal, member], remote, null)).toBe(member);
+    // Membership beats an author email that belongs to another account.
+    expect(suggestAccount([personal, member], remote, "kim@jihun.io")).toBe(member);
+    // Among several members, the author email decides.
+    const both = account(4, "jihun-io2", ["kim@jihun.io"], ["causeworks"]);
+    expect(suggestAccount([member, both], remote, "kim@jihun.io")).toBe(both);
+    expect(suggestAccount([member, both], remote, null)).toBe(member);
   });
 
   it("only suggests accounts on the remote's host", () => {

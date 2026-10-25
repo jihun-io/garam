@@ -8,7 +8,7 @@ import { Field } from "../../components/ui/Field";
 import { Select } from "../../components/ui/Select";
 import { toAppError, type Account, type Identity, type RepoIdentity } from "../../ipc";
 import type { RepoAccount } from "../accounts/api";
-import { accountEmails, emailBelongsTo } from "../accounts/repoAccount";
+import { accountEmails, accountLabel, emailBelongsTo } from "../accounts/repoAccount";
 import { useRepositoryActions } from "../repos/api";
 import { useChangeActions } from "./api";
 import styles from "./RepoIdentityDialog.module.css";
@@ -95,10 +95,10 @@ export function RepoIdentityDialog({
     </label>
   );
 
-  const accountLabel = (a: Account) => {
-    const label = a.name ? `@${a.login} (${a.name})` : `@${a.login}`;
-    return a.key === suggestion?.key ? t("repoIdentity.suggested", { account: label }) : label;
-  };
+  const optionLabel = (a: Account) =>
+    a.key === suggestion?.key
+      ? t("repoIdentity.suggested", { account: accountLabel(a) })
+      : accountLabel(a);
 
   return (
     <FormDialog
@@ -129,7 +129,7 @@ export function RepoIdentityDialog({
             onChange={setAccountKey}
             options={[
               { value: NO_ACCOUNT, label: t("repoIdentity.noAccount") },
-              ...accounts.map((a) => ({ value: a.key, label: accountLabel(a) })),
+              ...accounts.map((a) => ({ value: a.key, label: optionLabel(a) })),
             ]}
           />
           <p className={styles.optionHint}>

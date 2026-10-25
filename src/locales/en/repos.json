@@ -69,6 +69,12 @@
     "name": "Folder name",
     "parent": "Location",
     "submit": "Clone",
+    "account": "GitHub account",
+    "noAccount": "None (use my Git settings)",
+    "suggested": "{{account}} — suggested",
+    "noAccountHint": "The clone signs in the way your Git is set up (credential helper or a prompt).",
+    "accountHint": "The clone signs in as @{{login}} over HTTPS, and the repository keeps using this account.",
+    "sshHint": "This URL uses SSH: the clone uses your SSH keys, and the repository keeps the account for pull requests.",
     "cancelClone": "Cancel clone",
     "cloning": "Cloning {{name}}…",
     "phase": {
@@ -79,6 +85,15 @@
       "resolving": "Resolving deltas",
       "writing": "Writing objects",
       "checking_out": "Checking out files"
+    },
+    "author": {
+      "title": "Choose the commit author",
+      "mismatch": "Commits here would be by {{email}}, which isn't on @{{login}}, so GitHub won't link them to the account. Which author should this repository use?",
+      "missing": "Git has no author email for this repository yet. Which of @{{login}}'s addresses should it use?",
+      "noreplyHint": "Keeps your real address out of commits",
+      "keep": "Keep {{email}}",
+      "keepHint": "Your Git settings stay as they are. You can change this later from the author line.",
+      "continue": "Continue"
     }
   },
   "drop": {

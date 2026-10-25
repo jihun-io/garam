@@ -124,6 +124,25 @@ fn reads_the_user_and_emails() {
 }
 
 #[test]
+fn reads_the_users_organizations() {
+    let mut server = Server::new();
+    let _orgs = server
+        .mock("GET", "/user/orgs")
+        .match_query(Matcher::UrlEncoded("per_page".into(), "100".into()))
+        .match_header("authorization", "Bearer gho_abc")
+        .with_body(
+            r#"[{"login":"cw-team","id":1,"description":null},{"login":"garam-dev","id":2}]"#,
+        )
+        .create();
+    let client = client(&server);
+
+    assert_eq!(
+        client.organizations("gho_abc").unwrap(),
+        ["cw-team", "garam-dev"]
+    );
+}
+
+#[test]
 fn a_revoked_token_is_unauthorized() {
     let mut server = Server::new();
     let _user = server
