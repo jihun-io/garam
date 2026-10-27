@@ -197,12 +197,20 @@ pub fn run() {
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
+            if app.config().identifier == "io.jihun.garam.dev"
+                && let Some(window) = app.get_webview_window(windows::MAIN_WINDOW)
+            {
+                let _ = window.set_title(&app.package_info().name);
+            }
             let data_dir = app.path().app_data_dir()?;
             let repositories = Arc::new(RepositoryStore::load(data_dir.join("repositories.json")));
             app.manage(Arc::clone(&repositories));
             app.manage(Arc::new(accounts::AccountStore::load(
                 data_dir.join("accounts.json"),
-                Box::new(accounts::Keychain(accounts::KEYCHAIN_SERVICE)),
+                Box::new(accounts::Keychain(format!(
+                    "{}.github",
+                    app.config().identifier
+                ))),
             )));
             app.manage(Arc::new(settings::SettingsStore::load(
                 data_dir.join("settings.json"),
@@ -210,7 +218,10 @@ pub fn run() {
             app.manage(Arc::new(Operations::default()));
             let logins = Arc::new(logins::LoginStore::load(
                 data_dir.join("logins.json"),
-                Box::new(accounts::Keychain(logins::KEYCHAIN_SERVICE)),
+                Box::new(accounts::Keychain(format!(
+                    "{}.git",
+                    app.config().identifier
+                ))),
             ));
             app.manage(Arc::clone(&logins));
             app.manage(Arc::new(askpass::Askpass::start(logins)));

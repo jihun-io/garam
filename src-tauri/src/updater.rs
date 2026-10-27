@@ -83,6 +83,9 @@ impl Updates {
     /// Asks the release feed for a newer version. An explicit check shows
     /// a postponed version again.
     pub async fn check(&self, app: &AppHandle, explicit: bool) -> AppResult<Option<UpdateInfo>> {
+        if app.config().identifier != "io.jihun.garam" {
+            return Ok(None);
+        }
         let update = app
             .updater()
             .map_err(check_failed)?
@@ -120,6 +123,9 @@ impl Updates {
         app: &AppHandle,
         on_progress: impl Fn(UpdateProgress),
     ) -> AppResult<()> {
+        if app.config().identifier != "io.jihun.garam" {
+            return Ok(());
+        }
         let update = {
             let mut state = self.lock();
             if state.installing || state.installed {
@@ -177,9 +183,9 @@ fn check_failed(err: tauri_plugin_updater::Error) -> AppError {
 }
 
 /// Checks in the background while the setting allows it. Development
-/// builds don't check on their own; the menu still can.
+/// apps never check; debug builds of the release app only check manually.
 pub fn start_background_checks(app: AppHandle) {
-    if cfg!(debug_assertions) {
+    if cfg!(debug_assertions) || app.config().identifier != "io.jihun.garam" {
         return;
     }
     thread::spawn(move || {

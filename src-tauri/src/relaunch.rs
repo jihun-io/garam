@@ -10,6 +10,21 @@ use tauri::AppHandle;
 
 /// Restarts the app. Doesn't return.
 pub fn restart(app: &AppHandle) -> ! {
+    // Keep the dev app's PID: if it exits, Tauri stops the watcher and
+    // frontend server before LaunchServices can reopen the bundle.
+    #[cfg(target_os = "macos")]
+    if app.config().identifier == "io.jihun.garam.dev" {
+        use std::os::unix::process::CommandExt;
+        use tauri::Manager;
+
+        app.state::<std::sync::Arc<crate::windows::RepoWindows>>()
+            .flush();
+        if let Ok(exe) = tauri::utils::platform::current_exe() {
+            let _ = std::process::Command::new(exe)
+                .args(app.env().args_os.iter().skip(1))
+                .exec();
+        }
+    }
     // If the shell can't start, Tauri's way still restarts, just with the
     // second Dock icon.
     #[cfg(target_os = "macos")]
@@ -21,8 +36,7 @@ pub fn restart(app: &AppHandle) -> ! {
     app.restart()
 }
 
-/// The `.app` bundle this process runs from, if it runs from one (not
-/// `tauri dev`).
+/// The `.app` bundle this process runs from, including the macOS dev bundle.
 #[cfg(target_os = "macos")]
 fn bundle_path() -> Option<std::path::PathBuf> {
     let exe = tauri::utils::platform::current_exe().ok()?;

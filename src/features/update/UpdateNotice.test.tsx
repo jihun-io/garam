@@ -11,6 +11,8 @@ import { UpdateCommands, UpdateNotice } from "./UpdateNotice";
 
 const channels: { onmessage: (p: UpdateProgress) => void }[] = [];
 const listeners: ((e: { payload: UpdateStatus }) => void)[] = [];
+const identity = vi.hoisted(() => ({ isDevelopmentApp: false }));
+vi.mock("../../lib/appIdentity", () => identity);
 
 vi.mock("@tauri-apps/api/core", () => ({
   Channel: class {
@@ -72,6 +74,15 @@ describe("update notice", () => {
     channels.length = 0;
     listeners.length = 0;
     useNotify.setState({ notice: null });
+    identity.isDevelopmentApp = false;
+  });
+
+  it("does not offer release updates in the development app", async () => {
+    identity.isDevelopmentApp = true;
+    render({ available: null, installing: false, installed: false });
+    await act(async () => {});
+    expect(runCommand("app.checkUpdates")).toBe(false);
+    expect(commands.updateCheck).not.toHaveBeenCalled();
   });
 
   it("shows nothing without an update", async () => {

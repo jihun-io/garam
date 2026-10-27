@@ -1,6 +1,5 @@
 {
   "menus": {
-    "app": "Garam",
     "file": "File",
     "edit": "Edit",
     "view": "View",
@@ -50,15 +49,15 @@
     },
     "app": {
       "checkUpdates": "Check for Updates…",
-      "about": "About Garam"
+      "about": "About {{appName}}"
     }
   },
   "native": {
     "services": "Services",
-    "hide": "Hide Garam",
+    "hide": "Hide {{appName}}",
     "hideOthers": "Hide Others",
     "showAll": "Show All",
-    "quit": "Quit Garam",
+    "quit": "Quit {{appName}}",
     "undo": "Undo",
     "redo": "Redo",
     "cut": "Cut",

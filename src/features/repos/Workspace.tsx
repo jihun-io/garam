@@ -4,6 +4,7 @@ import { Fragment, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { RepositoryEntry } from "../../ipc";
+import { appNameKey, isDevelopmentApp } from "../../lib/appIdentity";
 import { useCommand } from "../../lib/commands";
 import { BranchControls } from "../branches/BranchControls";
 import { useRepoWatcher } from "../changes/useRepoWatcher";
@@ -59,7 +60,7 @@ export function Workspace({
       </header>
       <main className={styles.main}>
         {/* For screen reader heading navigation; the toolbar shows the name. */}
-        <h1 className="sr-only">{selected?.name ?? t("appName")}</h1>
+        <h1 className="sr-only">{selected?.name ?? t(appNameKey)}</h1>
         {selected &&
           (selected.missing ? (
             <RepositoryOverview key={selected.path} repository={selected} />
@@ -73,13 +74,21 @@ export function Workspace({
 
 /** Names the window after its repository, for the Window menu and Dock. */
 function useWindowTitle(name: string | null) {
+  const { t } = useTranslation("common");
+  const appName = t(appNameKey);
   useEffect(() => {
     try {
       void getCurrentWindow()
-        .setTitle(name ?? "Garam")
+        .setTitle(
+          name
+            ? isDevelopmentApp
+              ? t("windowTitleDev", { repository: name, appName })
+              : name
+            : appName,
+        )
         .catch(() => {});
     } catch {
       // Not running inside Tauri.
     }
-  }, [name]);
+  }, [name, appName, t]);
 }

@@ -41,7 +41,7 @@ Garam uses the Git already installed on your computer, **version 2.35 or later**
 
 ## Build from source
 
-You need [Rust](https://rustup.rs) (the version is pinned in `rust-toolchain.toml`, rustup installs it for you), Node.js 22 and pnpm 10, plus the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your system. On Ubuntu:
+You need [Rust](https://rustup.rs) (the version is pinned in `rust-toolchain.toml`, rustup installs it for you), Node.js 22.15+ and pnpm 10, plus the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your system. On Ubuntu:
 
 ```bash
 sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libxdo-dev build-essential libssl-dev

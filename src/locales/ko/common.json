@@ -1,5 +1,6 @@
 {
   "appName": "Garam",
+  "appNameDev": "Garam Dev",
   "loading": "불러오는 중…",
   "language": {
     "label": "언어",
@@ -24,5 +25,6 @@
     "publish": "브랜치 게시",
     "resolveConflicts": "충돌 해결하기",
     "stashAndRetry": "변경 사항을 잠시 보관하고 다시 하기"
-  }
+  },
+  "windowTitleDev": "{{repository}} — {{appName}}"
 }

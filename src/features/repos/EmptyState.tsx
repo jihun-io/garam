@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import { RiverMark } from "../../components/RiverMark";
+import { appNameKey } from "../../lib/appIdentity";
 import { LanguageSelect } from "../settings/LanguageSelect";
 import startup from "../startup/Startup.module.css";
 import { useRepoDialog, type RepoDialog } from "./dialogStore";
@@ -25,7 +26,7 @@ export function EmptyState({ gitVersion }: { gitVersion: string }) {
     <main className={startup.screen}>
       <div className={startup.column}>
         <RiverMark />
-        <h1 className={startup.wordmark}>{t("common:appName")}</h1>
+        <h1 className={startup.wordmark}>{t(`common:${appNameKey}`)}</h1>
         <p className={startup.tagline}>{t("startup:tagline")}</p>
 
         <section className={styles.start} aria-labelledby="empty-title">

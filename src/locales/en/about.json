@@ -1,5 +1,5 @@
 {
-  "title": "About Garam",
+  "title": "About {{appName}}",
   "version": "Version {{version}}",
   "website": "Website",
   "license": "License",

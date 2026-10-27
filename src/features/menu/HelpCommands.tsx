@@ -27,7 +27,7 @@ export function HelpCommands() {
 }
 
 function ShortcutsDialog({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation(["menu", "repos"]);
+  const { t } = useTranslation(["menu", "repos", "common"]);
   const rows: [string, string][] = [
     ...(Object.entries(SHORTCUTS) as [CommandId, string | null][])
       .filter((entry): entry is [CommandId, string] => entry[1] !== null)

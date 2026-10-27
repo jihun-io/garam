@@ -1,5 +1,5 @@
 {
-  "title": "Garam에 관하여",
+  "title": "{{appName}}에 관하여",
   "version": "버전 {{version}}",
   "website": "웹사이트",
   "license": "라이선스",

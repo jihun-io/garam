@@ -15,9 +15,6 @@ use crate::accounts::TokenVault;
 use crate::error::AppResult;
 use crate::storage::{self, now_ms};
 
-/// Keychain service name for remembered git logins.
-pub const KEYCHAIN_SERVICE: &str = "io.jihun.garam.git";
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SavedLogin {

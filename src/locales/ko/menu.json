@@ -1,6 +1,5 @@
 {
   "menus": {
-    "app": "Garam",
     "file": "파일",
     "edit": "편집",
     "view": "보기",
@@ -50,15 +49,15 @@
     },
     "app": {
       "checkUpdates": "업데이트 확인…",
-      "about": "Garam에 관하여"
+      "about": "{{appName}}에 관하여"
     }
   },
   "native": {
     "services": "서비스",
-    "hide": "Garam 가리기",
+    "hide": "{{appName}} 가리기",
     "hideOthers": "기타 가리기",
     "showAll": "모두 보기",
-    "quit": "Garam 종료",
+    "quit": "{{appName}} 종료",
     "undo": "실행 취소",
     "redo": "실행 복귀",
     "cut": "오려두기",

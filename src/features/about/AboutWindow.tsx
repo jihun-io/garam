@@ -2,9 +2,9 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "react-i18next";
 
-import iconUrl from "../../../src-tauri/icons/128x128@2x.png";
 import { Button } from "../../components/ui/Button";
 import { commands, unwrap } from "../../ipc";
+import { appIconUrl, appNameKey } from "../../lib/appIdentity";
 import { useCommand } from "../../lib/commands";
 import { useNotify } from "../notify/notifyStore";
 import { useWindowTitle } from "../settings/SettingsWindow";
@@ -39,16 +39,24 @@ export function AboutCommand() {
 
 /** The app's name, version and where it comes from, like the macOS About panel. */
 export function AboutWindow() {
-  const { t } = useTranslation("about");
+  const { t } = useTranslation(["about", "common"]);
+  const appName = t(`common:${appNameKey}`);
   const version = useAppVersion();
   const showError = useNotify((s) => s.showError);
-  useWindowTitle(t("title"));
+  useWindowTitle(t("title", { appName }));
 
   return (
     // The bare background moves the window: on macOS it has no title bar.
     <main className={styles.root} data-tauri-drag-region>
-      <img className={styles.icon} src={iconUrl} width={80} height={80} alt="" draggable={false} />
-      <h1 className={styles.name}>Garam</h1>
+      <img
+        className={styles.icon}
+        src={appIconUrl}
+        width={80}
+        height={80}
+        alt=""
+        draggable={false}
+      />
+      <h1 className={styles.name}>{appName}</h1>
       {version && <p className={styles.version}>{t("version", { version })}</p>}
       <div className={styles.links}>
         <Button icon="openIn" onClick={() => void openUrl(WEBSITE_URL).catch(showError)}>

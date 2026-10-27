@@ -13,6 +13,26 @@ Thanks for helping. Garam is maintained in spare time, so replies can take a whi
 
 See [Build from source](README.md#build-from-source) in the README. `pnpm tauri dev` runs the app with hot reload for both the frontend and Rust.
 
+### Development app and macOS signing
+
+`pnpm tauri dev` launches **Garam Dev**, with a purple DEV icon and the app ID `io.jihun.garam.dev`. Settings, repository lists, accounts, remembered logins and webview storage are separate from the release app; sign in again in Garam Dev. Neither settings nor tokens are migrated. Both apps still operate on the same Git repositories and system Git configuration. Development apps cannot install release updates, including when run with `pnpm tauri dev --release`.
+
+On macOS, the launcher creates `Garam Dev.app` beside Cargo's executable and signs it before every launch after a Rust rebuild. To keep Keychain permission across rebuilds, use one stable code-signing certificate and signing identifier. Find your certificates with:
+
+```sh
+security find-identity -v -p codesigning
+```
+
+Choose an Apple Development certificate for your own team, or a local code-signing certificate you created in Keychain Access. Save its SHA-1 identity in `.signing/dev.json` (the directory is ignored by Git):
+
+```json
+{ "identity": "YOUR_CERTIFICATE_SHA1" }
+```
+
+Alternatively, set `GARAM_DEV_SIGNING_IDENTITY` in your shell; it takes precedence over the file. Without a configured identity the app uses ad-hoc signing and warns that Keychain may ask again after rebuilds. A configured certificate that cannot sign stops the launch rather than silently falling back. The first access, a locked keychain, or a changed certificate may still ask for approval. Local development does not require notarization, and no release certificate or secret is stored in the repository.
+
+The launcher needs Node.js 22.15+ on macOS to replace its process with the app, keeping Rust hot reload and Ctrl+C working. `pnpm tauri build` keeps the release name, icon and signing workflow. For direct CLI use, use `pnpm exec tauri`; the development setup is provided by `pnpm tauri dev`.
+
 ## How the code is organized
 
 | Path                   | What's there                                                           |
