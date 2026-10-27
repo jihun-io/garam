@@ -993,6 +993,194 @@ pub fn reword(
     Ok(rewritten)
 }
 
+/// A frozen view of the index to confirm before adding it to an older commit.
+#[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+pub struct FixupPreview {
+    pub tree: String,
+    pub paths: Vec<String>,
+}
+
+pub fn fixup_preview(git: &Git, repo: &Path) -> Result<FixupPreview, GitError> {
+    let tree = git.command().cwd(repo).arg("write-tree").run()?;
+    let tree = tree.stdout_str().trim().to_owned();
+    // Read from the tree we just froze, so paths and expected_tree agree.
+    let paths = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args([
+            "diff",
+            "--name-only",
+            "--no-renames",
+            "-z",
+            "HEAD",
+            &tree,
+            "--",
+        ])
+        .run()?;
+    Ok(FixupPreview {
+        tree,
+        paths: paths
+            .stdout_str()
+            .split('\0')
+            .filter(|p| !p.is_empty())
+            .map(str::to_owned)
+            .collect(),
+    })
+}
+
+/// Saves the confirmed index as a real fixup commit, then replays it directly
+/// after the unpublished target. A stopped rebase uses the ordinary conflict
+/// flow. Aborting restores the saved fixup commit, so its changes remain safe.
+/// Unstaged changes are carried by git's autostash, including on abort.
+pub fn fixup(
+    git: &Git,
+    repo: &Path,
+    oid: &str,
+    expected_head: &str,
+    expected_branch: &str,
+    expected_tree: &str,
+) -> Result<String, GitError> {
+    check_oid(oid)?;
+    check_oid(expected_head)?;
+    check_oid(expected_tree)?;
+    let branch = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["symbolic-ref", "--quiet", "HEAD"])
+        .run_unchecked()?;
+    if branch.code == Some(1) {
+        return Err(GitError::DetachedHead);
+    }
+    if !branch.success() {
+        return Err(GitError::failed(branch.code, branch.failure_text()));
+    }
+    if branch.stdout_str().trim() != format!("refs/heads/{expected_branch}")
+        || crate::commit::head_oid(git, repo)?.as_deref() != Some(expected_head)
+    {
+        return Err(GitError::HeadMoved);
+    }
+    let state = crate::conflict::state(git, repo)?;
+    if state.operation.is_some() || !state.files.is_empty() {
+        return Err(GitError::CannotFixup);
+    }
+    let line = log_records(
+        git,
+        repo,
+        &[
+            "--first-parent".into(),
+            "--no-notes".into(),
+            "--no-show-signature".into(),
+            expected_head.into(),
+        ],
+        &[],
+        0,
+        SQUASH_SEARCH,
+    )?;
+    let position = line
+        .iter()
+        .position(|c| c.oid == oid)
+        .ok_or(GitError::CannotFixup)?;
+    let line = &line[..=position];
+    if line.iter().any(|c| c.parents.len() > 1) {
+        return Err(GitError::CannotFixup);
+    }
+    let published = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args([
+            "for-each-ref",
+            "--format=%(refname)",
+            &format!("--contains={oid}"),
+            "refs/remotes",
+        ])
+        .run()?;
+    if !published.stdout.is_empty() {
+        return Err(GitError::CannotFixup);
+    }
+    let preview = fixup_preview(git, repo)?;
+    if preview.tree != expected_tree {
+        return Err(GitError::IndexChanged);
+    }
+    if preview.paths.is_empty() {
+        return Err(GitError::CannotFixup);
+    }
+
+    // Normal commit runs the user's hooks and signing configuration. Once
+    // this succeeds, every later failure must explain where changes were saved.
+    let saved = crate::commit::commit(
+        git,
+        repo,
+        &format!("fixup! {}\n", line[position].summary),
+        false,
+    )?;
+    let rebase = || -> Result<String, GitError> {
+        let current = git
+            .command()
+            .cwd(repo)
+            .read_only()
+            .args(["symbolic-ref", "--quiet", "HEAD"])
+            .run()?;
+        if current.stdout != branch.stdout
+            || crate::commit::head_oid(git, repo)?.as_deref() != Some(saved.as_str())
+            || first_parent(git, repo, &saved)?.as_deref() != Some(expected_head)
+        {
+            return Err(GitError::HeadMoved);
+        }
+        // Explicit ids avoid autosquash's subject matching (duplicate subjects,
+        // or existing commits named "fixup!", must not change the todo).
+        let mut todo = format!("pick {oid}\nfixup {saved}\n");
+        for commit in line[..position].iter().rev() {
+            todo.push_str(&format!("pick {}\n", commit.oid));
+        }
+        let dir = git
+            .command()
+            .cwd(repo)
+            .read_only()
+            .args(["rev-parse", "--absolute-git-dir"])
+            .run()?;
+        let path = Path::new(dir.stdout_str().trim()).join("garam-fixup-todo");
+        std::fs::write(&path, todo)?;
+        let quoted = path.to_string_lossy().replace('\'', "'\\''");
+        let result = git
+            .command()
+            .cwd(repo)
+            .config("rebase.updateRefs", "false")
+            .config("rebase.missingCommitsCheck", "ignore")
+            .env("GIT_SEQUENCE_EDITOR", format!("cat '{quoted}' >"))
+            .env("GIT_EDITOR", "true")
+            .args([
+                "rebase",
+                "--interactive",
+                "--no-autosquash",
+                "--autostash",
+                "--keep-empty",
+                "--empty=keep",
+                "--reapply-cherry-picks",
+            ])
+            .arg(
+                line[position]
+                    .parents
+                    .first()
+                    .map_or("--root", String::as_str),
+            )
+            .run();
+        let _ = std::fs::remove_file(path);
+        result?;
+        let state = crate::conflict::state(git, repo)?;
+        if state.operation.is_some() || !state.files.is_empty() {
+            return Err(GitError::ConflictsRemain);
+        }
+        crate::commit::resolve_commit(git, repo, &format!("HEAD~{position}"))?
+            .ok_or_else(|| GitError::Parse("no target after fixup".into()))
+    };
+    rebase()
+        .map_err(|err| GitError::FixupIncomplete(err.detail().unwrap_or_else(|| err.to_string())))
+}
+
 pub(crate) fn has_tracked_changes(git: &Git, repo: &Path) -> Result<bool, GitError> {
     let output = git
         .command()

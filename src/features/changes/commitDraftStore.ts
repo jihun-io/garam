@@ -1,6 +1,11 @@
 import { create } from "zustand";
 
-export type CommitDraft = { summary: string; description: string };
+export type CommitDraft = {
+  summary: string;
+  description: string;
+  coAuthorsText?: string;
+  showCoAuthors?: boolean;
+};
 
 /**
  * A message waiting to fill a repository's commit form, e.g. the one from

@@ -42,6 +42,9 @@ export function CommitCheckDialog({
   repo,
   findings: initial,
   canCommit,
+  amendId,
+  submitLabel,
+  submitAnywayLabel,
   onCommit,
   onClose,
 }: {
@@ -49,6 +52,9 @@ export function CommitCheckDialog({
   findings: Finding[];
   /** Something is still staged (or the commit amends). */
   canCommit: boolean;
+  amendId?: string;
+  submitLabel?: string;
+  submitAnywayLabel?: string;
   onCommit: () => void;
   onClose: () => void;
 }) {
@@ -56,8 +62,8 @@ export function CommitCheckDialog({
   const [findings, setFindings] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AppError>();
-  const { unstage, ignore } = useChangeActions(repo);
-  const status = useStatus(repo);
+  const { unstage, ignore } = useChangeActions(repo, amendId);
+  const status = useStatus(repo, amendId);
   const rows = checkRows(findings);
 
   // The status entry carries a rename's old path, which leaves with it.
@@ -78,7 +84,9 @@ export function CommitCheckDialog({
     setError(undefined);
     try {
       await action();
-      setFindings(await unwrap(commands.commitCheck(repo)));
+      setFindings(
+        await unwrap(amendId ? commands.amendCheck(repo, amendId) : commands.commitCheck(repo)),
+      );
     } catch (e) {
       setError(toAppError(e));
     } finally {
@@ -121,7 +129,7 @@ export function CommitCheckDialog({
               variant={hasSecrets ? "danger" : "secondary"}
               disabled={busy || !canCommit}
             >
-              {t("check.commitAnyway")}
+              {submitAnywayLabel ?? t("check.commitAnyway")}
             </Button>
           </>
         ) : (
@@ -130,7 +138,7 @@ export function CommitCheckDialog({
               {t("check.cancel")}
             </Button>
             <Button type="submit" variant="primary" disabled={busy || !canCommit} autoFocus>
-              {t("check.commit")}
+              {submitLabel ?? t("check.commit")}
             </Button>
           </>
         )
@@ -152,13 +160,13 @@ export function CommitCheckDialog({
                 <li key={rowKey(row)} className={styles.row}>
                   <RowText row={row} />
                   <div className={styles.actions}>
-                    {row.kind === "ignorable" ? (
+                    {row.kind === "ignorable" && !amendId ? (
                       <Button disabled={busy} onClick={() => void addToIgnore(row.pattern, row)}>
                         {t("check.ignore")}
                       </Button>
                     ) : (
                       <>
-                        {row.kind === "secret" && row.ignorePattern && (
+                        {!amendId && row.kind === "secret" && row.ignorePattern && (
                           <Button
                             disabled={busy}
                             onClick={() => void addToIgnore(row.ignorePattern!, row)}

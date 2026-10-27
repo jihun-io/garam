@@ -4,7 +4,7 @@ import type { CommitSummary } from "../../ipc";
 
 export type HistoryDialog =
   | { kind: "reset" | "checkout" | "tag"; commit: CommitSummary }
-  | { kind: "reword"; commit: CommitSummary; head: string; branch: string }
+  | { kind: "reword" | "fixup"; commit: CommitSummary; head: string; branch: string }
   | { kind: "deleteTag"; commit: CommitSummary; tag: string }
   | { kind: "overwriteTag"; tag: string; remote: string }
   /** Newest first. */

@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,6 +13,7 @@ import {
 import { axeViolations } from "../../test/axe";
 import { renderWithQuery } from "../../test/renderWithQuery";
 import { ChangesView } from "./ChangesView";
+import { useAmendSessions } from "./amendStore";
 import { useCommitDrafts } from "./commitDraftStore";
 
 const GLOBAL: Identity = { name: "Garam", email: "garam@example.com" };
@@ -86,6 +87,14 @@ vi.mock("../../ipc/bindings", () => ({
     changesDiscard: vi.fn(),
     commitCreate: vi.fn(),
     commitCheck: vi.fn(),
+    amendBegin: vi.fn(),
+    amendStatus: vi.fn(),
+    amendDiff: vi.fn(),
+    amendImages: vi.fn(),
+    amendEdit: vi.fn(),
+    amendCheck: vi.fn(),
+    amendSave: vi.fn(),
+    amendCancel: vi.fn(),
     commitIgnore: vi.fn(),
     commitHead: vi.fn(),
     identityGet: vi.fn(),
@@ -187,7 +196,11 @@ function setup(files: FileChange[]) {
 const LINE = /^(Added|Deleted) line \d+: /;
 
 describe("ChangesView", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAmendSessions.setState({ sessions: {}, drafts: {} });
+    useCommitDrafts.setState({ drafts: {} });
+  });
 
   it("lists files and shows the first file's diff", async () => {
     setup([change("src/app.ts", null, "modified"), change("새 파일.md", null, "untracked")]);
@@ -284,21 +297,137 @@ describe("ChangesView", () => {
     expect(screen.getByRole("button", { name: "Commit to main" })).toBeDisabled();
   });
 
-  it("prefills the last commit when amending", async () => {
-    const user = userEvent.setup();
-    setup([change("a.txt", null, "modified")]);
-    await user.click(await screen.findByRole("checkbox", { name: "Amend last commit" }));
-    expect(await screen.findByDisplayValue("Previous summary")).toBeVisible();
-    expect(screen.getByDisplayValue("Previous body")).toBeVisible();
-
-    await user.click(screen.getByRole("button", { name: "Amend last commit" }));
-    expect(commands.commitCreate).toHaveBeenCalledWith(
-      "/repo",
-      "Previous summary",
-      "Previous body",
-      [],
-      true,
+  const amendSession = {
+    id: "abcd",
+    head: {
+      oid: "abc",
+      summary: "Previous summary",
+      body: "Previous body\n\nCo-authored-by: Friend <friend@example.com>",
+    },
+  };
+  function prepareAmend(files = [change("a.txt", "added", null)]) {
+    vi.mocked(commands.amendBegin).mockResolvedValue(ok(amendSession));
+    vi.mocked(commands.amendStatus).mockResolvedValue(
+      ok({
+        branch: { head: "main", oid: "abc", upstream: null, ahead: 1, behind: 0 },
+        files,
+        unpushedTags: [],
+      }),
     );
+    vi.mocked(commands.amendDiff).mockImplementation((repo, _id, file) =>
+      commands.diffGet(repo, file),
+    );
+    vi.mocked(commands.amendEdit).mockResolvedValue(ok(null));
+    vi.mocked(commands.amendCheck).mockResolvedValue(ok([]));
+    vi.mocked(commands.amendSave).mockResolvedValue(ok("def"));
+    vi.mocked(commands.amendCancel).mockResolvedValue(ok(null));
+  }
+
+  it("edits the whole last commit in a private index and preserves its trailers", async () => {
+    const user = userEvent.setup();
+    setup([change("new.txt", null, "untracked")]);
+    prepareAmend([change("a.txt", "added", null), change("new.txt", null, "untracked")]);
+    await user.click(await screen.findByRole("button", { name: "Edit Last Commit…" }));
+    expect(await screen.findByDisplayValue("Previous summary")).toBeVisible();
+    expect(await axeViolations(document.body)).toEqual([]);
+    expect(screen.getByRole("textbox", { name: "Description" })).toHaveValue(
+      amendSession.head.body,
+    );
+    expect(await screen.findByRole("option", { name: /a.txt/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(commands.amendDiff).toHaveBeenCalledWith(
+      "/repo",
+      "abcd",
+      expect.objectContaining({ path: "a.txt" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save commit" }));
+    await waitFor(() =>
+      expect(commands.amendSave).toHaveBeenCalledWith(
+        "/repo",
+        "abcd",
+        `Previous summary\n\n${amendSession.head.body}`,
+      ),
+    );
+    expect(commands.amendCheck).toHaveBeenCalledWith("/repo", "abcd");
+    expect(commands.commitCreate).not.toHaveBeenCalled();
+  });
+
+  it("excludes committed files through the private index and cancels back to the normal draft", async () => {
+    const user = userEvent.setup();
+    setup([change("new.txt", null, "untracked")]);
+    prepareAmend();
+    await user.type(
+      await screen.findByPlaceholderText("Summary (required)"),
+      "Unfinished new commit",
+    );
+    await user.click(screen.getByRole("button", { name: "Edit Last Commit…" }));
+    await screen.findByDisplayValue("Previous summary");
+    const list = await screen.findByRole("listbox");
+    list.focus();
+    await user.keyboard(" ");
+    await waitFor(() =>
+      expect(commands.amendEdit).toHaveBeenCalledWith("/repo", "abcd", {
+        kind: "files",
+        files: [change("a.txt", "added", null)],
+        include: false,
+      }),
+    );
+    expect(commands.changesUnstage).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Cancel edit" }));
+    expect(await screen.findByDisplayValue("Unfinished new commit")).toBeVisible();
+    expect(commands.amendCancel).toHaveBeenCalledWith("/repo", "abcd");
+    expect(commands.amendSave).not.toHaveBeenCalled();
+  });
+
+  it("keeps the edited message on stale HEAD and ignores IME Enter shortcuts", async () => {
+    const user = userEvent.setup();
+    setup([]);
+    prepareAmend();
+    vi.mocked(commands.amendSave).mockResolvedValue({
+      status: "error",
+      error: { kind: "head_moved", params: {}, detail: null },
+    });
+    await user.click(await screen.findByRole("button", { name: "Edit Last Commit…" }));
+    const summary = await screen.findByDisplayValue("Previous summary");
+    await user.clear(summary);
+    await user.type(summary, "수정한 메시지");
+    fireEvent.keyDown(summary, { key: "Enter", metaKey: true, isComposing: true });
+    expect(commands.amendSave).not.toHaveBeenCalled();
+    fireEvent.keyDown(summary, { key: "Enter", metaKey: true, keyCode: 229 });
+    expect(commands.amendSave).not.toHaveBeenCalled();
+    await user.keyboard("{Meta>}{Enter}{/Meta}");
+    expect(await screen.findByRole("alert")).toHaveTextContent("The last commit changed");
+    expect(summary).toHaveValue("수정한 메시지");
+    expect(useAmendSessions.getState().drafts["/repo"].summary).toBe("수정한 메시지");
+  });
+
+  it("shows safety findings and excludes them from the private index", async () => {
+    const user = userEvent.setup();
+    setup([]);
+    prepareAmend([change(".env", "added", null)]);
+    vi.mocked(commands.amendCheck)
+      .mockResolvedValueOnce(
+        ok([{ kind: "secret", path: ".env", secret: "env_file", line: null, preview: null }]),
+      )
+      .mockResolvedValue(ok([]));
+    await user.click(await screen.findByRole("button", { name: "Edit Last Commit…" }));
+    await screen.findByDisplayValue("Previous summary");
+    await user.click(screen.getByRole("button", { name: "Save commit" }));
+    const dialog = await screen.findByRole("dialog", { name: "Check before committing" });
+    expect(commands.amendSave).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Exclude from commit" }));
+    await waitFor(() =>
+      expect(commands.amendEdit).toHaveBeenCalledWith(
+        "/repo",
+        "abcd",
+        expect.objectContaining({ kind: "files", include: false }),
+      ),
+    );
+    expect(commands.changesUnstage).not.toHaveBeenCalled();
+    await user.click(await within(dialog).findByRole("button", { name: "Save commit" }));
+    await waitFor(() => expect(commands.amendSave).toHaveBeenCalledTimes(1));
   });
 
   it("fills the form once with a waiting draft", async () => {

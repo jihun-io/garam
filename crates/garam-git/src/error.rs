@@ -75,6 +75,10 @@ pub enum ErrorKind {
     Cancelled,
     // The commit is published, outside the current linear history, or an operation is active.
     CannotReword,
+    CannotAmend,
+    CannotFixup,
+    IndexChanged,
+    FixupIncomplete,
     Unknown,
 }
 
@@ -131,6 +135,18 @@ pub enum GitError {
 
     #[error("this commit message cannot be changed")]
     CannotReword,
+
+    #[error("this commit cannot be amended")]
+    CannotAmend,
+
+    #[error("this commit cannot receive staged changes")]
+    CannotFixup,
+
+    #[error("the staged tree changed since confirmation")]
+    IndexChanged,
+
+    #[error("fixup changes were committed but rebase did not finish: {0}")]
+    FixupIncomplete(String),
 
     #[error("tracked files have uncommitted changes")]
     UncommittedChanges,
@@ -192,6 +208,10 @@ impl GitError {
             Self::CannotSquash => ErrorKind::CannotSquash,
             Self::CannotReorder => ErrorKind::CannotReorder,
             Self::CannotReword => ErrorKind::CannotReword,
+            Self::CannotAmend => ErrorKind::CannotAmend,
+            Self::CannotFixup => ErrorKind::CannotFixup,
+            Self::IndexChanged => ErrorKind::IndexChanged,
+            Self::FixupIncomplete(_) => ErrorKind::FixupIncomplete,
             Self::UncommittedChanges => ErrorKind::UncommittedChanges,
             Self::DetachedHead => ErrorKind::DetachedHead,
             Self::NoUpstream => ErrorKind::NoUpstream,
@@ -216,6 +236,9 @@ impl GitError {
             | Self::CannotSquash
             | Self::CannotReorder
             | Self::CannotReword
+            | Self::CannotAmend
+            | Self::CannotFixup
+            | Self::IndexChanged
             | Self::UncommittedChanges
             | Self::NoUpstream
             | Self::RemoteBranchNotFound
@@ -225,6 +248,7 @@ impl GitError {
             | Self::StashNotFound
             | Self::NothingInProgress => None,
             Self::Failed { stderr, .. } => Some(stderr.trim().to_owned()),
+            Self::FixupIncomplete(detail) => Some(detail.clone()),
             Self::StashUntrackedExists(paths) => Some(paths.join("\n")),
             other => Some(other.to_string()),
         }

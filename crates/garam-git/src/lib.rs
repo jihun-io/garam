@@ -4,6 +4,7 @@
 //! execution rules described in `docs/ARCHITECTURE.md` (stable locale, no
 //! terminal prompts, unquoted paths, ...).
 
+pub mod amend;
 pub mod blob;
 pub mod branch;
 mod cancel;

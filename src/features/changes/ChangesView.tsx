@@ -41,6 +41,8 @@ import { DiscardDialog } from "./DiscardDialog";
 import { FileList } from "./FileList";
 import { checkState, combinedCheckState } from "./fileState";
 import { Icon } from "../../components/Icon";
+import { AmendView } from "./AmendView";
+import { useAmendSessions } from "./amendStore";
 import { Tooltip } from "../../components/ui/Tooltip";
 
 /**
@@ -48,6 +50,15 @@ import { Tooltip } from "../../components/ui/Tooltip";
  * stashes below the files. `tabs` is shown at the top of the sidebar.
  */
 export function ChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) {
+  const session = useAmendSessions((s) => s.sessions[repo]);
+  return session ? (
+    <AmendView repo={repo} tabs={tabs} session={session} />
+  ) : (
+    <WorkingChangesView repo={repo} tabs={tabs} />
+  );
+}
+
+function WorkingChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) {
   const { t } = useTranslation("changes");
   const status = useStatus(repo);
   const conflicts = useConflicts(repo);

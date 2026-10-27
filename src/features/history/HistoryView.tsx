@@ -18,6 +18,7 @@ import { runCommand } from "../../lib/commands";
 import { shortHash } from "../../lib/hash";
 import { useBranchDialog } from "../branches/branchDialogStore";
 import { useStatus } from "../changes/api";
+import { useBeginAmend } from "../changes/amendApi";
 import { useCommitDrafts } from "../changes/commitDraftStore";
 import changesStyles from "../changes/ChangesView.module.css";
 import { useNotify } from "../notify/notifyStore";
@@ -70,6 +71,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
   useHistoryPreparePaths(repo, filter.path.trim() !== "");
   const revert = useRevert(repo);
   const commitActions = useCommitActions(repo);
+  const beginAmend = useBeginAmend(repo);
   const openBranchDialog = useBranchDialog((s) => s.open);
   const openDialog = useHistoryDialog((s) => s.open);
   const setDraft = useCommitDrafts((s) => s.set);
@@ -162,6 +164,11 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
     reword: (commit) => {
       const branch = status.data?.branch.head;
       if (head && branch) openDialog({ kind: "reword", commit, head, branch });
+    },
+    amend: (commit) => beginAmend.mutate(commit.oid),
+    fixup: (commit) => {
+      const branch = status.data?.branch.head;
+      if (head && branch) openDialog({ kind: "fixup", commit, head, branch });
     },
     cherryPick: (commit) =>
       commitActions.cherryPick.mutate([commit.oid], {
@@ -263,6 +270,20 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
           onHead &&
           (sync === "unpushed" || !hasRemote) &&
           canReword(commit),
+        amend:
+          commit.oid === head &&
+          Boolean(status.data?.branch.head) &&
+          markers.data !== undefined &&
+          commit.parents.length <= 1 &&
+          (sync === "unpushed" || !hasRemote),
+        fixup:
+          commit.oid !== head &&
+          markers.data !== undefined &&
+          Boolean(status.data?.branch.head) &&
+          onHead &&
+          (sync === "unpushed" || !hasRemote) &&
+          canReword(commit) &&
+          (status.data?.files.some((file) => file.staged !== null) ?? false),
         // Only before anyone else could have it.
         undo:
           commit.oid === head && commit.parents.length <= 1 && (sync === "unpushed" || !hasRemote),

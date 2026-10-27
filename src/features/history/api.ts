@@ -293,6 +293,21 @@ export function useCommitActions(repo: string) {
       onSettled,
       scope,
     }),
+    fixup: useMutation({
+      mutationFn: ({
+        oid,
+        head,
+        branch,
+        tree,
+      }: {
+        oid: string;
+        head: string;
+        branch: string;
+        tree: string;
+      }) => unwrap(commands.commitFixup(repo, oid, head, branch, tree)),
+      onSettled,
+      scope,
+    }),
     reset: useMutation({
       mutationFn: ({ oid, mode }: { oid: string; mode: ResetMode }) =>
         unwrap(commands.commitReset(repo, oid, mode)),

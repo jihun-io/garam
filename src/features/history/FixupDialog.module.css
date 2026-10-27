@@ -1,0 +1,11 @@
+.paths {
+  margin: 0;
+  padding-left: var(--space-6);
+  max-height: 160px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  -webkit-user-select: text;
+  user-select: text;
+}
