@@ -4,6 +4,13 @@ use garam_git::patch::LineRef;
 use garam_git::testing::TestRepo;
 use garam_git::{ErrorKind, FileChange};
 
+// Windows forbids asterisks in filenames; retain Unicode, spaces and literal brackets there.
+const SPECIAL_PATH: &str = if cfg!(windows) {
+    "한글 [x].txt"
+} else {
+    "한글 [x]*.txt"
+};
+
 fn rev(repo: &TestRepo, name: &str) -> String {
     repo.git(["rev-parse", name]).stdout_str().trim().into()
 }
@@ -88,10 +95,10 @@ fn excludes_committed_files_adds_new_files_and_leaves_excluded_changes_in_the_wo
 #[test]
 fn root_commit_can_exclude_individual_lines_and_keep_an_empty_commit() {
     let repo = TestRepo::new();
-    repo.write("한글 [x]*.txt", "one\ntwo\nthree\n");
+    repo.write(SPECIAL_PATH, "one\ntwo\nthree\n");
     let head = repo.commit_all("root");
     let session = amend::begin(repo.git_handle(), repo.path(), &head).unwrap();
-    let f = file(&repo, &session.id, "한글 [x]*.txt");
+    let f = file(&repo, &session.id, SPECIAL_PATH);
     let diff = amend::file_diff(repo.git_handle(), repo.path(), &session.id, &f).unwrap();
     let FileDiff::Text { hunks, selectable } = diff else {
         panic!("expected text");
@@ -113,11 +120,12 @@ fn root_commit_can_exclude_individual_lines_and_keep_an_empty_commit() {
     .unwrap();
     amend::save(repo.git_handle(), repo.path(), &session.id, "root changed").unwrap();
     assert_eq!(
-        repo.git(["show", "HEAD:한글 [x]*.txt"]).stdout_str(),
+        repo.git(["show", &format!("HEAD:{SPECIAL_PATH}")])
+            .stdout_str(),
         "two\n"
     );
     assert_eq!(
-        std::fs::read_to_string(repo.path().join("한글 [x]*.txt")).unwrap(),
+        std::fs::read_to_string(repo.path().join(SPECIAL_PATH)).unwrap(),
         "one\ntwo\nthree\n"
     );
     assert_eq!(
@@ -127,7 +135,7 @@ fn root_commit_can_exclude_individual_lines_and_keep_an_empty_commit() {
         "1"
     );
     let session = amend::begin(repo.git_handle(), repo.path(), &rev(&repo, "HEAD")).unwrap();
-    include(&repo, &session.id, "한글 [x]*.txt", false);
+    include(&repo, &session.id, SPECIAL_PATH, false);
     amend::save(repo.git_handle(), repo.path(), &session.id, "empty root").unwrap();
     assert!(repo.git(["ls-tree", "HEAD"]).stdout.is_empty());
 }

@@ -1,6 +1,13 @@
 use garam_git::testing::TestRepo;
 use garam_git::{ErrorKind, conflict, log};
 
+// Windows forbids asterisks in filenames; retain Unicode, spaces and literal brackets there.
+const SPECIAL_PATH: &str = if cfg!(windows) {
+    "한글 [x].txt"
+} else {
+    "한글 [x]*.txt"
+};
+
 fn rev(repo: &TestRepo, revision: &str) -> String {
     repo.git(["rev-parse", revision]).stdout_str().trim().into()
 }
@@ -26,9 +33,9 @@ fn contents(repo: &TestRepo, revision: &str, path: &str) -> String {
 #[test]
 fn adds_only_the_index_preserving_authors_messages_empty_commits_and_other_refs() {
     let repo = TestRepo::new();
-    repo.write("한글 [x]*.txt", "base\n");
+    repo.write(SPECIAL_PATH, "base\n");
     repo.commit_all("base");
-    repo.write("한글 [x]*.txt", "target\n");
+    repo.write(SPECIAL_PATH, "target\n");
     repo.git(["add", "--all"]);
     repo.git_handle()
         .command()
@@ -54,19 +61,19 @@ fn adds_only_the_index_preserving_authors_messages_empty_commits_and_other_refs(
     repo.write("later.txt", "later\n");
     repo.commit_all("fixup! same subject"); // Do not let autosquash reorder this.
     let old_head = rev(&repo, "HEAD");
-    repo.write("한글 [x]*.txt", "staged\n");
+    repo.write(SPECIAL_PATH, "staged\n");
     repo.git(["add", "--all"]);
     let staged_tree = log::fixup_preview(repo.git_handle(), repo.path())
         .unwrap()
         .tree;
-    repo.write("한글 [x]*.txt", "unstaged\n");
+    repo.write(SPECIAL_PATH, "unstaged\n");
     repo.write("untracked.txt", "untouched\n");
     repo.git(["config", "rebase.updateRefs", "true"]);
     repo.git(["config", "rebase.autoSquash", "true"]);
     let new_target = apply(&repo, &target).unwrap();
     assert_eq!(rev(&repo, "HEAD~2"), new_target);
     assert_eq!(rev(&repo, "HEAD^{tree}"), staged_tree);
-    assert_eq!(contents(&repo, &new_target, "한글 [x]*.txt"), "staged\n");
+    assert_eq!(contents(&repo, &new_target, SPECIAL_PATH), "staged\n");
     assert_eq!(
         repo.git(["show", "-s", "--format=%an %ae %at %ai", &new_target])
             .stdout,
@@ -89,7 +96,7 @@ fn adds_only_the_index_preserving_authors_messages_empty_commits_and_other_refs(
         "4"
     );
     assert_eq!(
-        std::fs::read_to_string(repo.path().join("한글 [x]*.txt")).unwrap(),
+        std::fs::read_to_string(repo.path().join(SPECIAL_PATH)).unwrap(),
         "unstaged\n"
     );
     assert_eq!(
