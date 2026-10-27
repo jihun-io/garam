@@ -48,6 +48,7 @@ vi.mock("../../ipc/bindings", () => ({
     commitRevert: vi.fn(),
     commitCherryPick: vi.fn(),
     commitSquash: vi.fn(),
+    commitReword: vi.fn(),
     commitCherryPickOnto: vi.fn(),
     commitReorder: vi.fn(),
     commitReset: vi.fn(),
@@ -507,6 +508,112 @@ describe("HistoryView", () => {
     expect(
       within(menu).getByRole("menuitem", { name: "Cherry-pick onto Current Branch" }),
     ).toBeVisible();
+  });
+
+  it("edits the complete message and preserves trailers while guarding IME submission", async () => {
+    const user = userEvent.setup();
+    setup();
+    const body = "Explains why.\n\nCo-authored-by: Teammate <team@example.com>";
+    vi.mocked(commands.commitDetail).mockResolvedValue(ok({ ...detail(commits[0]), body }));
+    vi.mocked(commands.commitReword).mockResolvedValue(ok("a".repeat(40)));
+    const menu = await openMenu(user, "Add login screen");
+    await user.click(within(menu).getByRole("menuitem", { name: "Edit Commit Message…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit Commit Message" });
+    const summary = within(dialog).getByRole("textbox", { name: "Summary" });
+    const description = within(dialog).getByRole("textbox", { name: "Description" });
+    const save = within(dialog).getByRole("button", { name: "Save Message" });
+    expect(summary).toHaveValue("Add login screen");
+    expect(description).toHaveValue(body);
+    expect(save).toBeDisabled();
+    await user.clear(summary);
+    expect(save).toBeDisabled();
+    await user.type(summary, "로그인 화면 추가");
+    expect(fireEvent.keyDown(summary, { key: "Enter", ctrlKey: true, isComposing: true })).toBe(
+      false,
+    );
+    expect(fireEvent.keyDown(summary, { key: "Enter", metaKey: true, keyCode: 229 })).toBe(false);
+    expect(commands.commitReword).not.toHaveBeenCalled();
+    expect(await axeViolations(dialog)).toEqual([]);
+    await user.click(save);
+    expect(commands.commitReword).toHaveBeenCalledWith(
+      "/repo",
+      commits[0].oid,
+      commits[0].oid,
+      "main",
+      `로그인 화면 추가\n\n${body}`,
+    );
+    expect(await screen.findByText("Updated the commit message.")).toBeVisible();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("focuses the summary when an older commit's message finishes loading", async () => {
+    const user = userEvent.setup();
+    setup({ ...markers, unpushed: [commits[0].oid, commits[1].oid] });
+    vi.mocked(commands.historyList).mockResolvedValue(
+      ok([{ ...commits[0], parents: [commits[1].oid] }, commits[1], commits[2]]),
+    );
+    let resolveDetail!: (value: ReturnType<typeof ok<CommitDetail>>) => void;
+    const pending = new Promise<ReturnType<typeof ok<CommitDetail>>>((resolve) => {
+      resolveDetail = resolve;
+    });
+    vi.mocked(commands.commitDetail).mockImplementation(async (_repo, oid) =>
+      oid === commits[1].oid ? pending : ok(detail(commits[0])),
+    );
+    const menu = await openMenu(user, "Commit number 2");
+    await user.click(within(menu).getByRole("menuitem", { name: "Edit Commit Message…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit Commit Message" });
+    expect(within(dialog).getByRole("button", { name: "Save Message" })).toBeDisabled();
+    await act(async () => resolveDetail(ok(detail(commits[1]))));
+    await waitFor(() =>
+      expect(within(dialog).getByRole("textbox", { name: "Summary" })).toHaveFocus(),
+    );
+  });
+
+  it("keeps edits after a stale-HEAD failure until cancelled", async () => {
+    const user = userEvent.setup();
+    setup();
+    vi.mocked(commands.commitReword).mockResolvedValueOnce({
+      status: "error",
+      error: { kind: "head_moved", params: {}, detail: null },
+    });
+    const menu = await openMenu(user, "Add login screen");
+    await user.click(within(menu).getByRole("menuitem", { name: "Edit Commit Message…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit Commit Message" });
+    const summary = within(dialog).getByRole("textbox", { name: "Summary" });
+    await user.clear(summary);
+    await user.type(summary, "Corrected message");
+    await user.click(within(dialog).getByRole("button", { name: "Save Message" }));
+    await waitFor(() => expect(within(dialog).getByRole("alert")).toBeVisible());
+    expect(summary).toHaveValue("Corrected message");
+    expect(within(dialog).getByRole("button", { name: "Save Message" })).toBeEnabled();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(commands.commitReword).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers reword for older unpushed commits and hides it for pushed commits", async () => {
+    const user = userEvent.setup();
+    setup({ ...markers, unpushed: [commits[0].oid, commits[1].oid] });
+    const linear = [
+      { ...commits[0], parents: [commits[1].oid] },
+      { ...commits[1], parents: [commits[2].oid] },
+      commits[2],
+    ];
+    vi.mocked(commands.historyList).mockResolvedValue(ok(linear));
+    let menu = await openMenu(user, "Commit number 2");
+    expect(within(menu).getByRole("menuitem", { name: "Edit Commit Message…" })).toBeVisible();
+    await user.keyboard("{Escape}");
+    menu = await openMenu(user, "Commit number 3");
+    expect(within(menu).queryByRole("menuitem", { name: "Edit Commit Message…" })).toBeNull();
+  });
+
+  it("hides reword when a merge lies between HEAD and the commit", async () => {
+    const user = userEvent.setup();
+    setup({ ...markers, unpushed: commits.map((c) => c.oid) });
+    vi.mocked(commands.historyList).mockResolvedValue(
+      ok([{ ...commits[0], parents: [commits[1].oid, "a".repeat(40)] }, ...commits.slice(1)]),
+    );
+    const menu = await openMenu(user, "Commit number 2");
+    expect(within(menu).queryByRole("menuitem", { name: "Edit Commit Message…" })).toBeNull();
   });
 
   it("undoes the last commit and keeps its message for the commit form", async () => {

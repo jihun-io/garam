@@ -73,6 +73,8 @@ pub enum ErrorKind {
     NothingInProgress,
     IdentityMissing,
     Cancelled,
+    // The commit is published, outside the current linear history, or an operation is active.
+    CannotReword,
     Unknown,
 }
 
@@ -126,6 +128,9 @@ pub enum GitError {
 
     #[error("these commits can't be reordered")]
     CannotReorder,
+
+    #[error("this commit message cannot be changed")]
+    CannotReword,
 
     #[error("tracked files have uncommitted changes")]
     UncommittedChanges,
@@ -186,6 +191,7 @@ impl GitError {
             Self::HeadMoved => ErrorKind::HeadMoved,
             Self::CannotSquash => ErrorKind::CannotSquash,
             Self::CannotReorder => ErrorKind::CannotReorder,
+            Self::CannotReword => ErrorKind::CannotReword,
             Self::UncommittedChanges => ErrorKind::UncommittedChanges,
             Self::DetachedHead => ErrorKind::DetachedHead,
             Self::NoUpstream => ErrorKind::NoUpstream,
@@ -209,6 +215,7 @@ impl GitError {
             | Self::HeadMoved
             | Self::CannotSquash
             | Self::CannotReorder
+            | Self::CannotReword
             | Self::UncommittedChanges
             | Self::NoUpstream
             | Self::RemoteBranchNotFound

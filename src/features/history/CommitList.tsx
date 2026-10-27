@@ -46,6 +46,7 @@ export type CommitActions = {
   cherryPickOnto: Action;
   revert: Action;
   undo: Action;
+  reword: Action;
   reset: Action;
   copyPatch: Action;
   savePatch: Action;
@@ -68,6 +69,7 @@ export type CommitActions = {
     cherryPick: boolean;
     revert: boolean;
     undo: boolean;
+    reword: boolean;
     openOnRemote: boolean;
     compare: boolean;
   };
@@ -375,6 +377,7 @@ function CommitMenu({ commit, actions }: { commit: CommitSummary; actions: Commi
       {can.cherryPick && item(t("menu.cherryPick"), actions.cherryPick)}
       {item(t("menu.cherryPickOnto"), actions.cherryPickOnto)}
       {can.revert && item(t("menu.revert"), actions.revert)}
+      {can.reword && item(t("menu.reword"), actions.reword)}
       {can.undo && item(t("menu.undo"), actions.undo)}
       {item(t("menu.reset"), actions.reset)}
     </ContextMenu.Content>

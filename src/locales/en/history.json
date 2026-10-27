@@ -34,7 +34,8 @@
     "cherryPickOntoMany_other": "Cherry-pick {{count}} Commits onto Another Branch…",
     "pushTag": "Push {{name}} to Remote",
     "overwriteTag": "Replace {{name}} on Remote…",
-    "deleteTag": "Delete Tag {{name}}…"
+    "deleteTag": "Delete Tag {{name}}…",
+    "reword": "Edit Commit Message…"
   },
   "detail": {
     "select": "Select a commit to see its changes.",
@@ -121,7 +122,8 @@
     "tagDeletedEverywhere": "Deleted tag {{name}} here and on {{remote}}.",
     "tagPushed": "Pushed tag {{name}} to {{remote}}.",
     "tagsPushed_one": "Pushed {{count}} tag to {{remote}}.",
-    "tagsPushed_other": "Pushed {{count}} tags to {{remote}}."
+    "tagsPushed_other": "Pushed {{count}} tags to {{remote}}.",
+    "reworded": "Updated the commit message."
   },
   "reset": {
     "title": "Reset to This Commit",
@@ -295,5 +297,14 @@
     "showHistory": "Show history from this tag",
     "copyName": "Copy tag name",
     "noMatch": "No tags match."
+  },
+  "reword": {
+    "title": "Edit Commit Message",
+    "cancel": "Cancel",
+    "submit": "Save Message",
+    "summary": "Summary",
+    "description": "Description",
+    "body": "This changes the message of an unpushed commit. This commit and any later commits receive new hashes; their files and authors stay the same.",
+    "recover": "The original commits remain available in Recover Lost Commits."
   }
 }

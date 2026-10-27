@@ -159,6 +159,10 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
     hasRemote: tagStates.remote !== null,
     checkout: (commit) => openDialog({ kind: "checkout", commit }),
     reset: (commit) => openDialog({ kind: "reset", commit }),
+    reword: (commit) => {
+      const branch = status.data?.branch.head;
+      if (head && branch) openDialog({ kind: "reword", commit, head, branch });
+    },
     cherryPick: (commit) =>
       commitActions.cherryPick.mutate([commit.oid], {
         onSuccess: () => showInfo(t("done.cherryPicked", { summary: commit.summary })),
@@ -253,6 +257,12 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
       return {
         cherryPick: head !== null && !onHead && commit.oid !== head,
         revert: sync !== "incoming",
+        reword:
+          markers.data !== undefined &&
+          status.data?.branch.head !== null &&
+          onHead &&
+          (sync === "unpushed" || !hasRemote) &&
+          canReword(commit),
         // Only before anyone else could have it.
         undo:
           commit.oid === head && commit.parents.length <= 1 && (sync === "unpushed" || !hasRemote),
@@ -271,6 +281,18 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
       graphed &&
       commits.every((c) => line.some((r) => r.id === c.oid) && c.parents.length <= 1)
     );
+  }
+
+  /** Every rewritten commit must be on the loaded first-parent line. */
+  function canReword(commit: CommitSummary) {
+    const commits = new Map(pages?.flat().map((c) => [c.oid, c]));
+    let current = head ? commits.get(head) : undefined;
+    while (current) {
+      if (current.parents.length > 1) return false;
+      if (current.oid === commit.oid) return true;
+      current = commits.get(current.parents[0]);
+    }
+    return false;
   }
 
   /** Moves dragged commits (newest first) to before row `insertAt`. */
@@ -458,7 +480,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
           actions={actions}
         />
         <SidebarSplitter />
-        <HistoryDialogs repo={repo} />
+        <HistoryDialogs repo={repo} onReword={(oid) => setSelection(only(oid))} />
       </aside>
       <div className={changesStyles.main}>{main}</div>
     </div>

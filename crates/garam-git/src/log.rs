@@ -832,6 +832,167 @@ pub fn reorder(git: &Git, repo: &Path, order: &[String]) -> Result<(), GitError>
     result.map(|_| ())
 }
 
+/// Changes one unpublished commit's message on the current branch. Rebuilds
+/// its descendants from their existing trees instead of replaying patches:
+/// empty commits, staged changes and working files all stay intact. Authors
+/// and author dates are preserved; committer identity and signatures follow
+/// the current git configuration. The branch moves only after every commit
+/// was written, and only if HEAD is still the one the dialog was opened on.
+pub fn reword(
+    git: &Git,
+    repo: &Path,
+    oid: &str,
+    expected_head: &str,
+    expected_branch: &str,
+    message: &str,
+) -> Result<String, GitError> {
+    check_oid(oid)?;
+    check_oid(expected_head)?;
+    if message.trim().is_empty() || message.contains('\0') {
+        return Err(GitError::CannotReword);
+    }
+    let branch = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["symbolic-ref", "--quiet", "HEAD"])
+        .run_unchecked()?;
+    if branch.code == Some(1) {
+        return Err(GitError::DetachedHead);
+    }
+    if !branch.success() {
+        return Err(GitError::failed(branch.code, branch.failure_text()));
+    }
+    let branch = branch.stdout_str().trim().to_owned();
+    if branch != format!("refs/heads/{expected_branch}")
+        || crate::commit::head_oid(git, repo)?.as_deref() != Some(expected_head)
+    {
+        return Err(GitError::HeadMoved);
+    }
+    let state = crate::conflict::state(git, repo)?;
+    if state.operation.is_some() || !state.files.is_empty() {
+        return Err(GitError::CannotReword);
+    }
+    let line = log_records(
+        git,
+        repo,
+        &[
+            "--first-parent".into(),
+            "--no-notes".into(),
+            "--no-show-signature".into(),
+            expected_head.into(),
+        ],
+        &[],
+        0,
+        SQUASH_SEARCH,
+    )?;
+    let position = line
+        .iter()
+        .position(|c| c.oid == oid)
+        .ok_or(GitError::CannotReword)?;
+    let line = &line[..=position];
+    if line.iter().any(|c| c.parents.len() > 1) {
+        return Err(GitError::CannotReword);
+    }
+    // Check all known remote branches, not just this branch's upstream.
+    let published = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args([
+            "for-each-ref",
+            "--format=%(refname)",
+            &format!("--contains={oid}"),
+            "refs/remotes",
+        ])
+        .run()?;
+    if !published.stdout.is_empty() {
+        return Err(GitError::CannotReword);
+    }
+    let signing = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["config", "--bool", "--get", "commit.gpgsign"])
+        .run_unchecked()?;
+    if !signing.success() && signing.code != Some(1) {
+        return Err(GitError::failed(signing.code, signing.failure_text()));
+    }
+    let sign = signing.stdout_str().trim() == "true";
+    let mut parent = line[position].parents.first().cloned();
+    let mut rewritten = String::new();
+    for commit in line.iter().rev() {
+        let metadata = git
+            .command()
+            .cwd(repo)
+            .read_only()
+            .args([
+                "log",
+                "-1",
+                "--no-notes",
+                "--no-show-signature",
+                "--encoding=UTF-8",
+                "--date=raw",
+                "--format=%an%x00%ae%x00%ad%x00%B",
+                &commit.oid,
+                "--",
+            ])
+            .run()?;
+        let metadata = metadata.stdout_str();
+        let fields: Vec<_> = metadata.splitn(4, '\0').collect();
+        if fields.len() != 4 {
+            return Err(GitError::Parse("missing commit metadata".into()));
+        }
+        let body = if commit.oid == oid {
+            message
+        } else {
+            fields[3].strip_suffix('\n').unwrap_or(fields[3])
+        };
+        let mut command = git
+            .command()
+            .cwd(repo)
+            .env("GIT_AUTHOR_NAME", fields[0])
+            .env("GIT_AUTHOR_EMAIL", fields[1])
+            .env("GIT_AUTHOR_DATE", fields[2])
+            .arg("commit-tree")
+            .arg(format!("{}^{{tree}}", commit.oid));
+        if let Some(parent) = &parent {
+            command = command.args(["-p", parent]);
+        }
+        if sign {
+            command = command.arg("-S");
+        }
+        let output = command.args(["-F", "-"]).stdin(body.as_bytes()).run()?;
+        let new_oid = output.stdout_str().trim().to_owned();
+        if commit.oid == oid {
+            rewritten = new_oid.clone();
+        }
+        parent = Some(new_oid);
+    }
+    // Also check the symbolic branch: a checkout may keep the same HEAD id.
+    let current = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["symbolic-ref", "--quiet", "HEAD"])
+        .run_unchecked()?;
+    if !current.success() || current.stdout_str().trim() != branch {
+        return Err(GitError::HeadMoved);
+    }
+    git.command()
+        .cwd(repo)
+        .args([
+            "update-ref",
+            "-m",
+            "reword: edit commit message",
+            &branch,
+            parent.as_deref().ok_or(GitError::CannotReword)?,
+            expected_head,
+        ])
+        .run()?;
+    Ok(rewritten)
+}
+
 pub(crate) fn has_tracked_changes(git: &Git, repo: &Path) -> Result<bool, GitError> {
     let output = git
         .command()

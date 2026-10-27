@@ -278,6 +278,21 @@ export function useCommitActions(repo: string) {
       onSettled,
       scope,
     }),
+    reword: useMutation({
+      mutationFn: ({
+        oid,
+        head,
+        branch,
+        message,
+      }: {
+        oid: string;
+        head: string;
+        branch: string;
+        message: string;
+      }) => unwrap(commands.commitReword(repo, oid, head, branch, message)),
+      onSettled,
+      scope,
+    }),
     reset: useMutation({
       mutationFn: ({ oid, mode }: { oid: string; mode: ResetMode }) =>
         unwrap(commands.commitReset(repo, oid, mode)),
