@@ -41,6 +41,7 @@
 
 기능을 끝냈다고 말하기 전에 실행한다.
 
+- 문서 파일(`*.md`, `*.mdx`, `docs/**`, `LICENSE*`)만 바꿨다면 변경한 파일에 `pnpm exec prettier --check <files...>`를 실행한다. 문서 전용 PR의 CI는 필수 체크 이름만 유지하고 코드 검사 단계는 건너뛴다.
 - Rust: `cargo test --workspace`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo fmt --all --check`
 - 프론트: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm i18n:check`, `pnpm test`
 - Tauri 명령이나 그 타입을 바꿨다면 `pnpm bindings`로 `src/ipc/bindings.ts`를 다시 만들어 함께 커밋한다

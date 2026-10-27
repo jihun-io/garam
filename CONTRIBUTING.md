@@ -40,6 +40,8 @@ The design documents explain the reasons behind most rules. Read the ones that t
 
 Run these before you open a pull request; CI runs the same on macOS, Windows and Linux.
 
+For documentation-only changes (`*.md`, `*.mdx`, `docs/**` or `LICENSE*`), run Prettier on the files you changed. CI keeps the required check names but skips the code setup, build and test steps.
+
 ```bash
 cargo test --workspace
 ```
