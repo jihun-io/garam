@@ -140,7 +140,9 @@ describe("BranchControls", () => {
     const button = await screen.findByRole("button", { name: "Current branch main" });
     expect(button).toHaveAttribute("data-drop-branch", "main");
     act(() =>
-      useCommitDrag.getState().set({ commits: [], x: 0, y: 0, over: null, insertAt: null }),
+      useCommitDrag
+        .getState()
+        .set({ commits: [], x: 0, y: 0, over: null, insertAt: null, squashOnto: null }),
     );
     fireEvent.mouseEnter(button);
     const local = await screen.findByRole("region", { name: "Branches" });
@@ -155,7 +157,9 @@ describe("BranchControls", () => {
 
     // The branch under the pointer is marked.
     act(() =>
-      useCommitDrag.getState().set({ commits: [], x: 0, y: 0, over: "feature", insertAt: null }),
+      useCommitDrag
+        .getState()
+        .set({ commits: [], x: 0, y: 0, over: "feature", insertAt: null, squashOnto: null }),
     );
     expect(within(local).getByText("feature").closest("button")).toHaveAttribute("data-drop-over");
     expect(within(local).getByText("main").closest("button")).not.toHaveAttribute("data-drop-over");

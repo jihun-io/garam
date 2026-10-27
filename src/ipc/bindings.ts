@@ -225,6 +225,21 @@ export const commands = {
 	commitCherryPick: (repo: string, oids: string[]) => typedError<CherryPickOutcome, AppError>(__TAURI_INVOKE("commit_cherry_pick", { repo, oids })),
 	/**  Combines consecutive commits on HEAD into one; returns its id. */
 	commitSquash: (repo: string, oids: string[], message: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_squash", { repo, oids, message })),
+	/**  Durable undo information for this worktree's last completed squash. */
+	squashUndoGet: (repo: string) => typedError<{
+	/**  Immutable journal id: a stale notice cannot undo a newer squash. */
+	id: string,
+	branch: string,
+	before: string,
+	after: string,
+	count: number,
+	available: boolean,
+	contentChanged: boolean,
+} | null, AppError>(__TAURI_INVOKE("squash_undo_get", { repo })),
+	/**  Restores the pre-squash history after checking the confirmed journal id. */
+	squashUndo: (repo: string, id: string) => typedError<SquashUndo, AppError>(__TAURI_INVOKE("squash_undo", { repo, id })),
+	/**  Folds dragged commits into a target on the current branch. */
+	commitSquashOnto: (repo: string, oids: string[], target: string, expectedHead: string, expectedBranch: string, message: string) => typedError<null, AppError>(__TAURI_INVOKE("commit_squash_onto", { repo, oids, target, expectedHead, expectedBranch, message })),
 	/**  Changes an unpublished commit's message without changing its files. */
 	commitReword: (repo: string, oid: string, expectedHead: string, expectedBranch: string, message: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_reword", { repo, oid, expectedHead, expectedBranch, message })),
 	/**  Freezes the staged tree and paths for the fixup confirmation. */
@@ -779,7 +794,7 @@ export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "
  *  The commits aren't consecutive on the current branch, or a merge
  *  is among or after them.
  */
-"cannot_squash" | 
+"cannot_squash" | "squash_undo_unavailable" | "squash_undo_local_files" | 
 /**
  *  The commits aren't the newest ones on the current branch's
  *  first-parent line, or a merge is among them.
@@ -1270,6 +1285,17 @@ export type SignatureStatus =
 "expired" | "revoked" | 
 /**  Signed, but the key isn't available to check it. */
 "cannot_check";
+
+export type SquashUndo = {
+	/**  Immutable journal id: a stale notice cannot undo a newer squash. */
+	id: string,
+	branch: string,
+	before: string,
+	after: string,
+	count: number,
+	available: boolean,
+	contentChanged: boolean,
+};
 
 /**  A private key in `~/.ssh` that has a matching `.pub` file. */
 export type SshKey = {

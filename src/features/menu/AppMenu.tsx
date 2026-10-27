@@ -130,6 +130,7 @@ async function buildMenu(
     command("repo.openTerminal"),
     command("repo.reveal"),
     separator(),
+    command("history.undoSquash"),
     command("repo.recover"),
   ]);
   const branch = submenu(t("menu:menus.branch"), [

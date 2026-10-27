@@ -45,7 +45,8 @@
       "report": "문제 신고…"
     },
     "history": {
-      "search": "기록 검색"
+      "search": "기록 검색",
+      "undoSquash": "최근 커밋 합치기 실행 취소…"
     },
     "app": {
       "checkUpdates": "업데이트 확인…",

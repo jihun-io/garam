@@ -51,6 +51,8 @@ pub enum ErrorKind {
     /// The commits aren't consecutive on the current branch, or a merge
     /// is among or after them.
     CannotSquash,
+    SquashUndoUnavailable,
+    SquashUndoLocalFiles,
     /// The commits aren't the newest ones on the current branch's
     /// first-parent line, or a merge is among them.
     CannotReorder,
@@ -130,6 +132,12 @@ pub enum GitError {
     #[error("these commits can't be squashed")]
     CannotSquash,
 
+    #[error("the recorded squash is no longer available to undo")]
+    SquashUndoUnavailable,
+
+    #[error("local files would be overwritten: {}", .0.join(", "))]
+    SquashUndoLocalFiles(Vec<String>),
+
     #[error("these commits can't be reordered")]
     CannotReorder,
 
@@ -206,6 +214,8 @@ impl GitError {
             Self::InvalidTagName(_) => ErrorKind::InvalidTagName,
             Self::HeadMoved => ErrorKind::HeadMoved,
             Self::CannotSquash => ErrorKind::CannotSquash,
+            Self::SquashUndoUnavailable => ErrorKind::SquashUndoUnavailable,
+            Self::SquashUndoLocalFiles(_) => ErrorKind::SquashUndoLocalFiles,
             Self::CannotReorder => ErrorKind::CannotReorder,
             Self::CannotReword => ErrorKind::CannotReword,
             Self::CannotAmend => ErrorKind::CannotAmend,
@@ -234,6 +244,7 @@ impl GitError {
             | Self::DetachedHead
             | Self::HeadMoved
             | Self::CannotSquash
+            | Self::SquashUndoUnavailable
             | Self::CannotReorder
             | Self::CannotReword
             | Self::CannotAmend
@@ -249,6 +260,7 @@ impl GitError {
             | Self::NothingInProgress => None,
             Self::Failed { stderr, .. } => Some(stderr.trim().to_owned()),
             Self::FixupIncomplete(detail) => Some(detail.clone()),
+            Self::SquashUndoLocalFiles(paths) => Some(paths.join("\n")),
             Self::StashUntrackedExists(paths) => Some(paths.join("\n")),
             other => Some(other.to_string()),
         }

@@ -59,7 +59,7 @@
   "tag_exists": "A tag with this name already exists.",
   "remote_tag_exists": "The remote already has a tag with this name on a different commit. Rename the tag here, or delete the one on the remote first.",
   "head_moved": "The last commit changed in the meantime. Check the history and try again.",
-  "cannot_squash": "These commits can't be squashed. They must follow one another on the current branch, with no merge commit among or after them.",
+  "cannot_squash": "These commits can’t be squashed. Use commits on the current branch with no merge commit among or after them, and finish any operation in progress first. Squashing from the selection menu also requires consecutive commits.",
   "uncommitted_changes": "There are uncommitted changes. Commit or stash them first.",
   "cannot_reorder": "These commits can't be reordered. They must be the latest on the current branch, with no merge commit among them.",
   "window_failed": "Couldn't open a new window.",
@@ -69,5 +69,7 @@
   "cannot_fixup": "Changes can't be added to this commit. Choose an unpushed commit on the current branch with no merge commits among or after it, stage changes, and finish any operation in progress first.",
   "index_changed": "The staged changes changed in the meantime. Review them again before continuing.",
   "fixup_incomplete": "Git saved your changes, but the fixup or restoration of unstaged changes did not finish. Resolve any conflicts in Changes. If a rebase is in progress, continue or abort it; aborting leaves a separate “fixup!” commit in the history.",
-  "cannot_amend": "This commit cannot be edited. Choose the latest unpushed commit on a branch, with no merge or operation in progress."
+  "cannot_amend": "This commit cannot be edited. Choose the latest unpushed commit on a branch, with no merge or operation in progress.",
+  "squash_undo_unavailable": "This squash is no longer available to undo. Refresh the history and try the latest squash.",
+  "squash_undo_local_files": "Some local files would be overwritten by undoing the squash. Move them aside first. Their paths are listed in Details."
 }

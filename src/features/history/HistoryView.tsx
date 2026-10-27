@@ -46,12 +46,15 @@ import { MultiSelectionView } from "./MultiSelectionView";
 import { buildGraph } from "./graph";
 import { toMarks } from "./refs";
 import { buildRows, graphNodes } from "./rows";
+import { useSquashUndo, useSquashUndoDialog } from "./squashUndoStore";
 import { NO_SELECTION, only, pick, type Selection } from "./selection";
 
 /** Commit list on the left, the selected commit on the right. */
 export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
   const { t } = useTranslation("history");
   const status = useStatus(repo);
+  const squashUndo = useSquashUndo(repo);
+  const openSquashUndo = useSquashUndoDialog((s) => s.open);
   const markers = useHistoryMarkers(repo);
   const tagStates = useTagStates(repo);
   const marks = useMemo(
@@ -135,6 +138,15 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
   const hasRemote = markers.data?.refs.some((r) => r.kind === "remote") ?? false;
   const webUrl = useRemoteWebUrl(repo);
   const actions: CommitActions = {
+    undoSquash: squashUndo.data?.available
+      ? {
+          head: squashUndo.data.after,
+          count: squashUndo.data.count,
+          run: () => {
+            if (squashUndo.data) openSquashUndo(repo, squashUndo.data);
+          },
+        }
+      : undefined,
     copyHash: (commit) => copyHash(commit.oid),
     createBranch: (commit) => openBranchDialog({ kind: "create", from: commit }),
     createTag: (commit) => openDialog({ kind: "tag", commit }),
@@ -249,6 +261,7 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
           revert: !syncs.includes("incoming"),
           // A search or path filter leaves gaps the list doesn't show.
           squash:
+            Boolean(status.data?.branch.head) &&
             onHead &&
             graphed &&
             consecutive &&
@@ -314,6 +327,41 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
       current = commits.get(current.parents[0]);
     }
     return false;
+  }
+
+  function canSquashOnto(commits: CommitSummary[], target: CommitSummary) {
+    return (
+      Boolean(status.data?.branch.head) &&
+      markers.data !== undefined &&
+      filter.scope.kind === "head" &&
+      graphed &&
+      commits.length > 0 &&
+      !commits.some((c) => c.oid === target.oid) &&
+      [target, ...commits].every((c) => marks.sync.get(c.oid) !== "incoming" && canReword(c))
+    );
+  }
+
+  function squashOnto(commits: CommitSummary[], target: CommitSummary) {
+    const branch = status.data?.branch.head;
+    if (!head || !branch || !canSquashOnto(commits, target)) return;
+    const combined = line.flatMap((r) =>
+      r.kind === "commit" && (r.id === target.oid || commits.some((c) => c.oid === r.id))
+        ? [r.commit]
+        : [],
+    );
+    const deepest = Math.max(...combined.map((c) => line.findIndex((r) => r.id === c.oid)));
+    openDialog({
+      kind: "squash",
+      commits: combined,
+      onto: {
+        target,
+        head,
+        branch,
+        rewritten: line
+          .slice(0, deepest + 1)
+          .flatMap((r) => (r.kind === "commit" ? [r.commit] : [])),
+      },
+    });
   }
 
   /** Moves dragged commits (newest first) to before row `insertAt`. */
@@ -496,6 +544,8 @@ export function HistoryView({ repo, tabs }: { repo: string; tabs: ReactNode }) {
           onDrop={dropOnBranch}
           canReorder={canReorder}
           onReorder={reorder}
+          canSquashOnto={canSquashOnto}
+          onSquashOnto={squashOnto}
           hasMore={hasNextPage}
           loadMore={loadMore}
           actions={actions}

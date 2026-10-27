@@ -45,7 +45,8 @@
       "report": "Report a Problem…"
     },
     "history": {
-      "search": "Search History"
+      "search": "Search History",
+      "undoSquash": "Undo Last Squash…"
     },
     "app": {
       "checkUpdates": "Check for Updates…",

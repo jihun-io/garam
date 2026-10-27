@@ -10,6 +10,8 @@ import fieldStyles from "../../components/ui/Field.module.css";
 import { Loading } from "../../components/ui/Loading";
 import { Select, type SelectOption } from "../../components/ui/Select";
 import {
+  commands,
+  unwrap,
   toAppError,
   type AppError,
   type CommitSummary,
@@ -29,9 +31,10 @@ import { useCommitActions, useHistoryMarkers, useLostCommits } from "./api";
 import { CommitTitle } from "./CommitTitle";
 import { CompareModeSwitch } from "./CompareView";
 import styles from "./History.module.css";
-import { useHistoryDialog } from "./historyDialogStore";
+import { useHistoryDialog, type SquashOnto } from "./historyDialogStore";
 import { useHistoryPane } from "./historyPaneStore";
 import { FixupDialog } from "./FixupDialog";
+import { useSquashUndoDialog } from "./squashUndoStore";
 import { RewordDialog } from "./RewordDialog";
 
 /** Renders whichever history dialog is open for `repo`. */
@@ -88,7 +91,9 @@ export function HistoryDialogs({
     case "reorder":
       return <ReorderDialog repo={repo} order={dialog.commits} onClose={close} />;
     case "squash":
-      return <SquashDialog repo={repo} commits={dialog.commits} onClose={close} />;
+      return (
+        <SquashDialog repo={repo} commits={dialog.commits} onto={dialog.onto} onClose={close} />
+      );
     case "compareBranch":
       return <CompareBranchDialog repo={repo} onClose={close} />;
     case "recover":
@@ -505,7 +510,8 @@ function RecoverDialog({ repo, onClose }: { repo: string; onClose: () => void })
                 <CommitTitle summary={entry.summary} />
               </span>
               <span className={styles.meta}>
-                {shortHash(entry.oid)} · {relativeTime(entry.visitedAt)} · {entry.action}
+                {shortHash(entry.oid)} · {relativeTime(entry.visitedAt)} ·{" "}
+                {entry.action === "garam_squash_backup" ? t("recover.squashBackup") : entry.action}
               </span>
             </span>
             <Button
@@ -553,39 +559,65 @@ function RecoverDialog({ repo, onClose }: { repo: string; onClose: () => void })
 function SquashDialog({
   repo,
   commits,
+  onto,
   onClose,
 }: {
   repo: string;
   /** Newest first. */
   commits: CommitSummary[];
+  onto?: SquashOnto;
   onClose: () => void;
 }) {
   const { t } = useTranslation("history");
   const ids = { summary: useId(), description: useId() };
-  const { squash } = useCommitActions(repo);
+  const { squash, squashOnto } = useCommitActions(repo);
   const markers = useHistoryMarkers(repo);
   const showInfo = useNotify((s) => s.showInfo);
   const oldestFirst = [...commits].reverse();
-  const [summary, setSummary] = useState(oldestFirst[0].summary);
+  const initial = onto?.target ?? oldestFirst[0];
+  const [summary, setSummary] = useState(initial.summary);
   const [description, setDescription] = useState(
     oldestFirst
-      .slice(1)
+      .filter((c) => c.oid !== initial.oid)
       .map((c) => `- ${c.summary}`)
       .join("\n"),
   );
   const unpushed = new Set(markers.data?.unpushed ?? []);
   const hasRemote = markers.data?.refs.some((r) => r.kind === "remote") ?? false;
-  const pushed = hasRemote && commits.some((c) => !unpushed.has(c.oid));
+  const pushed = hasRemote && (onto?.rewritten ?? commits).some((c) => !unpushed.has(c.oid));
   const count = commits.length;
   const { busy, error, submit } = useSubmit(
-    () =>
-      squash.mutateAsync({
-        oids: commits.map((c) => c.oid),
-        message: description.trim() ? `${summary.trim()}\n\n${description.trim()}` : summary,
-      }),
+    async () => {
+      const message = description.trim() ? `${summary.trim()}\n\n${description.trim()}` : summary;
+      if (onto) {
+        await squashOnto.mutateAsync({
+          oids: commits.filter((c) => c.oid !== onto.target.oid).map((c) => c.oid),
+          target: onto.target.oid,
+          head: onto.head,
+          branch: onto.branch,
+          message,
+        });
+      } else
+        await squash.mutateAsync({
+          oids: commits.map((c) => c.oid),
+          message,
+        });
+    },
     () => {
-      showInfo(t("done.squashed", { count }));
       onClose();
+      void unwrap(commands.squashUndoGet(repo))
+        .then((info) => {
+          showInfo(
+            t("done.squashed", { count }),
+            info
+              ? {
+                  label: t("undoSquash.notice", { count }),
+                  run: () => useSquashUndoDialog.getState().open(repo, info),
+                }
+              : undefined,
+          );
+        })
+        .catch(() => showInfo(t("done.squashed", { count })));
     },
   );
 
@@ -611,7 +643,16 @@ function SquashDialog({
         </>
       }
     >
-      <p>{t("squash.body")}</p>
+      <p>{onto ? t("squash.ontoBody", { summary: onto.target.summary }) : t("squash.body")}</p>
+      {onto && (
+        <ul className={styles.compareCommits}>
+          {[onto.target, ...oldestFirst.filter((c) => c.oid !== onto.target.oid)].map((c) => (
+            <li key={c.oid}>
+              <code>{shortHash(c.oid)}</code> {c.summary}
+            </li>
+          ))}
+        </ul>
+      )}
       <Field
         label={t("squash.summary")}
         value={summary}

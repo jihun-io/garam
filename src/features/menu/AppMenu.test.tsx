@@ -94,6 +94,9 @@ describe("menu bar", () => {
     ]);
     const push = itemWithId(menuNamed("Repository"), "sync.push");
     expect(push.text).toBe("Push");
+    expect(itemWithId(menuNamed("Repository"), "history.undoSquash").text).toBe(
+      "Undo Last Squash…",
+    );
     expect(push.accelerator).toBe("CmdOrCtrl+Shift+P");
     expect(itemWithId(menuNamed("Repository"), "repo.reveal").text).toBe("Show in file manager");
   });
