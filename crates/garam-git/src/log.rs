@@ -673,12 +673,199 @@ pub fn cherry_pick_onto(
 /// How far back along HEAD's first parents squash looks for its commits.
 const SQUASH_SEARCH: u32 = 5000;
 
+/// Folds dragged commits into `target`, even when other commits lie between
+/// them. The target keeps its author and place among the commits not moved.
+/// A stopped rebase can be continued or aborted through the conflict API.
+pub fn squash_onto(
+    git: &Git,
+    repo: &Path,
+    oids: &[String],
+    target: &str,
+    expected_head: &str,
+    expected_branch: &str,
+    message: &str,
+) -> Result<(), GitError> {
+    crate::squash_undo::track(git, repo, oids.len() + 1, || {
+        squash_onto_inner(
+            git,
+            repo,
+            oids,
+            target,
+            expected_head,
+            expected_branch,
+            message,
+        )
+    })
+}
+
+fn squash_onto_inner(
+    git: &Git,
+    repo: &Path,
+    oids: &[String],
+    target: &str,
+    expected_head: &str,
+    expected_branch: &str,
+    message: &str,
+) -> Result<(), GitError> {
+    use std::io::Write;
+
+    check_oid(target)?;
+    check_oid(expected_head)?;
+    if oids.is_empty() || message.trim().is_empty() || message.contains('\0') {
+        return Err(GitError::CannotSquash);
+    }
+    let mut moving = std::collections::HashSet::new();
+    for oid in oids {
+        check_oid(oid)?;
+        if oid == target || !moving.insert(oid.as_str()) {
+            return Err(GitError::CannotSquash);
+        }
+    }
+    let check_head = || -> Result<(), GitError> {
+        let branch = git
+            .command()
+            .cwd(repo)
+            .read_only()
+            .args(["symbolic-ref", "--quiet", "HEAD"])
+            .run_unchecked()?;
+        if branch.code == Some(1) {
+            return Err(GitError::DetachedHead);
+        }
+        if !branch.success() {
+            return Err(GitError::failed(branch.code, branch.failure_text()));
+        }
+        if branch.stdout_str().trim() != format!("refs/heads/{expected_branch}")
+            || crate::commit::head_oid(git, repo)?.as_deref() != Some(expected_head)
+        {
+            return Err(GitError::HeadMoved);
+        }
+        Ok(())
+    };
+    check_head()?;
+    let state = crate::conflict::state(git, repo)?;
+    if state.operation.is_some() || !state.files.is_empty() {
+        return Err(GitError::CannotSquash);
+    }
+    if has_tracked_changes(git, repo)? {
+        return Err(GitError::UncommittedChanges);
+    }
+    let line = log_records(
+        git,
+        repo,
+        &[
+            "--first-parent".into(),
+            "--no-notes".into(),
+            "--no-show-signature".into(),
+            expected_head.into(),
+        ],
+        &[],
+        0,
+        SQUASH_SEARCH,
+    )?;
+    let positions = oids
+        .iter()
+        .map(|oid| line.iter().position(|c| c.oid == *oid))
+        .chain(std::iter::once(line.iter().position(|c| c.oid == target)))
+        .collect::<Option<Vec<_>>>()
+        .ok_or(GitError::CannotSquash)?;
+    let depth = positions.into_iter().max().ok_or(GitError::CannotSquash)?;
+    let line = &line[..=depth];
+    if line.iter().any(|c| c.parents.len() > 1) {
+        return Err(GitError::CannotSquash);
+    }
+    let dragged: Vec<_> = line
+        .iter()
+        .rev()
+        .filter(|c| moving.contains(c.oid.as_str()))
+        .collect();
+    let last = dragged.last().ok_or(GitError::CannotSquash)?;
+
+    // An unreachable copy of the last patch carries the confirmed message.
+    // `fixup -C` uses it without an editor, including after conflict recovery.
+    // Its parent and tree match the original patch; the folded commit keeps
+    // the target's author. Git's rebase applies the user's signing settings.
+    let mut carrier = git
+        .command()
+        .cwd(repo)
+        .arg("commit-tree")
+        .arg(format!("{}^{{tree}}", last.oid));
+    if let Some(parent) = last.parents.first() {
+        carrier = carrier.args(["-p", parent]);
+    }
+    let carrier = carrier
+        .args(["-F", "-"])
+        .stdin(format!("{}\n", message.trim()).into_bytes())
+        .run()?;
+    let carrier = carrier.stdout_str().trim().to_owned();
+    let mut todo = String::new();
+    for commit in line.iter().rev() {
+        if moving.contains(commit.oid.as_str()) {
+            continue;
+        }
+        todo.push_str(&format!("pick {}\n", commit.oid));
+        if commit.oid == target {
+            for dragged in &dragged[..dragged.len() - 1] {
+                todo.push_str(&format!("fixup {}\n", dragged.oid));
+            }
+            todo.push_str(&format!("fixup -C {carrier}\n"));
+        }
+    }
+    let git_dir = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["rev-parse", "--absolute-git-dir"])
+        .run()?;
+    let todo_path = Path::new(git_dir.stdout_str().trim()).join("garam-squash-todo");
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&todo_path)?;
+    let result = (|| {
+        file.write_all(todo.as_bytes())?;
+        check_head()?;
+        let quoted = todo_path.to_string_lossy().replace('\'', "'\\''");
+        git.command()
+            .cwd(repo)
+            .config("rebase.updateRefs", "false")
+            .config("rebase.missingCommitsCheck", "ignore")
+            .env("GIT_SEQUENCE_EDITOR", format!("cat '{quoted}' >"))
+            .env("GIT_EDITOR", "true")
+            .args([
+                "rebase",
+                "--interactive",
+                "--force-rebase",
+                "--keep-empty",
+                "--empty=keep",
+                "--no-autosquash",
+                "--no-autostash",
+            ])
+            .arg(line[depth].parents.first().map_or("--root", String::as_str))
+            .run()
+            .map(|_| ())
+    })();
+    drop(file);
+    let _ = std::fs::remove_file(todo_path);
+    result
+}
+
 /// Combines `oids` into one commit with `message`. They must be
 /// consecutive commits on HEAD's first-parent line, with no merge commit
 /// among them or after them, so the result is plain to replay. The new
 /// commit keeps the oldest one's author. Commits after them are rebased
 /// onto it, which needs a clean working tree. Returns the new commit id.
 pub fn squash(git: &Git, repo: &Path, oids: &[String], message: &str) -> Result<String, GitError> {
+    crate::squash_undo::track(git, repo, oids.len(), || {
+        squash_inner(git, repo, oids, message)
+    })
+}
+
+fn squash_inner(
+    git: &Git,
+    repo: &Path,
+    oids: &[String],
+    message: &str,
+) -> Result<String, GitError> {
     let message = message.trim();
     if oids.len() < 2 || message.is_empty() {
         return Err(GitError::CannotSquash);

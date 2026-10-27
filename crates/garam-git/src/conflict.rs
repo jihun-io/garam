@@ -288,7 +288,13 @@ fn finished(
     result: Result<crate::GitOutput, GitError>,
 ) -> Result<bool, GitError> {
     match result {
-        Ok(_) => Ok(operation(git, repo)?.is_none()),
+        Ok(_) => {
+            let done = operation(git, repo)?.is_none();
+            if done {
+                crate::squash_undo::finish_pending(git, repo)?;
+            }
+            Ok(done)
+        }
         Err(err @ GitError::Failed { .. }) => {
             if state(git, repo)?.empty {
                 Ok(false)
@@ -310,6 +316,7 @@ pub fn abort(git: &Git, repo: &Path) -> Result<(), GitError> {
         Operation::CherryPick => "cherry-pick",
     };
     git.command().cwd(repo).args([command, "--abort"]).run()?;
+    crate::squash_undo::finish_pending(git, repo)?;
     Ok(())
 }
 

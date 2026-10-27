@@ -36,6 +36,13 @@
   background: var(--row-bg);
 }
 
+.row[data-squash-target="true"] {
+  --row-bg: var(--color-selected);
+  background: var(--row-bg);
+  outline: 2px solid var(--color-river);
+  outline-offset: -2px;
+}
+
 .scroll:focus-visible .row[aria-selected="true"] {
   --row-bg: var(--color-river);
   background: var(--row-bg);

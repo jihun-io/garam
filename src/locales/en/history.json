@@ -228,12 +228,13 @@
   },
   "recover": {
     "title": "Recover Lost Commits",
-    "body": "Commits HEAD was on recently (its reflog) that no branch, tag or remote branch holds now. Creating a branch brings one back.",
+    "body": "Commits from recent local history and saved squash backups that no branch, tag or remote branch holds now. Creating a branch brings one back.",
     "empty": "No lost commits.",
     "list": "Lost commits",
     "view": "View",
     "createBranch": "Create Branch…",
-    "close": "Close"
+    "close": "Close",
+    "squashBackup": "Saved squash history"
   },
   "peek": {
     "note": "No branch holds this commit. Create a branch to keep it.",
@@ -259,7 +260,8 @@
     "pushed": "Some of these commits are pushed. Afterwards you'll need to force push, which affects others using this branch.",
     "recover": "If it goes wrong, Recover Lost Commits… in the Repository menu brings them back.",
     "cancel": "Cancel",
-    "submit": "Squash"
+    "submit": "Squash",
+    "ontoBody": "Combines the listed commits into “{{summary}}”, keeping its author. Other commits stay separate and are replayed in order. Moving changes may cause conflicts."
   },
   "cherryPickOnto": {
     "title_one": "Cherry-pick {{count}} Commit onto Another Branch",
@@ -275,7 +277,8 @@
     "many_other": "{{count}} commits",
     "onto": "→ Cherry-pick onto {{branch}}",
     "alreadyThere": "Those commits are already on the current branch.",
-    "move": "→ Move here"
+    "move": "→ Move here",
+    "squash": "→ Squash here"
   },
   "reorder": {
     "title": "Reorder Commits",
@@ -323,5 +326,22 @@
     "submit": "Add changes",
     "submitAnyway": "Add anyway",
     "refresh": "Review staged changes again"
+  },
+  "undoSquash": {
+    "notice_one": "Undo Squash of {{count}} Commit",
+    "notice_other": "Undo Squash of {{count}} Commits",
+    "menu_one": "Undo Squash of {{count}} Commit…",
+    "menu_other": "Undo Squash of {{count}} Commits…",
+    "title_one": "Undo Squash of {{count}} Commit",
+    "title_other": "Undo Squash of {{count}} Commits",
+    "body_one": "Restores the original {{count}} commit and its place in the history.",
+    "body_other": "Restores the original {{count}} commits and their order in the history.",
+    "contentChanged": "Resolving conflicts changed the files. Undoing also restores the original file contents. The completed squash, including your conflict resolutions, stays saved.",
+    "safety": "Undo is available only while this squash result is still the current commit on the same branch. Commit or stash changes to tracked files first.",
+    "recover": "The squash result stays saved. Recover Lost Commits… in the Repository menu lets you view it and create a branch from it.",
+    "remote": "This changes the local history. Remote branches are kept as they are. If you pushed the squash, restoring the remote history requires a force push.",
+    "cancel": "Cancel",
+    "submit": "Undo Squash",
+    "done": "Undid the squash and restored the original commits."
   }
 }

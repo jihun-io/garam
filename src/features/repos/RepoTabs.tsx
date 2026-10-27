@@ -9,6 +9,7 @@ import { Tooltip } from "../../components/ui/Tooltip";
 
 import { ChangesView } from "../changes/ChangesView";
 import { useHistoryDialog } from "../history/historyDialogStore";
+import { SquashUndoCommand } from "../history/SquashUndo";
 import { HistoryView } from "../history/HistoryView";
 import styles from "./RepoTabs.module.css";
 
@@ -63,6 +64,7 @@ export function RepoTabs({ repo }: { repo: string }) {
       className={styles.root}
       activationMode="manual"
     >
+      <SquashUndoCommand key={repo} repo={repo} />
       {/* The panels hold their own controls; they aren't stops themselves. */}
       <Tabs.Content value="changes" className={styles.content} tabIndex={-1}>
         <ChangesView repo={repo} tabs={list} />

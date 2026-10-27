@@ -31,6 +31,7 @@ const PREFETCH_ROWS = 20;
 type Action = (commit: CommitSummary) => void;
 
 export type CommitActions = {
+  undoSquash?: { head: string; count: number; run: () => void };
   copyHash: Action;
   createBranch: Action;
   createTag: Action;
@@ -90,6 +91,8 @@ export function CommitList({
   onDrop,
   canReorder,
   onReorder,
+  canSquashOnto,
+  onSquashOnto,
   hasMore,
   loadMore,
   actions,
@@ -110,6 +113,8 @@ export function CommitList({
   canReorder: (commits: CommitSummary[]) => boolean;
   /** Commits (newest first) dropped before row `insertAt`. */
   onReorder: (commits: CommitSummary[], insertAt: number) => void;
+  canSquashOnto: (commits: CommitSummary[], target: CommitSummary) => boolean;
+  onSquashOnto: (commits: CommitSummary[], target: CommitSummary) => void;
   hasMore: boolean;
   loadMore: () => void;
   actions: CommitActions;
@@ -141,8 +146,19 @@ export function CommitList({
 
   // Pressing a commit and moving the pointer drags it (or all selected
   // commits): onto a branch to cherry-pick there, or between rows of the
-  // list to move it.
+  // list to move it, or onto a commit to squash into it.
   useEffect(() => {
+    const destination = (e: MouseEvent, commits: CommitSummary[]) => {
+      const over = branchUnder(e.target);
+      const row = over ? null : rowUnder(e.target, e.clientY);
+      const target = row?.kind === "squash" ? rows[row.index] : null;
+      return {
+        over,
+        insertAt: row?.kind === "insert" && canReorder(commits) ? row.index : null,
+        squashOnto:
+          target?.kind === "commit" && canSquashOnto(commits, target.commit) ? target.id : null,
+      };
+    };
     const move = (e: MouseEvent) => {
       const pressed = press.current;
       if (!pressed) return;
@@ -154,8 +170,7 @@ export function CommitList({
         commits: pressed.commits,
         x: e.clientX,
         y: e.clientY,
-        over: branchUnder(e.target),
-        insertAt: canReorder(pressed.commits) ? rowUnder(e.target, e.clientY) : null,
+        ...destination(e, pressed.commits),
       });
     };
     const up = (e: MouseEvent) => {
@@ -164,27 +179,35 @@ export function CommitList({
       const current = useCommitDrag.getState().drag;
       if (current) {
         setDrag(null);
-        const branch = branchUnder(e.target);
-        if (branch) onDrop(current.commits, branch);
-        else if (current.insertAt !== null) onReorder(current.commits, current.insertAt);
+        const drop = destination(e, current.commits);
+        const target = rows.find((r) => r.id === drop.squashOnto);
+        if (drop.over) onDrop(current.commits, drop.over);
+        else if (target?.kind === "commit") onSquashOnto(current.commits, target.commit);
+        else if (drop.insertAt !== null) onReorder(current.commits, drop.insertAt);
       } else if (pressed?.keep) {
         onSelect(pressed.id, "single");
       }
     };
-    const key = (e: globalThis.KeyboardEvent) => {
-      if (e.key !== "Escape" || !useCommitDrag.getState().drag) return;
+    const cancel = () => {
       press.current = null;
       setDrag(null);
+    };
+    const key = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") cancel();
     };
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
     window.addEventListener("keydown", key);
+    window.addEventListener("blur", cancel);
     return () => {
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", up);
       window.removeEventListener("keydown", key);
+      window.removeEventListener("blur", cancel);
     };
-  }, [onDrop, onReorder, canReorder, onSelect, setDrag]);
+  }, [rows, onDrop, onReorder, canReorder, canSquashOnto, onSquashOnto, onSelect, setDrag]);
+
+  useEffect(() => () => setDrag(null), [setDrag]);
 
   useEffect(() => {
     if (hasMore && lastIndex >= rows.length - PREFETCH_ROWS) loadMore();
@@ -238,6 +261,7 @@ export function CommitList({
               data-kind={row.kind}
               data-sync={marks.sync.get(row.id)}
               data-row-index={item.index}
+              data-squash-target={drag?.squashOnto === row.id || undefined}
               style={style}
               onMouseDown={(e) => {
                 // A right click opens the menu and keeps the selection, so
@@ -299,6 +323,8 @@ function DragGhost({ drag }: { drag: CommitDrag }) {
       <span className={styles.dragLabel}>{label}</span>
       {drag.over ? (
         <span className={styles.dragTarget}>{t("drag.onto", { branch: drag.over })}</span>
+      ) : drag.squashOnto ? (
+        <span className={styles.dragTarget}>{t("drag.squash")}</span>
       ) : (
         drag.insertAt !== null && <span className={styles.dragTarget}>{t("drag.move")}</span>
       )}
@@ -385,6 +411,11 @@ function CommitMenu({ commit, actions }: { commit: CommitSummary; actions: Commi
       {can.reword && item(t("menu.reword"), actions.reword)}
       {can.fixup && item(t("menu.fixup"), actions.fixup)}
       {can.undo && item(t("menu.undo"), actions.undo)}
+      {actions.undoSquash?.head === commit.oid && (
+        <ContextMenu.Item className={menu.item} onSelect={actions.undoSquash.run}>
+          {t("undoSquash.menu", { count: actions.undoSquash.count })}
+        </ContextMenu.Item>
+      )}
       {item(t("menu.reset"), actions.reset)}
     </ContextMenu.Content>
   );

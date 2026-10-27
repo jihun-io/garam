@@ -23,6 +23,8 @@ import { DEFAULT_FILTER, useHistoryFilters } from "./filterStore";
 import { useHistoryDialog } from "./historyDialogStore";
 import { useHistoryPane } from "./historyPaneStore";
 import { HistoryView } from "./HistoryView";
+import { SquashUndoDialog } from "./SquashUndo";
+import { squashUndoKey, useSquashUndoDialog } from "./squashUndoStore";
 
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => {}) }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ save: vi.fn() }));
@@ -48,6 +50,9 @@ vi.mock("../../ipc/bindings", () => ({
     commitRevert: vi.fn(),
     commitCherryPick: vi.fn(),
     commitSquash: vi.fn(),
+    squashUndoGet: vi.fn(),
+    squashUndo: vi.fn(),
+    commitSquashOnto: vi.fn(),
     commitReword: vi.fn(),
     commitFixupPreview: vi.fn(),
     commitFixup: vi.fn(),
@@ -116,6 +121,7 @@ const markers: HistoryMarkers = {
 };
 
 function setup(historyMarkers: HistoryMarkers = markers, files: FileChange[] = []) {
+  vi.mocked(commands.squashUndoGet).mockResolvedValue(ok(null));
   vi.mocked(commands.statusGet).mockResolvedValue(
     ok({
       branch: { head: "main", oid: commits[0].oid, upstream: null, ahead: 0, behind: 0 },
@@ -198,6 +204,7 @@ function setup(historyMarkers: HistoryMarkers = markers, files: FileChange[] = [
     <>
       <HistoryView repo="/repo" tabs={null} />
       <Notifications />
+      <SquashUndoDialog />
     </>,
   );
 }
@@ -206,6 +213,7 @@ describe("HistoryView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useNotify.setState({ notice: null });
+    useSquashUndoDialog.setState({ request: null });
     useBranchDialog.setState({ dialog: null });
     useHistoryFilters.setState({ filters: {} });
     useHistoryDialog.setState({ dialog: null });
@@ -1742,6 +1750,160 @@ describe("HistoryView", () => {
     expect(commands.commitReorder).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Reorder" }));
     expect(commands.commitReorder).toHaveBeenCalledWith("/repo", [commits[1].oid, commits[0].oid]);
+  });
+
+  /** Gives jsdom a real row height so edges and centers are distinct. */
+  function squashDrag(list: HTMLElement, from: string, onto: string) {
+    const source = within(list).getByText(from);
+    const target = within(list).getByText(onto);
+    const row = target.closest<HTMLElement>("[data-row-index]")!;
+    vi.spyOn(row, "getBoundingClientRect").mockReturnValue({
+      top: 100,
+      height: 48,
+      bottom: 148,
+      left: 0,
+      right: 300,
+      width: 300,
+      x: 0,
+      y: 100,
+      toJSON: () => ({}),
+    });
+    fireEvent.mouseDown(source, { button: 0, clientX: 10, clientY: 10 });
+    fireEvent.mouseMove(target, { clientX: 10, clientY: 124 });
+    return { target, row };
+  }
+
+  it("drags onto a nonadjacent commit to confirm a squash into that target", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.commitSquashOnto).mockResolvedValue(ok(null));
+    setup({ ...markers, unpushed: withParents.map((c) => c.oid) });
+    vi.mocked(commands.historyList).mockResolvedValue(ok(withParents));
+    await screen.findByRole("heading", { name: "Add login screen" });
+    const list = screen.getByRole("listbox", { name: "Commits" });
+    const { target, row } = squashDrag(list, "Add login screen", "Commit number 3");
+    expect(await screen.findByText("→ Squash here")).toBeVisible();
+    expect(row).toHaveAttribute("data-squash-target", "true");
+    expect(screen.queryByText("→ Move here")).toBeNull();
+    fireEvent.mouseUp(target, { clientX: 10, clientY: 124 });
+    const dialog = await screen.findByRole("dialog", { name: "Squash 2 Commits" });
+    expect(within(dialog).getByRole("textbox", { name: "Summary" })).toHaveValue("Commit number 3");
+    expect(within(dialog).queryByText(/force push/)).toBeNull();
+    expect(commands.commitSquashOnto).not.toHaveBeenCalled();
+    expect(commands.commitReorder).not.toHaveBeenCalled();
+    expect(await axeViolations(dialog)).toEqual([]);
+    await user.click(within(dialog).getByRole("button", { name: "Squash" }));
+    expect(commands.commitSquashOnto).toHaveBeenCalledWith(
+      "/repo",
+      [withParents[0].oid],
+      withParents[2].oid,
+      withParents[0].oid,
+      "main",
+      "Commit number 3\n\n- Add login screen",
+    );
+    expect(await screen.findByText("Squashed 2 commits into one.")).toBeVisible();
+  });
+
+  it("keeps the newer target's message and warns for rewritten pushed commits", async () => {
+    const user = userEvent.setup();
+    // Only the intervening commit is marked pushed: it too gets rewritten.
+    setup({ ...markers, unpushed: [withParents[0].oid, withParents[2].oid] });
+    vi.mocked(commands.historyList).mockResolvedValue(ok(withParents));
+    await screen.findByRole("heading", { name: "Add login screen" });
+    const list = screen.getByRole("listbox", { name: "Commits" });
+    const { target } = squashDrag(list, "Commit number 3", "Add login screen");
+    fireEvent.mouseUp(target, { clientY: 124 });
+    const dialog = await screen.findByRole("dialog", { name: "Squash 2 Commits" });
+    expect(within(dialog).getByRole("textbox", { name: "Summary" })).toHaveValue(
+      "Add login screen",
+    );
+    expect(within(dialog).getByText(/you'll need to force push/)).toBeVisible();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(commands.commitSquashOnto).not.toHaveBeenCalled();
+    expect(commands.commitReorder).not.toHaveBeenCalled();
+  });
+
+  it("squashes all dragged selected commits and excludes a selected target", async () => {
+    const user = userEvent.setup();
+    setup({ ...markers, unpushed: withParents.map((c) => c.oid) });
+    vi.mocked(commands.historyList).mockResolvedValue(ok(withParents));
+    await screen.findByRole("heading", { name: "Add login screen" });
+    const list = screen.getByRole("listbox", { name: "Commits" });
+    await user.keyboard("{Shift>}");
+    await user.click(within(list).getByText("Commit number 2"));
+    await user.keyboard("{/Shift}");
+    const { target } = squashDrag(list, "Add login screen", "Commit number 3");
+    fireEvent.mouseUp(target, { clientY: 124 });
+    const dialog = await screen.findByRole("dialog", { name: "Squash 3 Commits" });
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    const selected = squashDrag(list, "Add login screen", "Commit number 2");
+    expect(screen.queryByText("→ Squash here")).toBeNull();
+    fireEvent.mouseUp(selected.target, { clientY: 124 });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(commands.commitReorder).not.toHaveBeenCalled();
+  });
+
+  it("cancels a squash drag and never uses the previous destination on release", async () => {
+    setup({ ...markers, unpushed: withParents.map((c) => c.oid) });
+    vi.mocked(commands.historyList).mockResolvedValue(ok(withParents));
+    await screen.findByRole("heading", { name: "Add login screen" });
+    const list = screen.getByRole("listbox", { name: "Commits" });
+    let drag = squashDrag(list, "Add login screen", "Commit number 3");
+    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.mouseUp(drag.target, { clientY: 124 });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    squashDrag(list, "Add login screen", "Commit number 3");
+    fireEvent.mouseUp(document.body, { clientY: 124 });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    drag = squashDrag(list, "Add login screen", "Commit number 3");
+    fireEvent.blur(window);
+    fireEvent.mouseUp(drag.target, { clientY: 124 });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(commands.commitSquashOnto).not.toHaveBeenCalled();
+    expect(commands.commitReorder).not.toHaveBeenCalled();
+  });
+
+  it("does not offer squash targets across a merge or in filtered history", async () => {
+    setup();
+    vi.mocked(commands.historyList).mockResolvedValue(
+      ok([
+        withParents[0],
+        { ...withParents[1], parents: [withParents[2].oid, "f".repeat(40)] },
+        withParents[2],
+      ]),
+    );
+    await screen.findByRole("heading", { name: "Add login screen" });
+    const list = screen.getByRole("listbox", { name: "Commits" });
+    const { target } = squashDrag(list, "Add login screen", "Commit number 3");
+    expect(screen.queryByText("→ Squash here")).toBeNull();
+    fireEvent.mouseUp(target, { clientY: 124 });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    act(() => useHistoryFilters.getState().update("/repo", { path: "one.txt" }));
+    await waitFor(() => expect(commands.historyPreparePaths).toHaveBeenCalled());
+    const filtered = squashDrag(list, "Add login screen", "Commit number 3");
+    fireEvent.mouseUp(filtered.target, { clientY: 124 });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("opens squash undo from the current commit menu after reopening history", async () => {
+    const user = userEvent.setup();
+    const { client } = setup();
+    await screen.findByRole("heading", { name: "Add login screen" });
+    act(() =>
+      client.setQueryData(squashUndoKey("/repo"), {
+        id: "a".repeat(40),
+        branch: "main",
+        before: commits[2].oid,
+        after: commits[0].oid,
+        count: 2,
+        available: true,
+        contentChanged: false,
+      }),
+    );
+    const menu = await openMenu(user, "Add login screen");
+    await user.click(within(menu).getByRole("menuitem", { name: "Undo Squash of 2 Commits…" }));
+    expect(await screen.findByRole("dialog", { name: "Undo Squash of 2 Commits" })).toBeVisible();
+    expect(commands.squashUndo).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
   });
 
   it("explains an empty history", async () => {

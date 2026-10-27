@@ -244,6 +244,31 @@ pub async fn commit_squash(repo: String, oids: Vec<String>, message: String) -> 
     .await
 }
 
+/// Folds dragged commits into a target on the current branch.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_squash_onto(
+    repo: String,
+    oids: Vec<String>,
+    target: String,
+    expected_head: String,
+    expected_branch: String,
+    message: String,
+) -> AppResult<()> {
+    blocking(move || {
+        Ok(log::squash_onto(
+            &Git::locate()?,
+            Path::new(&repo),
+            &oids,
+            &target,
+            &expected_head,
+            &expected_branch,
+            &message,
+        )?)
+    })
+    .await
+}
+
 /// Changes an unpublished commit's message without changing its files.
 #[tauri::command]
 #[specta::specta]
@@ -409,4 +434,36 @@ pub async fn compare_file_diff(
 #[specta::specta]
 pub async fn lost_commits(repo: String) -> AppResult<Vec<LostCommit>> {
     blocking(move || Ok(compare::lost_commits(&Git::locate()?, Path::new(&repo))?)).await
+}
+
+/// Durable undo information for this worktree's last completed squash.
+#[tauri::command]
+#[specta::specta]
+pub async fn squash_undo_get(
+    repo: String,
+) -> AppResult<Option<garam_git::squash_undo::SquashUndo>> {
+    blocking(move || {
+        Ok(garam_git::squash_undo::preview(
+            &Git::locate()?,
+            Path::new(&repo),
+        )?)
+    })
+    .await
+}
+
+/// Restores the pre-squash history after checking the confirmed journal id.
+#[tauri::command]
+#[specta::specta]
+pub async fn squash_undo(
+    repo: String,
+    id: String,
+) -> AppResult<garam_git::squash_undo::SquashUndo> {
+    blocking(move || {
+        Ok(garam_git::squash_undo::undo(
+            &Git::locate()?,
+            Path::new(&repo),
+            &id,
+        )?)
+    })
+    .await
 }

@@ -177,17 +177,68 @@ pub fn lost_commits(git: &Git, repo: &Path) -> Result<Vec<LostCommit>, GitError>
             "--",
         ])
         .run_unchecked()?;
-    // No reflog yet (a new repository) is nothing lost.
-    if !output.success() {
-        return Ok(Vec::new());
-    }
     let mut seen = HashSet::new();
-    let entries: Vec<LostCommit> = output
+    let mut entries: Vec<LostCommit> = output
         .stdout_str()
         .split('\0')
         .filter_map(parse_reflog_entry)
         .filter(|entry| seen.insert(entry.commit.oid.clone()))
         .collect();
+    // Private squash backups survive reflog expiry and are not normal branches.
+    // Include their real parent histories, never the synthetic journal commits.
+    let backups = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args([
+            "for-each-ref",
+            "--count=100",
+            "--sort=-creatordate",
+            "--format=%(parent)%09%(creatordate:unix)",
+            "refs/garam/squash-backups/",
+        ])
+        .run()?;
+    let mut dates = std::collections::HashMap::new();
+    for line in backups.stdout_str().lines() {
+        if let Some((parents, date)) = line.split_once('\t') {
+            let date = date.parse::<u32>().unwrap_or_default();
+            for parent in parents.split_whitespace() {
+                dates.insert(parent.to_owned(), date);
+            }
+        }
+    }
+    if !dates.is_empty() {
+        let saved = git
+            .command()
+            .cwd(repo)
+            .read_only()
+            .args([
+                "log",
+                "--no-walk",
+                "--no-notes",
+                "--no-show-signature",
+                "-z",
+                "--format=%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%s",
+            ])
+            .args(dates.keys())
+            .arg("--")
+            .run()?;
+        for row in saved.stdout_str().split('\0') {
+            if let Ok(commit) = log::parse_summary(row.trim_start_matches('\n'))
+                && seen.insert(commit.oid.clone())
+            {
+                entries.push(LostCommit {
+                    visited_at: dates
+                        .get(&commit.oid)
+                        .copied()
+                        .unwrap_or(commit.authored_at),
+                    commit,
+                    action: "garam_squash_backup".into(),
+                });
+            }
+        }
+    }
+    entries.sort_by_key(|e| std::cmp::Reverse(e.visited_at));
     if entries.is_empty() {
         return Ok(entries);
     }

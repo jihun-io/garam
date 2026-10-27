@@ -3,7 +3,7 @@ import { create } from "zustand";
 import type { CommitSummary } from "../../ipc";
 
 /**
- * Commits being dragged from the history toward a branch. Pointer-driven
+ * Commits being dragged to a branch, a commit, or a new list position. Pointer-driven
  * rather than HTML drag and drop, which the window's own file drop
  * handling intercepts on some platforms.
  */
@@ -16,6 +16,8 @@ export type CommitDrag = {
   over: string | null;
   /** Where in the history list the commits would move to (a row index). */
   insertAt: number | null;
+  /** The commit to fold into, if the pointer is in its row's center. */
+  squashOnto: string | null;
 };
 
 export const useCommitDrag = create<{
@@ -34,11 +36,22 @@ export function branchUnder(target: EventTarget | null): string | null {
   return element?.getAttribute("data-drop-branch") ?? null;
 }
 
-/** The history row under the pointer, and whether the pointer is in its lower half. */
-export function rowUnder(target: EventTarget | null, y: number): number | null {
+/** Row edges reorder; the middle half of a commit row squashes. */
+export function rowUnder(
+  target: EventTarget | null,
+  y: number,
+): { kind: "insert" | "squash"; index: number } | null {
   const row = target instanceof Element ? target.closest("[data-row-index]") : null;
   if (!row) return null;
   const index = Number(row.getAttribute("data-row-index"));
   const box = row.getBoundingClientRect();
-  return y > box.top + box.height / 2 ? index + 1 : index;
+  const offset = y - box.top;
+  if (
+    row.getAttribute("data-kind") === "commit" &&
+    offset > box.height / 4 &&
+    offset < (box.height * 3) / 4
+  ) {
+    return { kind: "squash", index };
+  }
+  return { kind: "insert", index: offset > box.height / 2 ? index + 1 : index };
 }

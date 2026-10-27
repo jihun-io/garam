@@ -27,6 +27,7 @@ mod progress;
 pub mod pull_request;
 pub mod remote;
 pub mod repo;
+pub mod squash_undo;
 pub mod ssh;
 pub mod stash;
 pub mod status;

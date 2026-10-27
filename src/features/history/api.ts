@@ -278,6 +278,23 @@ export function useCommitActions(repo: string) {
       onSettled,
       scope,
     }),
+    squashOnto: useMutation({
+      mutationFn: ({
+        oids,
+        target,
+        head,
+        branch,
+        message,
+      }: {
+        oids: string[];
+        target: string;
+        head: string;
+        branch: string;
+        message: string;
+      }) => unwrap(commands.commitSquashOnto(repo, oids, target, head, branch, message)),
+      onSettled,
+      scope,
+    }),
     reword: useMutation({
       mutationFn: ({
         oid,
