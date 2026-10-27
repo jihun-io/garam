@@ -31,12 +31,31 @@ import { CompareModeSwitch } from "./CompareView";
 import styles from "./History.module.css";
 import { useHistoryDialog } from "./historyDialogStore";
 import { useHistoryPane } from "./historyPaneStore";
+import { RewordDialog } from "./RewordDialog";
 
 /** Renders whichever history dialog is open for `repo`. */
-export function HistoryDialogs({ repo }: { repo: string }) {
+export function HistoryDialogs({
+  repo,
+  onReword,
+}: {
+  repo: string;
+  onReword: (oid: string) => void;
+}) {
   const { dialog, close } = useHistoryDialog();
   if (!dialog) return null;
   switch (dialog.kind) {
+    case "reword":
+      return (
+        <RewordDialog
+          key={dialog.commit.oid}
+          repo={repo}
+          commit={dialog.commit}
+          head={dialog.head}
+          branch={dialog.branch}
+          onClose={close}
+          onReword={onReword}
+        />
+      );
     case "reset":
       return <ResetDialog repo={repo} commit={dialog.commit} onClose={close} />;
     case "checkout":

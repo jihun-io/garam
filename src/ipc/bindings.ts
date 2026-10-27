@@ -225,6 +225,8 @@ export const commands = {
 	commitCherryPick: (repo: string, oids: string[]) => typedError<CherryPickOutcome, AppError>(__TAURI_INVOKE("commit_cherry_pick", { repo, oids })),
 	/**  Combines consecutive commits on HEAD into one; returns its id. */
 	commitSquash: (repo: string, oids: string[], message: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_squash", { repo, oids, message })),
+	/**  Changes an unpublished commit's message without changing its files. */
+	commitReword: (repo: string, oid: string, expectedHead: string, expectedBranch: string, message: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_reword", { repo, oid, expectedHead, expectedBranch, message })),
 	/**  Rebuilds HEAD's newest commits in `order` (newest first). */
 	commitReorder: (repo: string, order: string[]) => typedError<null, AppError>(__TAURI_INVOKE("commit_reorder", { repo, order })),
 	/**  Switches to `branch` and applies `oids` (oldest first) there. */
@@ -775,7 +777,7 @@ export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "
 /**  The upstream branch no longer exists on the remote. */
 "remote_branch_not_found" | "no_remote" | "detached_head" | 
 /**  Continuing needs every conflicted file resolved first. */
-"conflicts_remain" | "nothing_in_progress" | "identity_missing" | "cancelled" | "unknown";
+"conflicts_remain" | "nothing_in_progress" | "identity_missing" | "cancelled" | "cannot_reword" | "unknown";
 
 export type ExternalEditor = {
 	id: string,

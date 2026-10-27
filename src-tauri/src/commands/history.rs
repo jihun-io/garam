@@ -244,6 +244,29 @@ pub async fn commit_squash(repo: String, oids: Vec<String>, message: String) -> 
     .await
 }
 
+/// Changes an unpublished commit's message without changing its files.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_reword(
+    repo: String,
+    oid: String,
+    expected_head: String,
+    expected_branch: String,
+    message: String,
+) -> AppResult<String> {
+    blocking(move || {
+        Ok(log::reword(
+            &Git::locate()?,
+            Path::new(&repo),
+            &oid,
+            &expected_head,
+            &expected_branch,
+            &message,
+        )?)
+    })
+    .await
+}
+
 /// Moves the current branch to `oid`.
 #[tauri::command]
 #[specta::specta]
