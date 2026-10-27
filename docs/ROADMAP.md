@@ -112,6 +112,8 @@ UI 개선은 `docs/UI.md` 계획(1~6단계)을 따른다.
   - 검색: 메시지 검색은 일치하는 게 없으면 전체를 훑어 약 1.7초, 코드 내용 검색(`-S`)은 약 22초, 경로 필터는 첫 페이지 약 3.5초. 검색어나 필터를 바꾸면 이전 git 프로세스를 취소한다(300ms 안에 끝남)
   - **남은 것**: 실제 앱(웹뷰)에서 끝까지 걸리는 시간은 직접 재지 않았다. Windows·Linux 측정
 - [x] 앱 아이콘 자산: macOS Icon Composer/ICNS, Windows ICO, Linux PNG 및 재생성 스크립트
+- [x] 개발 앱 구분과 macOS 개발 서명: `pnpm tauri dev`가 `Garam Dev`·보라색 DEV 아이콘·`io.jihun.garam.dev`를 사용한다. 설정·저장소 목록·계정·키체인 서비스는 출시 앱과 분리하고, 개발 앱에서는 출시 업데이트를 끈다. macOS는 매 Rust 빌드 뒤 개발용 앱 번들을 만들고 로컬에서 선택한 고정 인증서로 서명한다. 인증서가 없으면 경고 후 ad-hoc으로 실행한다(CONTRIBUTING, ARCHITECTURE 1장).
+  - macOS에서 실제 앱으로 한국어·영어, 라이트·다크, 메뉴·정보 창의 이름·아이콘, 저장 공간 분리를 확인했다. 다른 실행 파일 해시로 재빌드한 뒤에도 서명 식별 조건과 개인 팀 ID가 유지됐다. 개발 앱 로그인 후 재빌드해 저장된 토큰으로 GitHub PR 정보를 읽었으며, 키체인 암호 창 없이 조회됐다. 언어 변경 뒤 재시작해도 개발 서버와 앱 PID가 유지된다. Windows/Linux는 런처 인수 전달을 테스트했으며 실제 화면 확인은 남아 있다.
 - [x] macOS 서명·공증, Windows 서명, Linux 패키지 (AppImage, deb)
   - 릴리스 워크플로(`.github/workflows/release.yml`): `v*` 태그를 푸시하면 세 OS를 빌드해 초안 Release에 올리고, 손으로 실행하면 Release 없이 설치 파일만 아티팩트로 남긴다. macOS는 유니버설(Apple Silicon + Intel) 빌드를 Developer ID로 서명하고 App Store Connect API 키로 공증한다. Linux는 AppImage와 deb(`git` 의존), Windows는 NSIS. MSI는 내지 않는다: 업데이터가 NSIS로 설치하고, 설치 파일이 둘이면 무엇을 받을지 헷갈리며 겹쳐 설치하면 앱이 두 벌 생긴다. MSI가 필요한 곳은 조직 일괄 배포인데 아직 수요가 없다. Microsoft Store의 무료 서명은 MSIX가 필요해 MSI와는 별개다
   - Windows는 v0.1에서 서명하지 않는다(SmartScreen 경고를 README에서 안내). SignPath Foundation(오픈소스 무료 서명)을 신청하고, Microsoft Store(MSIX)는 askpass 동작을 확인한 뒤에 검토한다

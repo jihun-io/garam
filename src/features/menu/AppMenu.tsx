@@ -12,6 +12,7 @@ import {
   subscribeCommands,
   type CommandId,
 } from "../../lib/commands";
+import { appNameKey } from "../../lib/appIdentity";
 import { currentPlatform } from "../../lib/platform";
 
 type Native =
@@ -34,9 +35,9 @@ type Native =
   | "Fullscreen";
 
 /** Menu label for a command; "Show in Finder" differs per platform. */
-export function commandLabel(t: TFunction<["menu", "repos"]>, id: CommandId): string {
+export function commandLabel(t: TFunction<["menu", "repos", "common"]>, id: CommandId): string {
   if (id === "repo.reveal") return t(`repos:open.reveal_${currentPlatform()}`);
-  return t(`menu:commands.${id}`);
+  return t(`menu:commands.${id}`, { appName: t(`common:${appNameKey}`) });
 }
 
 /**
@@ -44,11 +45,12 @@ export function commandLabel(t: TFunction<["menu", "repos"]>, id: CommandId): st
  * and are enabled only while a screen offers them.
  */
 async function buildMenu(
-  t: TFunction<["menu", "repos"]>,
+  t: TFunction<["menu", "repos", "common"]>,
   items: Map<CommandId, MenuItem>,
   windowLabel: string,
 ) {
   const mac = currentPlatform() === "macos";
+  const appName = t(`common:${appNameKey}`);
   const command = async (id: CommandId) => {
     const item = await MenuItem.new({
       // Item ids are app-wide; each window builds its own menu.
@@ -68,7 +70,7 @@ async function buildMenu(
 
   const app = mac
     ? [
-        submenu(t("menu:menus.app"), [
+        submenu(appName, [
           command("app.about"),
           command("app.checkUpdates"),
           separator(),
@@ -76,11 +78,11 @@ async function buildMenu(
           separator(),
           native("Services", t("menu:native.services")),
           separator(),
-          native("Hide", t("menu:native.hide")),
+          native("Hide", t("menu:native.hide", { appName })),
           native("HideOthers", t("menu:native.hideOthers")),
           native("ShowAll", t("menu:native.showAll")),
           separator(),
-          native("Quit", t("menu:native.quit")),
+          native("Quit", t("menu:native.quit", { appName })),
         ]),
       ]
     : [];
@@ -192,7 +194,7 @@ async function install(menu: Menu, appWindow: Window | null): Promise<() => void
 
 /** Installs the menu bar and keeps item availability up to date. */
 export function AppMenu() {
-  const { t, i18n } = useTranslation(["menu", "repos"]);
+  const { t, i18n } = useTranslation(["menu", "repos", "common"]);
 
   useEffect(() => {
     if (!isTauri()) return;

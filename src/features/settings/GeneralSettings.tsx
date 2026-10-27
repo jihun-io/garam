@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../components/ui/Button";
 import { Select } from "../../components/ui/Select";
 import { commands, type OpenRepositoryIn } from "../../ipc";
+import { isDevelopmentApp } from "../../lib/appIdentity";
 import { isCommandEnabled, runCommand, useCommandsVersion } from "../../lib/commands";
 import { currentPlatform } from "../../lib/platform";
 import { useAppVersion } from "../update/api";
@@ -71,10 +72,12 @@ export function GeneralSettings() {
         value={confirmConflictingPull}
         onChange={(on) => update({ confirmConflictingPull: on })}
       />
-      <UpdateSettings
-        automatic={checkForUpdates}
-        onChange={(automatic) => update({ checkForUpdates: automatic })}
-      />
+      {!isDevelopmentApp && (
+        <UpdateSettings
+          automatic={checkForUpdates}
+          onChange={(automatic) => update({ checkForUpdates: automatic })}
+        />
+      )}
     </>
   );
 }

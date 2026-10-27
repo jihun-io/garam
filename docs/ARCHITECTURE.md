@@ -49,6 +49,14 @@ Garam/
 
 `garam-git`을 Tauri와 분리하는 이유는 두 가지다. Git 로직을 Tauri 없이 `cargo test`로 빠르게 테스트할 수 있고, 나중에 CLI나 다른 프론트엔드에서도 재사용할 수 있다.
 
+### 개발 앱 식별과 서명
+
+- `pnpm tauri dev`는 `scripts/tauri.mjs`가 `tauri.dev.conf.json`을 자동으로 병합한다. 이름은 `Garam Dev`, 앱 ID는 `io.jihun.garam.dev`이며 개발용 아이콘을 쓴다. `tauri dev --release`도 같은 개발 앱이다. `tauri build`와 릴리스 워크플로는 기존 설정을 쓴다.
+- 앱 데이터 경로와 웹뷰 저장 공간은 앱 ID를 따르고, 키체인 서비스는 `<앱 ID>.github`·`<앱 ID>.git`로 만든다. 개발 앱은 출시 앱의 설정·계정·토큰을 복사하거나 삭제하지 않는다. 실제 Git 저장소와 시스템 Git 설정은 공유하므로 저장소 자체가 격리되는 것은 아니다.
+- macOS에서는 Cargo의 대상별 runner가 빌드 뒤 `scripts/dev-macos.mjs`를 실행한다. 실행 파일 옆에 `Garam Dev.app`을 만들고 이름·앱 ID·현지화·아이콘을 담은 Info.plist와 실행 파일 사본을 넣는다. 원래 Cargo 산출물은 수정하지 않는다. 앱은 이 번들에서 실행되어 Dock과 앱 전환 화면도 출시 앱과 구분된다. askpass·credential helper는 `current_exe()`로 같은 서명된 사본을 실행한다.
+- 서명은 환경 변수 `GARAM_DEV_SIGNING_IDENTITY`, Git에서 제외된 `.signing/dev.json`의 `identity`, ad-hoc 순서로 고른다. 고정 인증서를 쓰면 같은 앱 ID와 인증서로 매 빌드 서명하므로 키체인 접근 승인을 유지할 수 있다. 설정한 인증서의 서명 실패는 실행을 중단하며, 인증서가 없으면 경고 후 ad-hoc으로 실행한다. 최초 접근·잠긴 키체인·인증서 변경 때는 승인이 필요할 수 있다. 공증은 하지 않는다.
+- 프론트는 런처가 설정한 `VITE_GARAM_DEV`로 첫 화면·메뉴·정보 창의 이름과 아이콘을 고른다. 업데이트 명령은 개발 앱에서 비활성이고, Rust도 출시 앱 ID가 아니면 업데이트 조회·설치를 하지 않는다.
+
 ## 2. Git 엔진 (`crates/garam-git`)
 
 ### 2.1 방식: git CLI 실행
@@ -198,7 +206,7 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - **scope**: `repo`(비공개 저장소 push·pull), `workflow`(워크플로 파일 push), `read:org`(저장소별 계정 추천), `user:email`(작성자 이메일 추천).
 - **저장**: 계정 정보(로그인 이름, 이름, 아바타, 인증된 이메일, noreply 주소)는 앱 데이터 폴더의 `accounts.json`에, 토큰은 OS 키체인(`keyring`, 서비스 `io.jihun.garam.github`, 계정 `<host>/<user id>`)에 둔다. 키를 사용자 ID로 잡아 로그인 이름이 바뀌어도 같은 계정으로 본다.
 - 토큰은 백엔드 밖으로 나가지 않는다. 프론트로 보내는 타입에는 토큰이 없다.
-- 키체인에서 읽은 토큰은 앱이 실행되는 동안 메모리에 둔다. macOS는 키체인 항목을 만든 실행 파일과 서명이 다른 실행 파일이 읽으려 하면 사용자에게 묻는데, 개발 빌드(ad-hoc 서명)는 다시 빌드할 때마다 서명이 바뀌어 매번 묻게 된다. 그래서 한 번 실행하는 동안에는 한 번만 읽는다. 사용자가 거절하거나 창을 닫으면 `keychain_failed`로 '항상 허용'을 안내한다. 고정된 Developer ID로 서명하는 릴리스 빌드에서는 처음 한 번만 묻는다.
+- 키체인에서 읽은 토큰은 앱이 실행되는 동안 메모리에 두어 한 번만 읽는다. macOS는 접근을 허용한 코드의 서명 요건으로 앱을 식별한다. ad-hoc 서명은 재빌드마다 그 요건이 바뀌므로 다시 묻는다. 개발 앱도 고정 인증서로 서명하면 재빌드 사이에 같은 앱으로 식별될 수 있다(1장). 사용자가 거절하거나 창을 닫으면 `keychain_failed`로 '항상 허용'을 안내한다. 고정된 Developer ID로 서명하는 릴리스 빌드도 최초 승인이나 키체인 잠금·서명 요건 변경 때는 다시 물을 수 있다.
 - **로그아웃**: 키체인에서 토큰을 지운다. GitHub의 토큰 폐기 API는 client secret이 필요해 부를 수 없으므로, 권한 취소는 GitHub 설정 페이지로 안내한다.
 - 아바타는 `avatars.githubusercontent.com`에서 불러온다(CSP `img-src`에 추가).
 - **저장소별 계정**: 저장소 목록 항목에 계정 키를 저장한다(`repo_set_account`). 고르지 않으면 지금까지처럼 사용자의 git 설정을 그대로 쓴다.
@@ -222,7 +230,7 @@ git/ssh ──GIT_ASKPASS/SSH_ASKPASS──▶ garam 실행 파일(헬퍼 모드
 - `tauri-plugin-updater`를 Rust에서만 쓴다(`src-tauri/src/updater.rs`). 창이 여러 개라도 확인 결과·설치 상태는 하나라서, 상태를 Rust가 들고 바뀔 때마다 `update-changed` 이벤트로 모든 창에 알린다. 프론트용 플러그인 권한은 열지 않는다.
 - 피드: `https://github.com/jihun-io/garam/releases/latest/download/latest.json`. GitHub의 "latest"는 공개된 정식 릴리스만 가리키므로 초안·프리릴리스는 설치된 앱에 가지 않는다. 릴리스 워크플로가 `latest.json`과 플랫폼별 업데이트 파일(macOS `.app.tar.gz`, Linux AppImage·deb, Windows NSIS)과 서명(`.sig`)을 올린다.
 - 서명 확인: 업데이트 파일은 Tauri 업데이터 키(minisign)로 서명하고, 앱에 박힌 공개 키(`plugins.updater.pubkey`)로 확인한다. 개인 키는 GitHub Secrets에만 둔다. 키를 잃으면 기존 사용자에게 업데이트를 보낼 수 없다.
-- 확인 시점: 시작 10초 뒤, 그 뒤로 6시간마다(설정 > 일반 > 업데이트에서 끌 수 있음). 개발 빌드는 스스로 확인하지 않는다. 메뉴 "업데이트 확인…"(macOS는 앱 메뉴, 그 외는 도움말)은 언제든 확인하고, "나중에"로 미룬 버전도 다시 보여준다.
+- 확인 시점: 시작 10초 뒤, 그 뒤로 6시간마다(설정 > 일반 > 업데이트에서 끌 수 있음). 개발 앱은 수동 조회·설치와 자동 확인을 모두 끈다. 출시 앱의 메뉴 "업데이트 확인…"(macOS는 앱 메뉴, 그 외는 도움말)은 언제든 확인하고, "나중에"로 미룬 버전도 다시 보여준다.
 - 설치: macOS·Linux는 내려받아 설치한 뒤 "지금 다시 시작"으로 적용한다(`app_restart`). Windows는 NSIS 설치 프로그램이 passive 모드로 앱을 닫고 설치한다. Linux deb는 `pkexec dpkg -i`로 설치한다(플러그인이 실행 중인 패키지 종류를 보고 고른다).
 - 업데이트 산출물은 서명 키가 있어야 만들어지므로 로컬 `tauri build`에서는 끄고, 릴리스 워크플로만 `src-tauri/tauri.release.conf.json`으로 켠다.
 

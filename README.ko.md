@@ -41,7 +41,7 @@ Garam은 컴퓨터에 설치된 Git을 사용합니다. **Git 2.35 이상**이 �
 
 ## 소스에서 빌드하기
 
-[Rust](https://rustup.rs)(버전은 `rust-toolchain.toml`에 고정되어 있어 rustup이 알아서 설치합니다), Node.js 22, pnpm 10, 그리고 운영체제별 [Tauri 준비 사항](https://tauri.app/start/prerequisites/)이 필요합니다. Ubuntu에서는 다음 패키지를 설치합니다.
+[Rust](https://rustup.rs)(버전은 `rust-toolchain.toml`에 고정되어 있어 rustup이 알아서 설치합니다), Node.js 22.15 이상, pnpm 10, 그리고 운영체제별 [Tauri 준비 사항](https://tauri.app/start/prerequisites/)이 필요합니다. Ubuntu에서는 다음 패키지를 설치합니다.
 
 ```bash
 sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libxdo-dev build-essential libssl-dev

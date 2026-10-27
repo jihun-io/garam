@@ -13,9 +13,6 @@ use serde::{Deserialize, Serialize};
 use crate::error::{AppError, AppErrorKind, AppResult};
 use crate::storage;
 
-/// Keychain service name for Garam's GitHub tokens.
-pub const KEYCHAIN_SERVICE: &str = "io.jihun.garam.github";
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Account {
@@ -65,11 +62,11 @@ pub trait TokenVault: Send + Sync {
 }
 
 /// The OS keychain, under one service name.
-pub struct Keychain(pub &'static str);
+pub struct Keychain(pub String);
 
 impl Keychain {
     fn entry(&self, key: &str) -> AppResult<keyring::Entry> {
-        keyring::Entry::new(self.0, key).map_err(keychain_error)
+        keyring::Entry::new(&self.0, key).map_err(keychain_error)
     }
 }
 

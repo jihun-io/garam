@@ -35,7 +35,7 @@ export function CommandList({
   labels?: Partial<Record<CommandId, string>>;
   more?: Partial<Record<CommandId, (className: string) => ReactNode>>;
 }) {
-  const { t } = useTranslation(["menu", "repos"]);
+  const { t } = useTranslation(["menu", "repos", "common"]);
   useCommandsVersion();
   const available = ids.filter(isCommandEnabled);
   if (available.length === 0) return null;

@@ -27,6 +27,12 @@ bash scripts/build-icons.sh
 
 생성된 자산을 저장소에 함께 보관하므로 일반 Windows/Linux 빌드에 Xcode는 필요하지 않다. 현재 스크립트는 Icon Composer 27 CLI 형식과 디자인 세대를 사용한다.
 
+## 개발용 아이콘
+
+`bash scripts/build-dev-icons.sh`가 같은 `Garam.icon` 원본의 심볼을 유지하고, 배경을 짙은 보라색으로 바꾸며 `DEV` 레이어를 더한다. 레이어는 `scripts/dev-icon-badge.swift`가 그린다. 색과 글자 표시로 작은 Dock 아이콘에서도 출시용과 구분한다. 결과는 `src-tauri/icons/dev/`의 PNG·ICNS·ICO·Assets.car이며 저장소에 함께 보관한다. Windows/Linux 개발에 Xcode는 필요하지 않다.
+
+`pnpm tauri dev`는 개발용 PNG·ICNS·ICO를 선택하고, macOS 개발 번들은 `CFBundleIconName = GaramDev`와 개발용 Assets.car도 포함한다. 출시 아이콘과 그 재생성 스크립트는 별도로 유지한다.
+
 ## 확인
 
 ```sh

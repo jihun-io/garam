@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Icon } from "../../components/Icon";
 import { Button } from "../../components/ui/Button";
 import { commands } from "../../ipc";
+import { isDevelopmentApp } from "../../lib/appIdentity";
 import { useCommand } from "../../lib/commands";
 import { useNotify } from "../notify/notifyStore";
 import { checkForUpdates, installUpdate, releaseUrl, useUpdateStatus } from "./api";
@@ -30,7 +31,7 @@ export function UpdateCommands() {
         .catch(showError)
         .finally(() => setChecking(false));
     },
-    !checking && !installing && !installed,
+    !isDevelopmentApp && !checking && !installing && !installed,
   );
   return null;
 }

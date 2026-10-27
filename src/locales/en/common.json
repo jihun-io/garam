@@ -1,5 +1,6 @@
 {
   "appName": "Garam",
+  "appNameDev": "Garam Dev",
   "loading": "Loading…",
   "language": {
     "label": "Language",
@@ -24,5 +25,6 @@
     "publish": "Publish branch",
     "resolveConflicts": "Resolve conflicts",
     "stashAndRetry": "Set changes aside and try again"
-  }
+  },
+  "windowTitleDev": "{{repository}} — {{appName}}"
 }
