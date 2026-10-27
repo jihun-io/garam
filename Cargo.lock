@@ -1303,7 +1303,7 @@ dependencies = [
 
 [[package]]
 name = "garam"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "base64 0.22.1",
  "garam-git",
@@ -1327,7 +1327,7 @@ dependencies = [
 
 [[package]]
 name = "garam-git"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "dunce",
  "garam-git",
@@ -1340,7 +1340,7 @@ dependencies = [
 
 [[package]]
 name = "garam-github"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "mockito",
  "serde",
