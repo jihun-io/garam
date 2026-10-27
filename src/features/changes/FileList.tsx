@@ -47,8 +47,8 @@ export function FileList({
   onMove: (delta: number, extend: boolean) => void;
   /** Includes or excludes `files` together, the way the first one isn't. */
   onToggle: (files: FileChange[]) => void;
-  onDiscard: (files: FileChange[]) => void;
-  onStash: (files: FileChange[]) => void;
+  onDiscard?: (files: FileChange[]) => void;
+  onStash?: (files: FileChange[]) => void;
 }) {
   const { t } = useTranslation("changes");
   const showError = useNotify((s) => s.showError);
@@ -84,7 +84,8 @@ export function FileList({
     } else if (
       (e.key === "Backspace" || e.key === "Delete") &&
       (e.metaKey || e.ctrlKey) &&
-      selectedFiles.length > 0
+      selectedFiles.length > 0 &&
+      onDiscard
     ) {
       // Opens the confirmation; nothing is discarded without it.
       e.preventDefault();
@@ -167,21 +168,25 @@ export function FileList({
               </ContextMenu.Trigger>
               <ContextMenu.Portal>
                 <ContextMenu.Content className={menu.content}>
-                  <ContextMenu.Item className={menu.item} onSelect={() => onDiscard(targets)}>
-                    {several
-                      ? t("fileMenu.discardSelected", { count: targets.length })
-                      : t("fileMenu.discard")}
-                  </ContextMenu.Item>
-                  <ContextMenu.Item
-                    className={menu.item}
-                    disabled={targets.some((f) => f.staged === "conflicted")}
-                    onSelect={() => onStash(targets)}
-                  >
-                    {several
-                      ? t("fileMenu.stashSelected", { count: targets.length })
-                      : t("fileMenu.stash")}
-                  </ContextMenu.Item>
-                  <ContextMenu.Separator className={menu.separator} />
+                  {onDiscard && (
+                    <ContextMenu.Item className={menu.item} onSelect={() => onDiscard(targets)}>
+                      {several
+                        ? t("fileMenu.discardSelected", { count: targets.length })
+                        : t("fileMenu.discard")}
+                    </ContextMenu.Item>
+                  )}
+                  {onStash && (
+                    <ContextMenu.Item
+                      className={menu.item}
+                      disabled={targets.some((f) => f.staged === "conflicted")}
+                      onSelect={() => onStash(targets)}
+                    >
+                      {several
+                        ? t("fileMenu.stashSelected", { count: targets.length })
+                        : t("fileMenu.stash")}
+                    </ContextMenu.Item>
+                  )}
+                  {(onDiscard || onStash) && <ContextMenu.Separator className={menu.separator} />}
                   <ContextMenu.Item
                     className={menu.item}
                     onSelect={() =>

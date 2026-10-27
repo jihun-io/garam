@@ -20,19 +20,20 @@ export const changesKeys = {
  */
 export const indexScope = (repo: string) => ({ id: `index:${repo}` });
 
-export function useStatus(repo: string) {
+export function useStatus(repo: string, amendId?: string) {
   return useQuery({
-    queryKey: changesKeys.status(repo),
-    queryFn: () => unwrap(commands.statusGet(repo)),
+    queryKey: amendId ? [...changesKeys.status(repo), "amend", amendId] : changesKeys.status(repo),
+    queryFn: () => unwrap(amendId ? commands.amendStatus(repo, amendId) : commands.statusGet(repo)),
     // Catches edits made while the watcher was unavailable.
     refetchOnWindowFocus: true,
   });
 }
 
-export function useDiff(repo: string, file: FileChange | null) {
+export function useDiff(repo: string, file: FileChange | null, amendId?: string) {
   return useQuery({
-    queryKey: changesKeys.diff(repo, file),
-    queryFn: () => unwrap(commands.diffGet(repo, file!)),
+    queryKey: amendId ? [...changesKeys.diff(repo, file), amendId] : changesKeys.diff(repo, file),
+    queryFn: () =>
+      unwrap(amendId ? commands.amendDiff(repo, amendId, file!) : commands.diffGet(repo, file!)),
     enabled: file !== null,
     // A diff kept under other staged/unstaged flags is from an older index:
     // showing it when the file's flags come back to them would briefly
@@ -44,10 +45,20 @@ export function useDiff(repo: string, file: FileChange | null) {
   });
 }
 
-export function useImages(repo: string, file: FileChange | null, enabled: boolean) {
+export function useImages(
+  repo: string,
+  file: FileChange | null,
+  enabled: boolean,
+  amendId?: string,
+) {
   return useQuery({
-    queryKey: changesKeys.images(repo, file?.path ?? ""),
-    queryFn: () => unwrap(commands.diffImages(repo, file!)),
+    queryKey: amendId
+      ? [...changesKeys.images(repo, file?.path ?? ""), amendId]
+      : changesKeys.images(repo, file?.path ?? ""),
+    queryFn: () =>
+      unwrap(
+        amendId ? commands.amendImages(repo, amendId, file!) : commands.diffImages(repo, file!),
+      ),
     enabled: enabled && file !== null,
   });
 }
@@ -68,25 +79,42 @@ export function useIdentity(repo: string) {
 }
 
 /** Mutations that change the working tree or index; all refresh the repo. */
-export function useChangeActions(repo: string) {
+export function useChangeActions(repo: string, amendId?: string) {
   const client = useQueryClient();
   const onSettled = () => client.invalidateQueries({ queryKey: changesKeys.all(repo) });
   const scope = indexScope(repo);
 
   return {
     stage: useMutation({
-      mutationFn: (files: FileChange[]) => unwrap(commands.changesStage(repo, files)),
+      mutationKey: ["change-selection", repo],
+      mutationFn: (files: FileChange[]) =>
+        unwrap(
+          amendId
+            ? commands.amendEdit(repo, amendId, { kind: "files", files, include: true })
+            : commands.changesStage(repo, files),
+        ),
       onSettled,
       scope,
     }),
     unstage: useMutation({
-      mutationFn: (files: FileChange[]) => unwrap(commands.changesUnstage(repo, files)),
+      mutationKey: ["change-selection", repo],
+      mutationFn: (files: FileChange[]) =>
+        unwrap(
+          amendId
+            ? commands.amendEdit(repo, amendId, { kind: "files", files, include: false })
+            : commands.changesUnstage(repo, files),
+        ),
       onSettled,
       scope,
     }),
     stageLines: useMutation({
+      mutationKey: ["change-selection", repo],
       mutationFn: ({ file, selected }: { file: FileChange; selected: LineRef[] }) =>
-        unwrap(commands.changesStageLines(repo, file, selected)),
+        unwrap(
+          amendId
+            ? commands.amendEdit(repo, amendId, { kind: "lines", file, selected })
+            : commands.changesStageLines(repo, file, selected),
+        ),
       onSettled,
       scope,
     }),

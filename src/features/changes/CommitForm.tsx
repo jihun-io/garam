@@ -3,7 +3,6 @@ import { Trans, useTranslation } from "react-i18next";
 
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Button } from "../../components/ui/Button";
-import { Checkbox } from "../../components/ui/Checkbox";
 import { Tooltip } from "../../components/ui/Tooltip";
 import {
   commands,
@@ -17,7 +16,8 @@ import { currentPlatform } from "../../lib/platform";
 import { useRepoAccount } from "../accounts/api";
 import { emailBelongsTo } from "../accounts/repoAccount";
 import { useSettings } from "../settings/api";
-import { useChangeActions, useHeadCommit, useIdentity } from "./api";
+import { useChangeActions, useIdentity } from "./api";
+import { useBeginAmend } from "./amendApi";
 import { CommitCheckDialog } from "./CommitCheckDialog";
 import { useCommitDrafts } from "./commitDraftStore";
 import styles from "./CommitForm.module.css";
@@ -37,7 +37,7 @@ export function CommitForm({
   stagedCount: number;
 }) {
   const { t } = useTranslation("changes");
-  const ids = { summary: useId(), description: useId(), coAuthors: useId(), amend: useId() };
+  const ids = { summary: useId(), description: useId(), coAuthors: useId() };
   const { commit } = useChangeActions(repo);
   const identity = useIdentity(repo);
   const repoAccount = useRepoAccount(repo, identity.data?.effective.email ?? null);
@@ -49,55 +49,28 @@ export function CommitForm({
   useEffect(() => {
     if (draft) clearDraft(repo);
   }, [draft, clearDraft, repo]);
-  const [coAuthorsText, setCoAuthorsText] = useState("");
-  const [showCoAuthors, setShowCoAuthors] = useState(false);
-  const [amend, setAmend] = useState(false);
-  const [prefill, setPrefill] = useState<{ summary: string; description: string } | null>(null);
+  const [coAuthorsText, setCoAuthorsText] = useState(draft?.coAuthorsText ?? "");
+  const [showCoAuthors, setShowCoAuthors] = useState(draft?.showCoAuthors ?? false);
+  const setDraft = useCommitDrafts((s) => s.set);
+  const beginAmend = useBeginAmend(repo, () =>
+    setDraft(repo, { summary, description, coAuthorsText, showCoAuthors }),
+  );
   const [error, setError] = useState<AppError>();
   const [askIdentity, setAskIdentity] = useState(false);
   const [editRepoIdentity, setEditRepoIdentity] = useState(false);
   const { commitChecks } = useSettings();
   const [checking, setChecking] = useState(false);
   const [findings, setFindings] = useState<Finding[] | null>(null);
-  const head = useHeadCommit(repo, amend);
   const canAmend = branch.oid !== null;
 
   const coAuthors = parseCoAuthors(showCoAuthors ? coAuthorsText : "");
   const ready =
     summary.trim() !== "" &&
     coAuthors.ok &&
-    (stagedCount > 0 || amend) &&
+    stagedCount > 0 &&
     !commit.isPending &&
+    !beginAmend.isPending &&
     !checking;
-
-  const toggleAmend = (next: boolean) => {
-    setAmend(next);
-    applyAmend(next);
-  };
-
-  // Fill the form with the last commit's message when amending, and clear
-  // it again when amending is turned off without edits.
-  const applyAmend = (next: boolean) => {
-    if (next && head.data && !summary && !description) {
-      setSummary(head.data.summary);
-      setDescription(head.data.body);
-      setPrefill({ summary: head.data.summary, description: head.data.body });
-    } else if (
-      !next &&
-      prefill &&
-      summary === prefill.summary &&
-      description === prefill.description
-    ) {
-      setSummary("");
-      setDescription("");
-      setPrefill(null);
-    }
-  };
-
-  // The head commit may arrive after the box was ticked.
-  if (amend && head.data && prefill === null && !summary && !description) {
-    applyAmend(true);
-  }
 
   // `identityConfirmed` skips the check right after the identity dialog
   // saved, before the identity query has refetched.
@@ -127,15 +100,13 @@ export function CommitForm({
   const createCommit = () => {
     if (!coAuthors.ok) return;
     commit.mutate(
-      { summary, description, coAuthors: coAuthors.coAuthors, amend },
+      { summary, description, coAuthors: coAuthors.coAuthors, amend: false },
       {
         onSuccess: () => {
           setSummary("");
           setDescription("");
           setCoAuthorsText("");
           setShowCoAuthors(false);
-          setAmend(false);
-          setPrefill(null);
         },
         onError: (e) => {
           const appError = toAppError(e);
@@ -155,9 +126,7 @@ export function CommitForm({
   };
 
   // Only the branch name shrinks (with an ellipsis), so "Commit to" stays.
-  const label = amend ? (
-    t("commit.submitAmend")
-  ) : branch.head ? (
+  const label = branch.head ? (
     <Trans
       t={t}
       i18nKey="commit.submit"
@@ -227,15 +196,17 @@ export function CommitForm({
       )}
 
       <div className={styles.options}>
-        <label className={styles.option} htmlFor={ids.amend}>
-          <Checkbox
-            id={ids.amend}
-            state={amend ? "checked" : "unchecked"}
-            disabled={!canAmend}
-            onChange={(e) => toggleAmend(e.target.checked)}
-          />
+        <button
+          type="button"
+          className={styles.link}
+          disabled={!canAmend || beginAmend.isPending}
+          onClick={() => {
+            if (!branch.oid) return;
+            beginAmend.mutate(branch.oid);
+          }}
+        >
           {t("commit.amend")}
-        </label>
+        </button>
         <button
           type="button"
           className={styles.link}
@@ -297,7 +268,7 @@ export function CommitForm({
         <CommitCheckDialog
           repo={repo}
           findings={findings}
-          canCommit={stagedCount > 0 || amend}
+          canCommit={stagedCount > 0}
           onCommit={() => {
             setFindings(null);
             createCommit();

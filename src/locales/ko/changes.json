@@ -64,7 +64,7 @@
     "description": "설명",
     "descriptionPlaceholder": "설명",
     "summaryLong": "요약이 72자를 넘으면 일부 도구에서 잘려 보일 수 있습니다.",
-    "amend": "마지막 커밋 수정",
+    "amend": "마지막 커밋 수정…",
     "coAuthors": "공동 작성자",
     "coAuthorsPlaceholder": "이름 <email@example.com>, 한 줄에 한 명씩",
     "coAuthorsInvalid": "공동 작성자는 이름 <email@example.com> 형식으로 쓰세요.",
@@ -163,5 +163,14 @@
     "commit": "커밋",
     "resolved": "모두 처리했습니다. 남은 변경 사항으로 커밋합니다.",
     "nothingLeft": "커밋할 변경 사항이 남지 않았습니다."
+  },
+  "amend": {
+    "editing": "커밋 {{hash}} 수정 중",
+    "hint": "이 커밋에 남길 파일과 줄을 고르세요. 제외한 변경은 작업 폴더에 남습니다. 취소하면 원래 커밋과 스테이지 상태를 유지합니다.",
+    "cancel": "수정 취소",
+    "save": "커밋 수정",
+    "saveAnyway": "그래도 수정",
+    "done": "마지막 커밋을 수정했습니다. 제외한 변경은 작업 폴더에 남아 있습니다.",
+    "restart": "수정을 취소하고 다시 시작하면 현재 커밋과 변경 사항을 다시 불러옵니다."
   }
 }

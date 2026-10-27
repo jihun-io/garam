@@ -31,6 +31,7 @@ import { CompareModeSwitch } from "./CompareView";
 import styles from "./History.module.css";
 import { useHistoryDialog } from "./historyDialogStore";
 import { useHistoryPane } from "./historyPaneStore";
+import { FixupDialog } from "./FixupDialog";
 import { RewordDialog } from "./RewordDialog";
 
 /** Renders whichever history dialog is open for `repo`. */
@@ -54,6 +55,18 @@ export function HistoryDialogs({
           branch={dialog.branch}
           onClose={close}
           onReword={onReword}
+        />
+      );
+    case "fixup":
+      return (
+        <FixupDialog
+          key={dialog.commit.oid}
+          repo={repo}
+          commit={dialog.commit}
+          head={dialog.head}
+          branch={dialog.branch}
+          onClose={close}
+          onFixup={onReword}
         />
       );
     case "reset":

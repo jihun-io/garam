@@ -227,6 +227,18 @@ export const commands = {
 	commitSquash: (repo: string, oids: string[], message: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_squash", { repo, oids, message })),
 	/**  Changes an unpublished commit's message without changing its files. */
 	commitReword: (repo: string, oid: string, expectedHead: string, expectedBranch: string, message: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_reword", { repo, oid, expectedHead, expectedBranch, message })),
+	/**  Freezes the staged tree and paths for the fixup confirmation. */
+	commitFixupPreview: (repo: string) => typedError<FixupPreview, AppError>(__TAURI_INVOKE("commit_fixup_preview", { repo })),
+	/**  Adds the confirmed staged tree to an unpublished commit. */
+	commitFixup: (repo: string, oid: string, expectedHead: string, expectedBranch: string, expectedTree: string) => typedError<string, AppError>(__TAURI_INVOKE("commit_fixup", { repo, oid, expectedHead, expectedBranch, expectedTree })),
+	amendBegin: (repo: string, expectedHead: string) => typedError<AmendSession, AppError>(__TAURI_INVOKE("amend_begin", { repo, expectedHead })),
+	amendStatus: (repo: string, id: string) => typedError<RepoStatus, AppError>(__TAURI_INVOKE("amend_status", { repo, id })),
+	amendDiff: (repo: string, id: string, file: FileChange) => typedError<FileDiff, AppError>(__TAURI_INVOKE("amend_diff", { repo, id, file })),
+	amendImages: (repo: string, id: string, file: FileChange) => typedError<ImageVersions, AppError>(__TAURI_INVOKE("amend_images", { repo, id, file })),
+	amendEdit: (repo: string, id: string, edit: AmendEdit) => typedError<null, AppError>(__TAURI_INVOKE("amend_edit", { repo, id, edit })),
+	amendCheck: (repo: string, id: string) => typedError<Finding[], AppError>(__TAURI_INVOKE("amend_check", { repo, id })),
+	amendSave: (repo: string, id: string, message: string) => typedError<string, AppError>(__TAURI_INVOKE("amend_save", { repo, id, message })),
+	amendCancel: (repo: string, id: string) => typedError<null, AppError>(__TAURI_INVOKE("amend_cancel", { repo, id })),
 	/**  Rebuilds HEAD's newest commits in `order` (newest first). */
 	commitReorder: (repo: string, order: string[]) => typedError<null, AppError>(__TAURI_INVOKE("commit_reorder", { repo, order })),
 	/**  Switches to `branch` and applies `oids` (oldest first) there. */
@@ -392,6 +404,13 @@ export type AccountList = {
 	accounts: Account[],
 	/**  Where the user can revoke Garam's access on github.com. */
 	authorizationSettingsUrl: string,
+};
+
+export type AmendEdit = { kind: "files"; files: FileChange[]; include: boolean } | { kind: "lines"; file: FileChange; selected: LineRef[] };
+
+export type AmendSession = {
+	id: string,
+	head: HeadCommit,
 };
 
 /**
@@ -777,7 +796,7 @@ export type ErrorKind = "git_not_found" | "git_too_old" | "not_a_repository" | "
 /**  The upstream branch no longer exists on the remote. */
 "remote_branch_not_found" | "no_remote" | "detached_head" | 
 /**  Continuing needs every conflicted file resolved first. */
-"conflicts_remain" | "nothing_in_progress" | "identity_missing" | "cancelled" | "cannot_reword" | "unknown";
+"conflicts_remain" | "nothing_in_progress" | "identity_missing" | "cancelled" | "cannot_reword" | "cannot_amend" | "cannot_fixup" | "index_changed" | "fixup_incomplete" | "unknown";
 
 export type ExternalEditor = {
 	id: string,
@@ -817,6 +836,12 @@ export type Finding =
 { kind: "large_file"; path: string; mib: number } | 
 /**  Newly added files a `.gitignore` line (`pattern`) would leave out. */
 { kind: "ignorable"; pattern: string; paths: string[] };
+
+/**  A frozen view of the index to confirm before adding it to an older commit. */
+export type FixupPreview = {
+	tree: string,
+	paths: string[],
+};
 
 export type GitInfo = {
 	version: string,

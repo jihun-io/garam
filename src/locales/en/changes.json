@@ -64,7 +64,7 @@
     "description": "Description",
     "descriptionPlaceholder": "Description",
     "summaryLong": "Summaries over 72 characters may be cut off in some tools.",
-    "amend": "Amend last commit",
+    "amend": "Edit Last Commit…",
     "coAuthors": "Co-authors",
     "coAuthorsPlaceholder": "Name <email@example.com>, one per line",
     "coAuthorsInvalid": "Write each co-author as Name <email@example.com>.",
@@ -163,5 +163,14 @@
     "commit": "Commit",
     "resolved": "All taken care of. The rest of your changes will be committed.",
     "nothingLeft": "No changes are left to commit."
+  },
+  "amend": {
+    "editing": "Editing commit {{hash}}",
+    "hint": "Select files and lines to keep in this commit. Excluded changes stay in your working folder. Cancel keeps the original commit and staging.",
+    "cancel": "Cancel edit",
+    "save": "Save commit",
+    "saveAnyway": "Save anyway",
+    "done": "Updated the last commit. Excluded changes are still in your working folder.",
+    "restart": "Cancel this edit and start again to load the current commit and changes."
   }
 }

@@ -68,6 +68,7 @@ pub(crate) fn mark_staged_lines(
     repo: &Path,
     file: &FileChange,
     hunks: &mut [Hunk],
+    base: &str,
 ) -> Result<(), GitError> {
     let changed = hunks
         .iter_mut()
@@ -91,9 +92,9 @@ pub(crate) fn mark_staged_lines(
         return Ok(());
     }
     let staged_deletions: HashSet<u32> =
-        changed_lines(git, repo, &file.path, true, LineKind::Deleted)?;
+        changed_lines(git, repo, &file.path, true, LineKind::Deleted, base)?;
     let unstaged_additions: HashSet<u32> =
-        changed_lines(git, repo, &file.path, false, LineKind::Added)?;
+        changed_lines(git, repo, &file.path, false, LineKind::Added, base)?;
     for line in changed {
         line.staged = match line.kind {
             LineKind::Deleted => line.old_line.is_some_and(|n| staged_deletions.contains(&n)),
@@ -124,6 +125,7 @@ fn changed_lines(
     path: &str,
     cached: bool,
     kind: LineKind,
+    base: &str,
 ) -> Result<HashSet<u32>, GitError> {
     let mut command = git.command().cwd(repo).read_only().args([
         "diff",
@@ -135,7 +137,7 @@ fn changed_lines(
         "--dst-prefix=b/",
     ]);
     if cached {
-        command = command.arg("--cached");
+        command = command.args(["--cached", base]);
     }
     let output = command.paths([path]).run()?;
     let FileDiff::Text { hunks, .. } = diff::parse(&output.stdout_str()) else {
@@ -161,6 +163,22 @@ pub fn stage_lines(
     file: &FileChange,
     selected: &[LineRef],
 ) -> Result<(), GitError> {
+    stage_lines_against(
+        git,
+        repo,
+        file,
+        selected,
+        &diff::head_or_empty_tree(git, repo)?,
+    )
+}
+
+pub(crate) fn stage_lines_against(
+    git: &Git,
+    repo: &Path,
+    file: &FileChange,
+    selected: &[LineRef],
+    base: &str,
+) -> Result<(), GitError> {
     if !supports_line_staging(file) {
         return Err(GitError::Parse(format!(
             "line staging is not supported for {}",
@@ -170,7 +188,7 @@ pub fn stage_lines(
     let FileDiff::Text {
         hunks,
         selectable: true,
-    } = diff::file_diff(git, repo, file)?
+    } = diff::file_diff_against(git, repo, file, base)?
     else {
         return Err(GitError::Parse(format!(
             "no line-stageable diff for {}",
@@ -189,21 +207,21 @@ pub fn stage_lines(
     // Whole-file cases go through the regular commands, which also handle
     // deletions and modes exactly.
     if chosen == 0 {
-        return index::unstage(git, repo, std::slice::from_ref(file));
+        return index::unstage_against(git, repo, std::slice::from_ref(file), base);
     }
     if chosen == all.len() {
         return index::stage(git, repo, std::slice::from_ref(file));
     }
 
     let head = if file.exists_in_head() {
-        blob::head_blob(git, repo, &file.path)?.unwrap_or_default()
+        blob::blob_at(git, repo, base, &file.path)?.unwrap_or_default()
     } else {
         Vec::new()
     };
     let content = build_content(&head, &hunks, |line| {
         LineRef::of(line).is_some_and(|r| selected.contains(&r))
     })?;
-    let mode = file_mode(git, repo, &file.path)?;
+    let mode = file_mode(git, repo, &file.path, base)?;
 
     let hashed = git
         .command()
@@ -287,7 +305,7 @@ pub fn build_content(
 
 /// Mode for the index entry: the existing index entry's, else HEAD's, else
 /// derived from the working tree file.
-fn file_mode(git: &Git, repo: &Path, path: &str) -> Result<String, GitError> {
+fn file_mode(git: &Git, repo: &Path, path: &str, base: &str) -> Result<String, GitError> {
     let from_listing = |args: &[&str]| -> Result<Option<String>, GitError> {
         let output = git
             .command()
@@ -305,9 +323,7 @@ fn file_mode(git: &Git, repo: &Path, path: &str) -> Result<String, GitError> {
     if let Some(mode) = from_listing(&["ls-files", "--stage"])? {
         return Ok(mode);
     }
-    if crate::commit::head_oid(git, repo)?.is_some()
-        && let Some(mode) = from_listing(&["ls-tree", "HEAD"])?
-    {
+    if let Some(mode) = from_listing(&["ls-tree", base])? {
         return Ok(mode);
     }
     Ok(worktree_mode(&repo.join(path)))

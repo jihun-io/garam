@@ -49,6 +49,10 @@ vi.mock("../../ipc/bindings", () => ({
     commitCherryPick: vi.fn(),
     commitSquash: vi.fn(),
     commitReword: vi.fn(),
+    commitFixupPreview: vi.fn(),
+    commitFixup: vi.fn(),
+    commitCheck: vi.fn(),
+    amendBegin: vi.fn(),
     commitCherryPickOnto: vi.fn(),
     commitReorder: vi.fn(),
     commitReset: vi.fn(),
@@ -614,6 +618,218 @@ describe("HistoryView", () => {
     );
     const menu = await openMenu(user, "Commit number 2");
     expect(within(menu).queryByRole("menuitem", { name: "Edit Commit Message…" })).toBeNull();
+  });
+
+  const stagedFile: FileChange = {
+    path: "src/login.tsx",
+    origPath: null,
+    staged: "modified",
+    unstaged: "modified",
+    isSubmodule: false,
+  };
+  const fixupTree = "a".repeat(40);
+
+  it("confirms staged files and runs safety checks before fixing up an unpublished commit", async () => {
+    const user = userEvent.setup();
+    setup({ ...markers, unpushed: [commits[0].oid, commits[1].oid] }, [stagedFile]);
+    vi.mocked(commands.historyList).mockResolvedValue(
+      ok([
+        { ...commits[0], parents: [commits[1].oid] },
+        { ...commits[1], parents: [commits[2].oid] },
+        commits[2],
+      ]),
+    );
+    vi.mocked(commands.commitFixupPreview).mockResolvedValue(
+      ok({ tree: fixupTree, paths: [stagedFile.path] }),
+    );
+    vi.mocked(commands.commitCheck).mockResolvedValue(ok([]));
+    vi.mocked(commands.commitFixup).mockResolvedValue(ok(commits[0].oid));
+    const menu = await openMenu(user, "Commit number 2");
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "Add staged changes to this commit…" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Add changes to this commit" });
+    expect(await within(dialog).findByText(stagedFile.path)).toBeVisible();
+    expect(commands.commitFixup).not.toHaveBeenCalled();
+    expect(await axeViolations(dialog)).toEqual([]);
+    await user.click(within(dialog).getByRole("button", { name: "Add changes" }));
+    await waitFor(() =>
+      expect(commands.commitFixup).toHaveBeenCalledWith(
+        "/repo",
+        commits[1].oid,
+        commits[0].oid,
+        "main",
+        fixupTree,
+      ),
+    );
+    expect(commands.commitCheck).toHaveBeenCalledWith("/repo");
+    expect(await screen.findByText("Staged changes added to the commit.")).toBeVisible();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("requires acknowledgement of safety findings before adding changes", async () => {
+    const user = userEvent.setup();
+    setup({ ...markers, unpushed: [commits[0].oid, commits[1].oid] }, [stagedFile]);
+    vi.mocked(commands.historyList).mockResolvedValue(
+      ok([
+        { ...commits[0], parents: [commits[1].oid] },
+        { ...commits[1], parents: [commits[2].oid] },
+        commits[2],
+      ]),
+    );
+    vi.mocked(commands.commitFixupPreview).mockResolvedValue(
+      ok({ tree: fixupTree, paths: [stagedFile.path] }),
+    );
+    vi.mocked(commands.commitCheck).mockResolvedValue(
+      ok([
+        { kind: "secret", path: stagedFile.path, secret: "private_key", line: 1, preview: null },
+      ]),
+    );
+    vi.mocked(commands.commitFixup).mockResolvedValue(ok(commits[0].oid));
+    const menu = await openMenu(user, "Commit number 2");
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "Add staged changes to this commit…" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Add changes to this commit" });
+    await within(dialog).findByText(stagedFile.path);
+    await user.click(within(dialog).getByRole("button", { name: "Add changes" }));
+    const checks = await screen.findByRole("dialog", { name: "Check before committing" });
+    expect(commands.commitFixup).not.toHaveBeenCalled();
+    await user.click(within(checks).getByRole("button", { name: "Add anyway" }));
+    await waitFor(() => expect(commands.commitFixup).toHaveBeenCalledTimes(1));
+  });
+
+  it("requires explicit review after the staged tree changes", async () => {
+    const user = userEvent.setup();
+    setup({ ...markers, unpushed: [commits[0].oid, commits[1].oid] }, [stagedFile]);
+    vi.mocked(commands.historyList).mockResolvedValue(
+      ok([
+        { ...commits[0], parents: [commits[1].oid] },
+        { ...commits[1], parents: [commits[2].oid] },
+        commits[2],
+      ]),
+    );
+    vi.mocked(commands.commitFixupPreview).mockResolvedValue(
+      ok({ tree: fixupTree, paths: [stagedFile.path] }),
+    );
+    vi.mocked(commands.commitCheck).mockResolvedValue(ok([]));
+    vi.mocked(commands.commitFixup).mockResolvedValueOnce({
+      status: "error",
+      error: { kind: "index_changed", params: {}, detail: null },
+    });
+    const menu = await openMenu(user, "Commit number 2");
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "Add staged changes to this commit…" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Add changes to this commit" });
+    await within(dialog).findByText(stagedFile.path);
+    await user.click(within(dialog).getByRole("button", { name: "Add changes" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "The staged changes changed",
+    );
+    vi.mocked(commands.commitFixupPreview).mockResolvedValue(
+      ok({ tree: "b".repeat(40), paths: ["new.txt"] }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Review staged changes again" }));
+    expect(await within(dialog).findByText("new.txt")).toBeVisible();
+    expect(commands.commitFixup).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the dialog on a stale head and opens Changes when a saved fixup stops", async () => {
+    const user = userEvent.setup();
+    setup({ ...markers, unpushed: [commits[0].oid, commits[1].oid] }, [stagedFile]);
+    vi.mocked(commands.historyList).mockResolvedValue(
+      ok([
+        { ...commits[0], parents: [commits[1].oid] },
+        { ...commits[1], parents: [commits[2].oid] },
+        commits[2],
+      ]),
+    );
+    vi.mocked(commands.commitFixupPreview).mockResolvedValue(
+      ok({ tree: fixupTree, paths: [stagedFile.path] }),
+    );
+    vi.mocked(commands.commitCheck).mockResolvedValue(ok([]));
+    vi.mocked(commands.commitFixup)
+      .mockResolvedValueOnce({
+        status: "error",
+        error: { kind: "head_moved", params: {}, detail: null },
+      })
+      .mockResolvedValueOnce({
+        status: "error",
+        error: { kind: "fixup_incomplete", params: {}, detail: "rebase conflict" },
+      });
+    const menu = await openMenu(user, "Commit number 2");
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "Add staged changes to this commit…" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Add changes to this commit" });
+    await within(dialog).findByText(stagedFile.path);
+    await user.click(within(dialog).getByRole("button", { name: "Add changes" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("The last commit changed");
+    await user.click(within(dialog).getByRole("button", { name: "Add changes" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByText(/Git saved your changes, but the fixup/)).toBeVisible();
+  });
+
+  it("opens the last commit in the amend editor instead of offering fixup", async () => {
+    const user = userEvent.setup();
+    setup(markers, [stagedFile]);
+    vi.mocked(commands.amendBegin).mockResolvedValue(
+      ok({ id: "abcd", head: { oid: commits[0].oid, summary: commits[0].summary, body: "" } }),
+    );
+    const menu = await openMenu(user, "Add login screen");
+    expect(
+      within(menu).queryByRole("menuitem", { name: "Add staged changes to this commit…" }),
+    ).toBeNull();
+    await user.click(within(menu).getByRole("menuitem", { name: "Edit Commit…" }));
+    await waitFor(() => expect(commands.amendBegin).toHaveBeenCalledWith("/repo", commits[0].oid));
+  });
+
+  it("hides fixup without staged changes", async () => {
+    const user = userEvent.setup();
+    setup();
+    let menu = await openMenu(user, "Add login screen");
+    expect(
+      within(menu).queryByRole("menuitem", { name: "Add staged changes to this commit…" }),
+    ).toBeNull();
+    await user.keyboard("{Escape}");
+    menu = await openMenu(user, "Commit number 2");
+    expect(
+      within(menu).queryByRole("menuitem", { name: "Add staged changes to this commit…" }),
+    ).toBeNull();
+  });
+
+  it("offers fixup on older unpublished commits but hides published commits", async () => {
+    const user = userEvent.setup();
+    setup({ ...markers, unpushed: [commits[0].oid, commits[1].oid] }, [stagedFile]);
+    vi.mocked(commands.historyList).mockResolvedValue(
+      ok([
+        { ...commits[0], parents: [commits[1].oid] },
+        { ...commits[1], parents: [commits[2].oid] },
+        commits[2],
+      ]),
+    );
+    let menu = await openMenu(user, "Commit number 2");
+    expect(
+      within(menu).getByRole("menuitem", { name: "Add staged changes to this commit…" }),
+    ).toBeVisible();
+    await user.keyboard("{Escape}");
+    menu = await openMenu(user, "Commit number 3");
+    expect(
+      within(menu).queryByRole("menuitem", { name: "Add staged changes to this commit…" }),
+    ).toBeNull();
+  });
+
+  it("hides fixup when a merge lies between the target and HEAD", async () => {
+    const user = userEvent.setup();
+    setup({ ...markers, unpushed: commits.map((c) => c.oid) }, [stagedFile]);
+    vi.mocked(commands.historyList).mockResolvedValue(
+      ok([{ ...commits[0], parents: [commits[1].oid, "a".repeat(40)] }, ...commits.slice(1)]),
+    );
+    const menu = await openMenu(user, "Commit number 2");
+    expect(
+      within(menu).queryByRole("menuitem", { name: "Add staged changes to this commit…" }),
+    ).toBeNull();
   });
 
   it("undoes the last commit and keeps its message for the commit form", async () => {

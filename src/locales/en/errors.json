@@ -65,5 +65,9 @@
   "window_failed": "Couldn't open a new window.",
   "update_check_failed": "Couldn't check for updates. Check your internet connection and try again.",
   "update_install_failed": "Couldn't install the update. Try again, or download the new version from the releases page.",
-  "cannot_reword": "This message can't be changed. Choose an unpushed commit on the current branch with no merge commits after it, and finish any operation in progress first."
+  "cannot_reword": "This message can't be changed. Choose an unpushed commit on the current branch with no merge commits after it, and finish any operation in progress first.",
+  "cannot_fixup": "Changes can't be added to this commit. Choose an unpushed commit on the current branch with no merge commits among or after it, stage changes, and finish any operation in progress first.",
+  "index_changed": "The staged changes changed in the meantime. Review them again before continuing.",
+  "fixup_incomplete": "Git saved your changes, but the fixup or restoration of unstaged changes did not finish. Resolve any conflicts in Changes. If a rebase is in progress, continue or abort it; aborting leaves a separate “fixup!” commit in the history.",
+  "cannot_amend": "This commit cannot be edited. Choose the latest unpushed commit on a branch, with no merge or operation in progress."
 }

@@ -1,3 +1,4 @@
+pub mod amend;
 pub mod branches;
 pub mod changes;
 pub mod conflicts;

@@ -65,6 +65,15 @@ pub enum FileDiff {
 /// Diff of `file` between HEAD (or nothing, for new files) and the working
 /// tree, so staged and unstaged changes appear together.
 pub fn file_diff(git: &Git, repo: &Path, file: &FileChange) -> Result<FileDiff, GitError> {
+    file_diff_against(git, repo, file, &head_or_empty_tree(git, repo)?)
+}
+
+pub(crate) fn file_diff_against(
+    git: &Git,
+    repo: &Path,
+    file: &FileChange,
+    base: &str,
+) -> Result<FileDiff, GitError> {
     let common = [
         "diff",
         "--no-color",
@@ -95,7 +104,6 @@ pub fn file_diff(git: &Git, repo: &Path, file: &FileChange) -> Result<FileDiff, 
         }
         output
     } else {
-        let base = head_or_empty_tree(git, repo)?;
         let mut paths = vec![file.path.as_str()];
         if let Some(orig) = &file.orig_path {
             paths.push(orig);
@@ -104,7 +112,7 @@ pub fn file_diff(git: &Git, repo: &Path, file: &FileChange) -> Result<FileDiff, 
             .cwd(repo)
             .read_only()
             .args(common)
-            .args(["--find-renames", &base])
+            .args(["--find-renames", base])
             .paths(paths)
             .run()?
     };
@@ -118,7 +126,7 @@ pub fn file_diff(git: &Git, repo: &Path, file: &FileChange) -> Result<FileDiff, 
         // exact: non-UTF-8 output was lossily decoded and can't be used.
         *selectable = crate::patch::supports_line_staging(file)
             && std::str::from_utf8(&output.stdout).is_ok();
-        crate::patch::mark_staged_lines(git, repo, file, hunks)?;
+        crate::patch::mark_staged_lines(git, repo, file, hunks, base)?;
     }
     Ok(diff)
 }

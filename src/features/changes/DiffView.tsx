@@ -31,14 +31,16 @@ export function DiffView({
   repo,
   file,
   conflict,
+  amendId,
 }: {
   repo: string;
   file: FileChange | null;
   conflict?: ConflictFile;
+  amendId?: string;
 }) {
   const { t } = useTranslation("changes");
-  const diff = useDiff(repo, file);
-  const { stageLines } = useChangeActions(repo);
+  const diff = useDiff(repo, file, amendId);
+  const { stageLines } = useChangeActions(repo, amendId);
   const showError = useNotify((st) => st.showError);
 
   if (!file) {
@@ -72,7 +74,7 @@ export function DiffView({
     body = <Loading />;
   } else if (diff.data.type === "binary") {
     body = isImage(file.path) ? (
-      <ImageDiff repo={repo} file={file} />
+      <ImageDiff repo={repo} file={file} amendId={amendId} />
     ) : (
       <p className={styles.notice}>{t("diff.binary")}</p>
     );
@@ -494,8 +496,8 @@ function StyledText({
   });
 }
 
-function ImageDiff({ repo, file }: { repo: string; file: FileChange }) {
-  const images = useImages(repo, file, true);
+function ImageDiff({ repo, file, amendId }: { repo: string; file: FileChange; amendId?: string }) {
+  const images = useImages(repo, file, true, amendId);
   if (!images.data) return <Loading />;
   return <ImageComparison path={file.path} {...images.data} />;
 }

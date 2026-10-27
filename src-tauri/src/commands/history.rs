@@ -5,7 +5,7 @@ use garam_git::commit::HeadCommit;
 use garam_git::compare::{self, CompareMode, Comparison, LostCommit};
 use garam_git::diff::FileDiff;
 use garam_git::log::{
-    self, CherryPickOutcome, CommitDetail, CommitFile, CommitSummary, HistoryFilter,
+    self, CherryPickOutcome, CommitDetail, CommitFile, CommitSummary, FixupPreview, HistoryFilter,
     HistoryMarkers, ResetMode, Signature,
 };
 use garam_git::tag::{Tag, TagOrder};
@@ -262,6 +262,36 @@ pub async fn commit_reword(
             &expected_head,
             &expected_branch,
             &message,
+        )?)
+    })
+    .await
+}
+
+/// Freezes the staged tree and paths for the fixup confirmation.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_fixup_preview(repo: String) -> AppResult<FixupPreview> {
+    blocking(move || Ok(log::fixup_preview(&Git::locate()?, Path::new(&repo))?)).await
+}
+
+/// Adds the confirmed staged tree to an unpublished commit.
+#[tauri::command]
+#[specta::specta]
+pub async fn commit_fixup(
+    repo: String,
+    oid: String,
+    expected_head: String,
+    expected_branch: String,
+    expected_tree: String,
+) -> AppResult<String> {
+    blocking(move || {
+        Ok(log::fixup(
+            &Git::locate()?,
+            Path::new(&repo),
+            &oid,
+            &expected_head,
+            &expected_branch,
+            &expected_tree,
         )?)
     })
     .await

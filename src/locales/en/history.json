@@ -35,7 +35,9 @@
     "pushTag": "Push {{name}} to Remote",
     "overwriteTag": "Replace {{name}} on Remote…",
     "deleteTag": "Delete Tag {{name}}…",
-    "reword": "Edit Commit Message…"
+    "reword": "Edit Commit Message…",
+    "fixup": "Add staged changes to this commit…",
+    "amend": "Edit Commit…"
   },
   "detail": {
     "select": "Select a commit to see its changes.",
@@ -123,7 +125,8 @@
     "tagPushed": "Pushed tag {{name}} to {{remote}}.",
     "tagsPushed_one": "Pushed {{count}} tag to {{remote}}.",
     "tagsPushed_other": "Pushed {{count}} tags to {{remote}}.",
-    "reworded": "Updated the commit message."
+    "reworded": "Updated the commit message.",
+    "fixedUp": "Staged changes added to the commit."
   },
   "reset": {
     "title": "Reset to This Commit",
@@ -306,5 +309,19 @@
     "description": "Description",
     "body": "This changes the message of an unpushed commit. This commit and any later commits receive new hashes; their files and authors stay the same.",
     "recover": "The original commits remain available in Recover Lost Commits."
+  },
+  "fixup": {
+    "title": "Add changes to this commit",
+    "body": "Adds the staged changes to this unpushed commit and rebuilds the commits after it. The original message and author are kept. Unstaged changes are put aside and restored by Git.",
+    "files_one": "{{count}} staged file",
+    "files_other": "{{count}} staged files",
+    "more_one": "And {{count}} more file.",
+    "more_other": "And {{count}} more files.",
+    "nothingStaged": "Nothing is staged. Stage the changes you want to add first.",
+    "recover": "If conflicts occur, resolve them in Changes and continue the rebase. Aborting keeps your changes in a separate “fixup!” commit; undo that last commit to stage them again. The original commits remain available in Recover lost commits.",
+    "cancel": "Cancel",
+    "submit": "Add changes",
+    "submitAnyway": "Add anyway",
+    "refresh": "Review staged changes again"
   }
 }

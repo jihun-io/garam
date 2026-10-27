@@ -43,38 +43,35 @@ pub fn stage(git: &Git, repo: &Path, files: &[FileChange]) -> Result<(), GitErro
 
 /// Removes the given files from the index, keeping working tree changes.
 pub fn unstage(git: &Git, repo: &Path, files: &[FileChange]) -> Result<(), GitError> {
+    unstage_against(
+        git,
+        repo,
+        files,
+        &crate::diff::head_or_empty_tree(git, repo)?,
+    )
+}
+
+pub(crate) fn unstage_against(
+    git: &Git,
+    repo: &Path,
+    files: &[FileChange],
+    base: &str,
+) -> Result<(), GitError> {
     if files.is_empty() {
         return Ok(());
     }
-    let paths = pathspec_stdin(touched_paths(files));
-    if crate::commit::head_oid(git, repo)?.is_some() {
-        git.command()
-            .cwd(repo)
-            .args([
-                "restore",
-                "--staged",
-                "--pathspec-from-file=-",
-                "--pathspec-file-nul",
-            ])
-            .stdin(paths)
-            .run()?;
-    } else {
-        // No commits yet: there is nothing to restore from, so just drop the
-        // entries from the index.
-        git.command()
-            .cwd(repo)
-            .args([
-                "rm",
-                "--cached",
-                "-r",
-                "--quiet",
-                "--ignore-unmatch",
-                "--pathspec-from-file=-",
-                "--pathspec-file-nul",
-            ])
-            .stdin(paths)
-            .run()?;
-    }
+    git.command()
+        .cwd(repo)
+        .args([
+            "restore",
+            "--staged",
+            "--source",
+            base,
+            "--pathspec-from-file=-",
+            "--pathspec-file-nul",
+        ])
+        .stdin(pathspec_stdin(touched_paths(files)))
+        .run()?;
     Ok(())
 }
 
