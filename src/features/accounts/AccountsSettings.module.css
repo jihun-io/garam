@@ -102,6 +102,7 @@
   letter-spacing: 0.08em;
   -webkit-user-select: all;
   user-select: all;
+  cursor: text;
 }
 
 .actions {

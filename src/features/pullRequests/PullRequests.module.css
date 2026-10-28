@@ -84,6 +84,7 @@
   line-height: 1.45;
   -webkit-user-select: text;
   user-select: text;
+  cursor: text;
 }
 
 .check {

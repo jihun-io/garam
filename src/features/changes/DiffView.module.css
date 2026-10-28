@@ -22,6 +22,7 @@
   white-space: nowrap;
   -webkit-user-select: text;
   user-select: text;
+  cursor: text;
 }
 
 .headerMeta {
@@ -141,6 +142,7 @@
   tab-size: 4;
   -webkit-user-select: text;
   user-select: text;
+  cursor: text;
 }
 
 .added {
