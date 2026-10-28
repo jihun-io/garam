@@ -37,6 +37,7 @@ describe.each(Object.entries(themes))("%s theme text", (_, tokens) => {
     raised: color("raised"),
     hover: color("hover", surface),
     selected: color("selected", bg),
+    "selected-inactive": color("selected-inactive", bg),
     "added-bg": color("added-bg"),
     "deleted-bg": color("deleted-bg"),
     "hunk-bg": color("hunk-bg"),

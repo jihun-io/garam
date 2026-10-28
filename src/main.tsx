@@ -16,11 +16,14 @@ import { installContextMenuGuard } from "./lib/contextMenu";
 import { installLayerScrollBounce } from "./lib/scrollBounce";
 import { setDetailFilesWidth, setSidebarWidth } from "./lib/layout";
 import { initTheme, setAppearance } from "./lib/theme";
+import { initWindowFocus } from "./lib/windowFocus";
 import { initWindowChrome } from "./lib/windowChrome";
 
 /** Loads settings and applies them before the first frame is drawn. */
 async function start() {
   initWindowChrome();
+  const stopWindowFocus = initWindowFocus();
+  import.meta.hot?.dispose(stopWindowFocus);
   initTheme();
   installContextMenuGuard();
   installLayerScrollBounce();

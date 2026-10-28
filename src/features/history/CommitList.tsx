@@ -233,6 +233,7 @@ export function CommitList({
   return (
     <div
       ref={scrollRef}
+      data-selection-list
       className={styles.scroll}
       role="listbox"
       aria-label={t("list.label")}

@@ -3,12 +3,12 @@ import { ContextMenu as RadixMenu, Slot } from "radix-ui";
 import { useEffect, useRef, type KeyboardEvent, type ReactElement } from "react";
 
 import {
-  menuEntries,
   releaseContextMenu,
   showContextMenu,
   type ContextMenuEntry,
 } from "../../lib/nativeContextMenu";
 import styles from "./Menu.module.css";
+import { MenuItems } from "./MenuItems";
 
 export type { ContextMenuEntry } from "../../lib/nativeContextMenu";
 
@@ -61,7 +61,6 @@ export function ContextMenu({
         event.stopPropagation();
         const element = event.currentTarget;
         const returnTo = element.closest<HTMLElement>("button, [tabindex='0']") ?? element;
-        returnTo.focus({ preventScroll: true });
         showContextMenu(owner.current, items, { x: event.clientX, y: event.clientY }, returnTo);
       }}
       onKeyDown={(event) => {
@@ -88,20 +87,7 @@ export function ContextMenu({
       <RadixMenu.Trigger asChild>{trigger}</RadixMenu.Trigger>
       <RadixMenu.Portal>
         <RadixMenu.Content className={styles.content}>
-          {menuEntries(items).map((item, index) =>
-            item === "separator" ? (
-              <RadixMenu.Separator key={index} className={styles.separator} />
-            ) : (
-              <RadixMenu.Item
-                key={index}
-                className={styles.item}
-                disabled={item.disabled}
-                onSelect={() => void item.action()}
-              >
-                {item.label}
-              </RadixMenu.Item>
-            ),
-          )}
+          <MenuItems items={items} menu={RadixMenu} />
         </RadixMenu.Content>
       </RadixMenu.Portal>
     </RadixMenu.Root>

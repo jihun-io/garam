@@ -66,7 +66,7 @@ textarea {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--window-focus-ring);
   outline-offset: 2px;
 }
 
@@ -76,8 +76,8 @@ input:not([type="checkbox"], [type="radio"]):focus-visible,
 textarea:focus-visible,
 select:focus-visible {
   outline: none;
-  border-color: var(--color-focus);
-  box-shadow: inset 0 0 0 1px var(--color-focus);
+  border-color: var(--window-field-border);
+  box-shadow: var(--window-field-shadow);
 }
 
 /* Menus, popovers and tooltips (all positioned by Radix) fade in quickly. */
@@ -121,4 +121,50 @@ pre {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* A selection survives focus changes. Only the focused list in the key
+   window uses the accent; the rest retain a neutral selection. */
+:root {
+  --window-focus-ring: transparent;
+  --window-field-border: var(--color-line-strong);
+  --window-field-shadow: none;
+  --window-selection-bg: var(--color-selected-inactive);
+  --window-selection-fg: var(--color-ink);
+  --window-selection-detail: var(--color-ink-muted);
+  --window-selection-accent: initial;
+  --window-selection-badge-bg: var(--color-hover);
+  --window-selection-badge-shadow: none;
+}
+
+/* Keep activation on the root's own variables. WebKit can leave descendant
+   :focus-within rules stale when an ancestor's activation attribute changes. */
+:root[data-window-focused="true"] {
+  --window-focus-ring: var(--color-focus);
+  --window-field-border: var(--color-focus);
+  --window-field-shadow: inset 0 0 0 1px var(--color-focus);
+  --window-selection-bg: var(--color-river);
+  --window-selection-fg: var(--color-on-accent);
+  --window-selection-detail: var(--color-on-accent);
+  --window-selection-accent: var(--color-on-accent);
+  --window-selection-badge-bg: transparent;
+  --window-selection-badge-shadow: inset 0 0 0 1px currentColor;
+}
+
+[data-selection-list] {
+  --selection-bg: var(--color-selected-inactive);
+  --selection-fg: var(--color-ink);
+  --selection-detail: var(--color-ink-muted);
+  --selection-accent: initial;
+  --selection-badge-bg: var(--color-hover);
+  --selection-badge-shadow: none;
+}
+
+[data-selection-list]:focus-within {
+  --selection-bg: var(--window-selection-bg);
+  --selection-fg: var(--window-selection-fg);
+  --selection-detail: var(--window-selection-detail);
+  --selection-accent: var(--window-selection-accent);
+  --selection-badge-bg: var(--window-selection-badge-bg);
+  --selection-badge-shadow: var(--window-selection-badge-shadow);
 }

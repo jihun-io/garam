@@ -1,4 +1,3 @@
-import { DropdownMenu } from "radix-ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,7 +6,7 @@ import { Icon } from "../../components/Icon";
 import { Button } from "../../components/ui/Button";
 import { FormDialog } from "../../components/ui/Dialog";
 import { Loading } from "../../components/ui/Loading";
-import menu from "../../components/ui/Menu.module.css";
+import { MenuButton } from "../../components/ui/MenuButton";
 import { Tooltip } from "../../components/ui/Tooltip";
 import { toAppError, type Stash } from "../../ipc";
 import { useRelativeTime } from "../../lib/time";
@@ -98,26 +97,20 @@ export function StashDetail({ repo, stash }: { repo: string; stash: Stash }) {
               {t("actions.apply")}
             </Button>
           </Tooltip>
-          <DropdownMenu.Root>
-            <Tooltip content={t("actions.more")}>
-              <DropdownMenu.Trigger asChild disabled={busy}>
-                <Button aria-label={t("actions.more")}>
-                  <Icon name="more" size={16} />
-                </Button>
-              </DropdownMenu.Trigger>
-            </Tooltip>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content className={menu.content} align="start" sideOffset={4}>
-                <DropdownMenu.Item className={menu.item} onSelect={() => setDialog("branch")}>
-                  {t("actions.branch")}
-                </DropdownMenu.Item>
-                <DropdownMenu.Separator className={menu.separator} />
-                <DropdownMenu.Item className={menu.item} onSelect={() => setDialog("drop")}>
-                  {t("actions.drop")}
-                </DropdownMenu.Item>
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
+          <Tooltip content={t("actions.more")}>
+            <MenuButton
+              disabled={busy}
+              items={[
+                { label: t("actions.branch"), action: () => setDialog("branch") },
+                "separator",
+                { label: t("actions.drop"), action: () => setDialog("drop") },
+              ]}
+            >
+              <Button aria-label={t("actions.more")}>
+                <Icon name="more" size={16} />
+              </Button>
+            </MenuButton>
+          </Tooltip>
         </div>
       </header>
 

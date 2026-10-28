@@ -26,22 +26,26 @@
 }
 
 .row[aria-selected="true"] {
-  background: var(--color-selected);
+  background: var(--selection-bg);
+  color: var(--selection-fg);
 }
 
-.scroll:focus-visible .row[aria-selected="true"] {
-  background: var(--color-river);
-  color: var(--color-on-accent);
+.row[aria-selected="true"] .dir {
+  color: var(--selection-detail);
 }
 
-.scroll:focus-visible .row[aria-selected="true"] .dir,
-.scroll:focus-visible .row[aria-selected="true"] .kind {
-  color: inherit;
+.row[aria-selected="true"] .kind {
+  color: var(--selection-accent, var(--kind-ink));
 }
 
 /* A checked box would vanish into the accent-filled row. */
-.scroll:focus-visible .row[aria-selected="true"] [data-checkmark] {
-  border-color: var(--color-on-accent);
+.row[aria-selected="true"] [data-checkmark] {
+  border-color: var(--selection-accent, var(--color-ink-faint));
+}
+
+.row[aria-selected="true"] [data-checkmark][data-state="checked"],
+.row[aria-selected="true"] [data-checkmark][data-state="mixed"] {
+  border-color: var(--selection-accent, var(--color-river));
 }
 
 .path {
@@ -63,6 +67,7 @@
 }
 
 .kind {
+  color: var(--kind-ink);
   display: inline-grid;
   flex: none;
   place-items: center;
@@ -70,18 +75,18 @@
 }
 
 .added {
-  color: var(--color-added-ink);
+  --kind-ink: var(--color-added-ink);
 }
 
 .modified {
-  color: var(--color-modified-ink);
+  --kind-ink: var(--color-modified-ink);
 }
 
 .deleted,
 .conflicted {
-  color: var(--color-danger);
+  --kind-ink: var(--color-danger);
 }
 
 .renamed {
-  color: var(--color-link);
+  --kind-ink: var(--color-link);
 }

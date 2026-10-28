@@ -28,5 +28,5 @@
 }
 
 .splitter:focus-visible::after {
-  background: var(--color-focus);
+  background: var(--window-focus-ring);
 }

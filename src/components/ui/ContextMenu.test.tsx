@@ -1,15 +1,27 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 
 import { commands } from "../../ipc";
 import { useNotify } from "../../features/notify/notifyStore";
+import { MenuButton } from "./MenuButton";
 import { ContextMenu, openListContextMenu } from "./ContextMenu";
-import { TooltipProvider } from "./Tooltip";
+import { Tooltip, TooltipProvider } from "./Tooltip";
 import { FileList } from "../../features/changes/FileList";
+import { IconButton } from "./IconButton";
 
+type NativeItem = {
+  id?: string;
+  text?: string;
+  enabled?: boolean;
+  checked?: boolean;
+  items?: NativeItem[];
+  action?: () => void;
+  item?: string;
+};
 const native = vi.hoisted(() => ({
   menus: [] as {
-    items: { id?: string; text?: string; enabled?: boolean; action?: () => void; item?: string }[];
+    items: NativeItem[];
     close: ReturnType<typeof vi.fn>;
     rid: number;
   }[],
@@ -31,6 +43,7 @@ async function shown(index = 0) {
 }
 
 beforeEach(() => {
+  fireEvent.pointerDown(document);
   vi.clearAllMocks();
   native.menus = [];
   native.create.mockImplementation(async (options) => {
@@ -43,6 +56,34 @@ beforeEach(() => {
 });
 
 describe("native context menus", () => {
+  it("removes tooltips before the OS popup and resumes them on fresh web input", async () => {
+    const user = userEvent.setup();
+    render(
+      <TooltipProvider>
+        <ContextMenu items={[{ label: "Copy", action: vi.fn() }]}>
+          <IconButton label="Source tooltip" icon="openIn" />
+        </ContextMenu>
+        <Tooltip content="Other tooltip">
+          <button>Other</button>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+    await user.tab();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Source tooltip");
+    vi.mocked(commands.contextMenuPopup).mockImplementationOnce(async () => {
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      return { status: "ok", data: null };
+    });
+    fireEvent.contextMenu(screen.getByRole("button", { name: "Source tooltip" }));
+    await shown();
+    // A native popup may resolve while still tracking, and focus may return
+    // without pointer input. Neither should revive the tooltip behind it.
+    act(() => screen.getByRole("button", { name: "Other" }).focus());
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    await user.tab({ shift: true });
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Source tooltip");
+  });
+
   it("uses native commands, keeps handlers after showing and releases the previous menu", async () => {
     const action = vi.fn();
     const { unmount } = render(
@@ -187,5 +228,132 @@ describe("native context menus", () => {
     await act(async () => menu.items[0].action!());
     expect(onDiscard).toHaveBeenCalledWith(files);
     expect(screen.getByRole("listbox")).toHaveFocus();
+  });
+});
+
+describe("native menu buttons", () => {
+  it("does not reopen a hovered tooltip while a mouse click prepares the native menu", async () => {
+    const user = userEvent.setup();
+    let finish!: () => void;
+    const waiting = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const create = native.create.getMockImplementation()!;
+    native.create.mockImplementationOnce(async (options) => {
+      await waiting;
+      return create(options);
+    });
+    render(
+      <TooltipProvider>
+        <MenuButton items={[{ label: "Show in Finder", action: vi.fn() }]}>
+          <IconButton label="Open in" icon="openIn" />
+        </MenuButton>
+      </TooltipProvider>,
+    );
+    const button = screen.getByRole("button", { name: "Open in" });
+    await user.hover(button);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Open in");
+    expect(button).not.toHaveFocus();
+    try {
+      // WebKit leaves the button unfocused on pointerdown. Our click handler
+      // focuses it after pointerup, when Radix permits focus tooltips again.
+      fireEvent.pointerDown(button, { pointerType: "mouse" });
+      fireEvent.pointerUp(button, { pointerType: "mouse" });
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      fireEvent.click(button);
+      expect(button).toHaveFocus();
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      await waitFor(() => expect(native.create).toHaveBeenCalledOnce());
+      expect(commands.contextMenuPopup).not.toHaveBeenCalled();
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    } finally {
+      await act(async () => finish());
+    }
+    await shown();
+  });
+
+  it("forwards tooltip focus and hover handlers to the menu button", async () => {
+    const user = userEvent.setup();
+    render(
+      <TooltipProvider>
+        <Tooltip content="Sync actions tooltip">
+          <MenuButton items={[{ label: "Fetch", action: vi.fn() }]}>
+            <button>Sync actions</button>
+          </MenuButton>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+    await user.tab();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Sync actions tooltip");
+    expect(screen.getByRole("button")).toHaveAttribute("aria-describedby");
+    fireEvent.keyDown(screen.getByRole("button"), { key: "ArrowDown" });
+    await shown();
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("anchors below the button and supports arrow-key opening without IME interference", async () => {
+    render(
+      <MenuButton items={[{ label: "Fetch", action: vi.fn() }]}>
+        <button>Sync actions</button>
+      </MenuButton>,
+    );
+    const button = screen.getByRole("button");
+    vi.spyOn(button, "getBoundingClientRect").mockReturnValue(new DOMRect(20, 40, 80, 28));
+    button.focus();
+    fireEvent.keyDown(button, { key: "ArrowDown", isComposing: true });
+    expect(native.create).not.toHaveBeenCalled();
+    fireEvent.keyDown(button, { key: "ArrowDown" });
+    const menu = await shown();
+    expect(commands.contextMenuPopup).toHaveBeenCalledWith(menu.rid, 20, 72);
+    expect(button).toHaveAttribute("aria-haspopup", "menu");
+    expect(button).toHaveFocus();
+  });
+
+  it("keeps disabled buttons from opening native menus", async () => {
+    render(
+      <MenuButton disabled items={[{ label: "Discard", action: vi.fn() }]}>
+        <button>More</button>
+      </MenuButton>,
+    );
+    const button = screen.getByRole("button");
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    fireEvent.keyDown(button, { key: "ArrowDown" });
+    await act(async () => {});
+    expect(native.create).not.toHaveBeenCalled();
+  });
+
+  it("preserves headings, nested checked choices and their action targets", async () => {
+    const choose = vi.fn();
+    render(
+      <MenuButton
+        items={[
+          {
+            kind: "group",
+            label: "Suited & installed",
+            items: [{ label: "Open in Xcode", action: vi.fn() }],
+          },
+          "separator",
+          {
+            label: "Default editor",
+            items: [
+              { label: "Follow settings", checked: true, action: () => choose(null) },
+              { label: "Xcode", checked: false, action: () => choose("xcode") },
+            ],
+          },
+        ]}
+      >
+        <button>Editors</button>
+      </MenuButton>,
+    );
+    fireEvent.click(screen.getByRole("button"));
+    const menu = await shown();
+    expect(menu.items[0]).toMatchObject({ text: "Suited && installed", enabled: false });
+    const choices = menu.items.find((item) => item.text === "Default editor")!.items!;
+    expect(choices[0]).toMatchObject({ text: "Follow settings", checked: true });
+    expect(choices[1]).toMatchObject({ text: "Xcode", checked: false });
+    expect(new Set([menu.items[1].id, choices[0].id, choices[1].id]).size).toBe(3);
+    await act(async () => choices[1].action!());
+    expect(choose).toHaveBeenCalledWith("xcode");
   });
 });

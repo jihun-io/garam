@@ -1,4 +1,3 @@
-import { DropdownMenu } from "radix-ui";
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -6,7 +5,7 @@ import { EmptyMessage } from "../../components/EmptyMessage";
 import { ErrorMessage } from "../../components/ErrorMessage";
 import { Checkbox } from "../../components/ui/Checkbox";
 import { Loading } from "../../components/ui/Loading";
-import menu from "../../components/ui/Menu.module.css";
+import { MenuButton } from "../../components/ui/MenuButton";
 import { toAppError, type FileChange } from "../../ipc";
 import { BaseBanner } from "../branches/BaseBanner";
 import { AutoStashBanner } from "../branches/AutoStashBanner";
@@ -140,25 +139,20 @@ function WorkingChangesView({ repo, tabs }: { repo: string; tabs?: ReactNode }) 
             onChange={() => toggle(toggleable, allState !== "checked")}
           />
           <span className={styles.listTitle}>{t("list.title", { count: files.length })}</span>
-          <DropdownMenu.Root>
-            <Tooltip content={t("list.more")}>
-              <DropdownMenu.Trigger asChild disabled={files.length === 0}>
-                <button type="button" className={styles.more} aria-label={t("list.more")}>
-                  <Icon name="more" size={20} />
-                </button>
-              </DropdownMenu.Trigger>
-            </Tooltip>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content className={menu.content} align="end" sideOffset={4}>
-                <DropdownMenu.Item className={menu.item} onSelect={() => setStashing([])}>
-                  {t("list.stashAll")}
-                </DropdownMenu.Item>
-                <DropdownMenu.Item className={menu.item} onSelect={() => setDiscarding(files)}>
-                  {t("list.discardAll")}
-                </DropdownMenu.Item>
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
+          <Tooltip content={t("list.more")}>
+            <MenuButton
+              disabled={files.length === 0}
+              align="end"
+              items={[
+                { label: t("list.stashAll"), action: () => setStashing([]) },
+                { label: t("list.discardAll"), action: () => setDiscarding(files) },
+              ]}
+            >
+              <button type="button" className={styles.more} aria-label={t("list.more")}>
+                <Icon name="more" size={20} />
+              </button>
+            </MenuButton>
+          </Tooltip>
         </div>
         {files.length > 0 ? (
           <FileList
