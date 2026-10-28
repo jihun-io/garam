@@ -1,5 +1,7 @@
 import { Channel } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 import { commands, unwrap, type Account, type SavedLogin, type SignInCode } from "../../ipc";
 import { useRepositories } from "../repos/api";
@@ -33,6 +35,34 @@ export function useAccounts() {
     queryKey: accountKeys.all,
     queryFn: () => commands.githubAccounts(),
   });
+}
+
+/**
+ * Refreshes the account list when another window signs in or out. Each
+ * window has its own query cache, so the settings window's sign-in alone
+ * doesn't reach the repository windows.
+ */
+export function AccountsSync() {
+  const client = useQueryClient();
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let disposed = false;
+    listen("accounts-changed", () => {
+      void client.invalidateQueries({ queryKey: accountKeys.all });
+    })
+      .then((fn) => {
+        if (disposed) fn();
+        else unlisten = fn;
+      })
+      .catch(() => {
+        // Not running inside Tauri: there is only one window.
+      });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [client]);
+  return null;
 }
 
 export type RepoAccount = {
