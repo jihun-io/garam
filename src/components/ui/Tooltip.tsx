@@ -1,5 +1,7 @@
 import { Tooltip as RadixTooltip } from "radix-ui";
-import { useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+
+import { useTooltipState } from "../../lib/tooltipState";
 
 import styles from "./Tooltip.module.css";
 
@@ -34,11 +36,21 @@ export function Tooltip({
   // Typed as a button for Radix; with `asChild` it is whatever the child is.
   const ref = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const control = whenTruncated
-    ? { open, onOpenChange: (next: boolean) => setOpen(next && isTruncated(ref.current)) }
-    : {};
+  const suppressed = useTooltipState((state) => state.suppressed);
+  useEffect(
+    () =>
+      useTooltipState.subscribe((state) => {
+        if (state.suppressed) setOpen(false);
+      }),
+    [],
+  );
   return (
-    <RadixTooltip.Root {...control}>
+    <RadixTooltip.Root
+      open={open && !suppressed}
+      onOpenChange={(next) =>
+        setOpen(next && !suppressed && (!whenTruncated || isTruncated(ref.current)))
+      }
+    >
       <RadixTooltip.Trigger asChild ref={ref}>
         {children}
       </RadixTooltip.Trigger>

@@ -58,7 +58,8 @@
 }
 
 .navItem[data-state="active"] {
-  background: var(--color-selected);
+  background: var(--selection-bg);
+  color: var(--selection-fg);
   font-weight: 550;
 }
 

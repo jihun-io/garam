@@ -240,7 +240,7 @@ function FileList({
     overscan: 12,
   });
   return (
-    <div ref={scrollRef} className={styles.fileList}>
+    <div ref={scrollRef} data-selection-list className={styles.fileList}>
       <ul className={styles.fileRows} style={{ height: virtualizer.getTotalSize() }}>
         {virtualizer.getVirtualItems().map((item) => {
           const file = files[item.index];
@@ -256,7 +256,11 @@ function FileList({
                 type="button"
                 className={styles.file}
                 aria-current={file.path === selected?.path ? "true" : undefined}
-                onClick={() => onSelect(file.path)}
+                onClick={(event) => {
+                  // WebKit does not focus buttons on a mouse click by default.
+                  event.currentTarget.focus({ preventScroll: true });
+                  onSelect(file.path);
+                }}
               >
                 <Tooltip content={file.path} whenTruncated>
                   <span className={styles.fileName}>

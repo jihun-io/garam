@@ -1,11 +1,10 @@
-import { DropdownMenu } from "radix-ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icon } from "../../components/Icon";
 import { Button } from "../../components/ui/Button";
 import { FormDialog } from "../../components/ui/Dialog";
-import menu from "../../components/ui/Menu.module.css";
+import { MenuButton } from "../../components/ui/MenuButton";
 import { commands, unwrap, type ConflictFile, type Side } from "../../ipc";
 import { joinPath } from "../../lib/paths";
 import { splitPath } from "../changes/fileState";
@@ -41,33 +40,22 @@ export function ConflictActions({ repo, file }: { repo: string; file: ConflictFi
         <Button onClick={() => choose("theirs")} disabled={busy}>
           {t("file.useTheirs")}
         </Button>
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger asChild>
-            <Button icon="editor" disabled={busy}>
-              {t("file.openEditor")}
-              <Icon name="dropdown" size={12} />
-            </Button>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content className={menu.content} sideOffset={4}>
-              {editors.length ? (
-                editors.map((editor) => (
-                  <DropdownMenu.Item
-                    key={editor.id}
-                    className={menu.item}
-                    onSelect={() => void open(editor.id)}
-                  >
-                    {t("file.editor", { name: editor.name })}
-                  </DropdownMenu.Item>
-                ))
-              ) : (
-                <DropdownMenu.Item className={menu.item} disabled>
-                  {t("file.noEditors")}
-                </DropdownMenu.Item>
-              )}
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+        <MenuButton
+          disabled={busy}
+          items={
+            editors.length
+              ? editors.map((editor) => ({
+                  label: t("file.editor", { name: editor.name }),
+                  action: () => open(editor.id),
+                }))
+              : [{ label: t("file.noEditors"), disabled: true, action: () => {} }]
+          }
+        >
+          <Button icon="editor" disabled={busy}>
+            {t("file.openEditor")}
+            <Icon name="dropdown" size={12} />
+          </Button>
+        </MenuButton>
         <Button
           variant="primary"
           icon="check"

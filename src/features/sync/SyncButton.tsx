@@ -1,8 +1,7 @@
-import { DropdownMenu } from "radix-ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import menu from "../../components/ui/Menu.module.css";
+import { MenuButton } from "../../components/ui/MenuButton";
 import { toAppError } from "../../ipc";
 import { runCommand, shortcutFor, useCommand } from "../../lib/commands";
 import { useRelativeTime } from "../../lib/time";
@@ -263,39 +262,24 @@ export function SyncButton({ repo }: { repo: string }) {
           </button>
         </Tooltip>
       ) : (
-        <DropdownMenu.Root>
-          <Tooltip content={t("more")}>
-            <DropdownMenu.Trigger asChild>
-              <button type="button" className={styles.side} aria-label={t("more")}>
-                <Icon name="dropdown" size={12} />
-              </button>
-            </DropdownMenu.Trigger>
-          </Tooltip>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content className={menu.content} align="end" sideOffset={4}>
-              <DropdownMenu.Item
-                className={menu.item}
-                disabled={!remote}
-                onSelect={() => start("fetch")}
-              >
-                <Icon name="fetch" size={16} />
-                {t("menu.fetch")}
-              </DropdownMenu.Item>
-              <DropdownMenu.Item className={menu.item} disabled={!tracked} onSelect={pull}>
-                <Icon name="pull" size={16} />
-                {t("menu.pull")}
-              </DropdownMenu.Item>
-              <DropdownMenu.Item
-                className={menu.item}
-                disabled={!tracked || (branch.ahead === 0 && tags === 0)}
-                onSelect={() => start("push")}
-              >
-                <Icon name="push" size={16} />
-                {t("menu.push")}
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+        <Tooltip content={t("more")}>
+          <MenuButton
+            align="end"
+            items={[
+              { label: t("menu.fetch"), disabled: !remote, action: () => start("fetch") },
+              { label: t("menu.pull"), disabled: !tracked, action: pull },
+              {
+                label: t("menu.push"),
+                disabled: !tracked || (branch.ahead === 0 && tags === 0),
+                action: () => start("push"),
+              },
+            ]}
+          >
+            <button type="button" className={styles.side} aria-label={t("more")}>
+              <Icon name="dropdown" size={12} />
+            </button>
+          </MenuButton>
+        </Tooltip>
       )}
       {confirmPull && (
         <ConflictingPullDialog

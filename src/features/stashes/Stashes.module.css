@@ -70,7 +70,8 @@
 }
 
 .row[aria-current="true"] {
-  background: var(--color-selected);
+  background: var(--selection-bg);
+  color: var(--selection-fg);
 }
 
 .rowTitle {
@@ -117,4 +118,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.row[aria-current="true"] .rowTime {
+  color: var(--selection-detail);
 }

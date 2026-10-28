@@ -271,6 +271,19 @@ describe("HistoryView", () => {
     expect(await screen.findByText("contents of src/login.tsx")).toBeVisible();
   });
 
+  it("focuses a clicked detail file while keeping the commit selected", async () => {
+    setup();
+    const files = await screen.findByRole("navigation", { name: "2 changed files" });
+    const file = within(files).getAllByRole("button")[0];
+    const commits = screen.getByRole("listbox", { name: "Commits" });
+    commits.focus();
+    // fireEvent does not synthesize focus like user-event does. The app
+    // must do it for WebKit's button behavior.
+    fireEvent.click(file);
+    expect(file).toHaveFocus();
+    expect(within(commits).getByRole("option", { selected: true })).toBeInTheDocument();
+  });
+
   it("marks refs and unpushed commits", async () => {
     setup();
     const list = await screen.findByRole("listbox", { name: "Commits" });

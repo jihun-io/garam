@@ -47,6 +47,6 @@
 }
 
 .checkbox:focus-visible {
-  outline: 2px solid var(--color-focus);
+  outline: 2px solid var(--window-focus-ring);
   outline-offset: 1px;
 }

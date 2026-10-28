@@ -32,8 +32,9 @@
 }
 
 .row[aria-selected="true"] {
-  --row-bg: var(--color-selected);
+  --row-bg: var(--selection-bg);
   background: var(--row-bg);
+  color: var(--selection-fg);
 }
 
 .row[data-squash-target="true"] {
@@ -41,12 +42,6 @@
   background: var(--row-bg);
   outline: 2px solid var(--color-river);
   outline-offset: -2px;
-}
-
-.scroll:focus-visible .row[aria-selected="true"] {
-  --row-bg: var(--color-river);
-  background: var(--row-bg);
-  color: var(--color-on-accent);
 }
 
 .rowText {
@@ -69,8 +64,8 @@
   stroke-width: 1.5;
 }
 
-.scroll:focus-visible .row[aria-selected="true"] .graph {
-  color: inherit;
+.row[aria-selected="true"] .graph {
+  color: var(--selection-detail);
 }
 
 .node {
@@ -87,8 +82,8 @@
   fill: var(--row-bg);
 }
 
-.scroll:focus-visible .row[aria-selected="true"] .meta {
-  color: inherit;
+.row[aria-selected="true"] .meta {
+  color: var(--selection-detail);
 }
 
 .summary,
@@ -258,7 +253,8 @@
 }
 
 .file[aria-current="true"] {
-  background: var(--color-selected);
+  background: var(--selection-bg);
+  color: var(--selection-fg);
 }
 
 .fileName {
@@ -279,19 +275,23 @@
 }
 
 .added {
+  --kind-ink: var(--color-added-ink);
   color: var(--color-added-ink);
 }
 
 .modified {
+  --kind-ink: var(--color-modified-ink);
   color: var(--color-modified-ink);
 }
 
 .deleted,
 .conflicted {
+  --kind-ink: var(--color-danger);
   color: var(--color-danger);
 }
 
 .renamed {
+  --kind-ink: var(--color-link);
   color: var(--color-link);
 }
 
@@ -320,6 +320,8 @@
 }
 
 .ref {
+  --ref-ink: var(--color-ink-muted);
+  --ref-line: var(--color-line-strong);
   display: inline-flex;
   flex: 0 1 auto;
   align-items: center;
@@ -336,6 +338,8 @@
 }
 
 .ref[data-current] {
+  --ref-ink: var(--color-ink);
+  --ref-line: var(--color-ink-muted);
   border-color: var(--color-ink-muted);
   color: var(--color-ink);
   font-weight: 550;
@@ -354,14 +358,18 @@
 
 /* Not on this branch yet: quieter than its own commits. */
 .row[data-sync="incoming"] .summary {
+  --summary-ink: var(--color-ink-muted);
   color: var(--color-ink-muted);
   font-weight: 400;
 }
 
-.scroll:focus-visible .row[aria-selected="true"] .ref,
-.scroll:focus-visible .row[aria-selected="true"] .summary {
-  border-color: currentColor;
-  color: inherit;
+.row[aria-selected="true"] .ref {
+  border-color: var(--selection-accent, var(--ref-line));
+  color: var(--selection-accent, var(--ref-ink));
+}
+
+.row[aria-selected="true"] .summary {
+  color: var(--selection-accent, var(--summary-ink, inherit));
 }
 
 .syncNote {
@@ -397,8 +405,8 @@
 }
 
 .searchField:focus-within {
-  border-color: var(--color-focus);
-  box-shadow: inset 0 0 0 1px var(--color-focus);
+  border-color: var(--window-field-border);
+  box-shadow: var(--window-field-shadow);
 }
 
 .searchInput {
@@ -483,10 +491,10 @@
   vertical-align: 3px;
 }
 
-.scroll:focus-visible .row[aria-selected="true"] .typeBadge {
-  background: none;
-  box-shadow: inset 0 0 0 1px currentColor;
-  color: inherit;
+.row[aria-selected="true"] .typeBadge {
+  background: var(--selection-badge-bg);
+  box-shadow: var(--selection-badge-shadow);
+  color: var(--selection-detail);
 }
 
 .breaking {
@@ -703,4 +711,12 @@
   border-radius: 1px;
   background: var(--color-river);
   pointer-events: none;
+}
+
+.file[aria-current="true"] .fileDir {
+  color: var(--selection-detail);
+}
+
+.file[aria-current="true"] .fileKind {
+  color: var(--selection-accent, var(--kind-ink));
 }

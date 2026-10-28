@@ -24,6 +24,7 @@
   --color-river-strong: #1f5f53;
   --color-focus: #2c7a6b;
   --color-selected: #d6e2e2; /* bg mixed 14% toward the accent */
+  --color-selected-inactive: #e3e4e7;
 
   /* Status. */
   --color-link: #1a609e; /* oklch(48% 0.12 250) */
@@ -126,6 +127,7 @@
   --color-river-strong: #84cbbb;
   --color-focus: #5db3a0;
   --color-selected: #273b38;
+  --color-selected-inactive: #303236;
   --color-link: #7cb3eb; /* oklch(75% 0.1 250) */
   --color-danger: #eb8373; /* oklch(72% 0.13 30) */
   --color-danger-bg: #331d1a; /* oklch(26% 0.035 28) */

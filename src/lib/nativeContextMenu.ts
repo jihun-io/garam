@@ -1,18 +1,25 @@
-import { Menu } from "@tauri-apps/api/menu";
+import { Menu, type MenuOptions } from "@tauri-apps/api/menu";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { flushSync } from "react-dom";
 
 import { commands, unwrap } from "../ipc";
 
 import { useNotify } from "../features/notify/notifyStore";
+import { suppressTooltips } from "./tooltipState";
 
 export type ContextMenuAction = {
   label: string;
   disabled?: boolean;
+  /** Mutually exclusive choices within this menu. */
+  checked?: boolean;
   action: () => unknown;
 };
-export type ContextMenuEntry = ContextMenuAction | "separator" | false | null | undefined;
+export type MenuSubmenu = { label: string; items: ContextMenuEntry[]; disabled?: boolean };
+export type MenuGroup = { kind: "group"; label?: string; items: ContextMenuEntry[] };
+export type ContextMenuEntry =
+  ContextMenuAction | MenuSubmenu | MenuGroup | "separator" | false | null | undefined;
 
-export function menuEntries(entries: ContextMenuEntry[]): (ContextMenuAction | "separator")[] {
+export function menuEntries(entries: ContextMenuEntry[]) {
   const shown = entries.filter((entry) => !!entry);
   return shown.filter(
     (entry, index) =>
@@ -50,6 +57,11 @@ export function showContextMenu(
   const request = ++revision;
   owner = forOwner;
   const shown = menuEntries(entries);
+  // WebKit does not focus clicked buttons until we do it explicitly. Radix
+  // treats that post-pointerup focus as keyboard focus and reopens the tooltip,
+  // so suppress it before focusing and before asynchronous menu creation.
+  flushSync(suppressTooltips);
+  if (returnTo.isConnected) returnTo.focus({ preventScroll: true });
   // Keep creation ordered: an older request must never replace a newer one's
   // action channels, even when IPC finishes after another right click.
   pending = pending
@@ -57,29 +69,42 @@ export function showContextMenu(
       await releaseMenu();
       if (request !== revision || shown.length === 0) return;
       const window = getCurrentWindow();
-      const menu = await Menu.new({
-        items: shown.map((entry, index) =>
-          entry === "separator"
-            ? { item: "Separator" as const }
-            : {
-                id: `${window.label}/context/${index}`,
-                // Native menus interpret & as a mnemonic, including on macOS.
-                text: entry.label.replace(/&/g, "&&"),
-                enabled: !entry.disabled,
-                action: () => {
-                  if (request !== revision || entry.disabled) return;
-                  // Focus the list/button before opening a dialog, so closing
-                  // the dialog returns to its source rather than a text field.
-                  if (returnTo.isConnected) returnTo.focus({ preventScroll: true });
-                  try {
-                    void Promise.resolve(entry.action()).catch(useNotify.getState().showError);
-                  } catch (error) {
-                    useNotify.getState().showError(error);
-                  }
-                },
+      const items = (
+        entries: ContextMenuEntry[],
+        path: string,
+      ): NonNullable<MenuOptions["items"]> =>
+        menuEntries(entries).flatMap((entry, index): NonNullable<MenuOptions["items"]> => {
+          const id = `${path}/${index}`;
+          if (entry === "separator") return [{ item: "Separator" }];
+          if ("kind" in entry) {
+            const children = items(entry.items, id);
+            return entry.label
+              ? [{ id, text: entry.label.replace(/&/g, "&&"), enabled: false }, ...children]
+              : children;
+          }
+          const text = entry.label.replace(/&/g, "&&");
+          if ("items" in entry)
+            return [{ id, text, enabled: !entry.disabled, items: items(entry.items, id) }];
+          return [
+            {
+              id,
+              text,
+              enabled: !entry.disabled,
+              ...(entry.checked === undefined ? {} : { checked: entry.checked }),
+              action: () => {
+                if (request !== revision || entry.disabled) return;
+                // Capture the source before an action opens a dialog.
+                if (returnTo.isConnected) returnTo.focus({ preventScroll: true });
+                try {
+                  void Promise.resolve(entry.action()).catch(useNotify.getState().showError);
+                } catch (error) {
+                  useNotify.getState().showError(error);
+                }
               },
-        ),
-      });
+            },
+          ];
+        });
+      const menu = await Menu.new({ items: items(shown, `${window.label}/context`) });
       current = menu;
       if (request !== revision) {
         await releaseMenu();
@@ -87,6 +112,8 @@ export function showContextMenu(
       }
       // Some platforms return before selection. Keep the resource and its
       // handlers alive until the next popup or the owning row unmounts.
+      // Commit the removal before the native event loop starts tracking input.
+      flushSync(suppressTooltips);
       await unwrap(commands.contextMenuPopup(menu.rid, position.x, position.y));
     })
     .catch(async (error: unknown) => {

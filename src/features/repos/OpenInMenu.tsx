@@ -1,21 +1,21 @@
-import { DropdownMenu } from "radix-ui";
 import { useTranslation } from "react-i18next";
 
 import { IconButton } from "../../components/ui/IconButton";
-import menu from "../../components/ui/Menu.module.css";
+import { MenuButton } from "../../components/ui/MenuButton";
 import { commands, unwrap } from "../../ipc";
 import { useCommand } from "../../lib/commands";
 import { currentPlatform } from "../../lib/platform";
 import { useNotify } from "../notify/notifyStore";
 import { useSettings } from "../settings/api";
 import { useRepoEditor } from "./api";
-import { RepoEditorChoice } from "./EditorMenu";
+import { useRepoEditorChoice } from "./EditorMenu";
 
 /** "Open in" menu: file manager, terminal, and detected editors. */
 export function OpenInMenu({ path, disabled }: { path: string; disabled?: boolean }) {
   const { t } = useTranslation("repos");
   const settings = useSettings();
   const { editor: firstEditor, editors } = useRepoEditor(path);
+  const editorChoice = useRepoEditorChoice(path);
   const showError = useNotify((s) => s.showError);
 
   const run = (action: Promise<unknown>) => action.catch(showError);
@@ -32,50 +32,30 @@ export function OpenInMenu({ path, disabled }: { path: string; disabled?: boolea
   useCommand("repo.reveal", () => void run(unwrap(commands.externalReveal(path))), !disabled);
 
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger asChild disabled={disabled}>
-        <IconButton icon="openIn" label={t("open.menu")} />
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content className={menu.content} align="end" sideOffset={4}>
-          <DropdownMenu.Item
-            className={menu.item}
-            onSelect={() => void run(unwrap(commands.externalReveal(path)))}
-          >
-            {t(`open.reveal_${currentPlatform()}`)}
-          </DropdownMenu.Item>
-          <DropdownMenu.Item
-            className={menu.item}
-            onSelect={() =>
-              void run(unwrap(commands.externalOpenTerminal(path, settings.terminal)))
-            }
-          >
-            {t("open.terminal")}
-          </DropdownMenu.Item>
-          <DropdownMenu.Separator className={menu.separator} />
-          {editors.length ? (
-            editors.map((editor) => (
-              <DropdownMenu.Item
-                key={editor.id}
-                className={menu.item}
-                onSelect={() => void run(unwrap(commands.externalOpenEditor(editor.id, path)))}
-              >
-                {t("open.inApp", { name: editor.name })}
-              </DropdownMenu.Item>
-            ))
-          ) : (
-            <DropdownMenu.Item className={menu.item} disabled>
-              {t("open.noEditors")}
-            </DropdownMenu.Item>
-          )}
-          {editors.length > 1 && (
-            <>
-              <DropdownMenu.Separator className={menu.separator} />
-              <RepoEditorChoice path={path} />
-            </>
-          )}
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+    <MenuButton
+      disabled={disabled}
+      align="end"
+      items={[
+        {
+          label: t(`open.reveal_${currentPlatform()}`),
+          action: () => run(unwrap(commands.externalReveal(path))),
+        },
+        {
+          label: t("open.terminal"),
+          action: () => run(unwrap(commands.externalOpenTerminal(path, settings.terminal))),
+        },
+        "separator",
+        ...(editors.length
+          ? editors.map((editor) => ({
+              label: t("open.inApp", { name: editor.name }),
+              action: () => run(unwrap(commands.externalOpenEditor(editor.id, path))),
+            }))
+          : [{ label: t("open.noEditors"), disabled: true, action: () => {} }]),
+        editors.length > 1 && "separator",
+        editors.length > 1 && editorChoice,
+      ]}
+    >
+      <IconButton icon="openIn" label={t("open.menu")} />
+    </MenuButton>
   );
 }

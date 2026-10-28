@@ -35,7 +35,7 @@ export function StashSection({
         <span className={styles.count}>{t("section.count", { count: stashes.length })}</span>
       </button>
       {open && (
-        <ul className={styles.list} aria-label={t("section.list")}>
+        <ul data-selection-list className={styles.list} aria-label={t("section.list")}>
           {stashes.map((stash) => {
             const title = stashTitle(t, stash);
             return (
@@ -44,7 +44,11 @@ export function StashSection({
                   type="button"
                   className={styles.row}
                   aria-current={stash.oid === selected ? "true" : undefined}
-                  onClick={() => onSelect(stash.oid)}
+                  onClick={(event) => {
+                    // WebKit does not focus buttons on a mouse click by default.
+                    event.currentTarget.focus({ preventScroll: true });
+                    onSelect(stash.oid);
+                  }}
                 >
                   <Tooltip content={title} whenTruncated>
                     <span className={styles.rowTitle}>{title}</span>

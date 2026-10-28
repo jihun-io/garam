@@ -15,6 +15,7 @@ import { useSyncStore } from "./syncStore";
 const channels: { onmessage: (e: RemoteEvent) => void }[] = [];
 
 vi.mock("@tauri-apps/api/core", () => ({
+  isTauri: () => false,
   Channel: class {
     onmessage: (e: RemoteEvent) => void = () => {};
     constructor() {
