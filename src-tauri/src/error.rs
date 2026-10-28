@@ -82,9 +82,16 @@ impl AppError {
 impl From<GitError> for AppError {
     fn from(err: GitError) -> Self {
         let mut params = BTreeMap::new();
-        if let GitError::TooOld { found, required } = &err {
-            params.insert("found".into(), found.to_string());
-            params.insert("required".into(), required.to_string());
+        match &err {
+            GitError::TooOld { found, required } => {
+                params.insert("found".into(), found.to_string());
+                params.insert("required".into(), required.to_string());
+            }
+            // NUL-separated, the one byte a path can't contain.
+            GitError::PullBlocked { files, .. } => {
+                params.insert("files".into(), files.join("\0"));
+            }
+            _ => {}
         }
         Self {
             kind: ErrorCode::Git(err.kind()),

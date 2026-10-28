@@ -81,8 +81,9 @@ export function SyncButton({ repo }: { repo: string }) {
     return { label: tPr("create"), run: () => openPullRequest(head) };
   };
 
-  // A pull that local changes stopped can be retried with them stashed.
-  const [blockedPull, setBlockedPull] = useState(false);
+  // A pull that local changes stopped can be retried with them stashed;
+  // holds the files it would overwrite.
+  const [blockedPull, setBlockedPull] = useState<string[] | null>(null);
   // What pulling would bring, as of the last fetch: commits, and the files
   // merging them would conflict on.
   const pullPreview = useMergePreview(
@@ -109,8 +110,12 @@ export function SyncButton({ repo }: { repo: string }) {
     run({ action, remote, autostash })
       .then((result) => result && announce(action, result, sentTags))
       .catch((e: unknown) => {
-        const kind = toAppError(e).kind;
-        if (kind === "pull_blocked_by_local_changes") setBlockedPull(true);
+        const error = toAppError(e);
+        const kind = error.kind;
+        // Stashing didn't clear the way, so offering it again would loop;
+        // the error's details say what git stopped on.
+        if (kind === "pull_blocked_by_local_changes" && !autostash)
+          setBlockedPull(error.params.files ? error.params.files.split("\0") : []);
         else if (kind === "cancelled") return;
         // The next step is plain from what failed: pull what the remote
         // has before pushing again (not pushing by itself, since the pull
@@ -306,11 +311,12 @@ export function SyncButton({ repo }: { repo: string }) {
       )}
       {blockedPull && (
         <PullBlockedDialog
+          files={blockedPull}
           onStash={() => {
-            setBlockedPull(false);
+            setBlockedPull(null);
             start("pull", true);
           }}
-          onClose={() => setBlockedPull(false)}
+          onClose={() => setBlockedPull(null)}
         />
       )}
     </div>
@@ -358,7 +364,15 @@ function ConflictingPullDialog({
 }
 
 /** Offers to stash local changes for a pull they stopped. */
-function PullBlockedDialog({ onStash, onClose }: { onStash: () => void; onClose: () => void }) {
+function PullBlockedDialog({
+  files,
+  onStash,
+  onClose,
+}: {
+  files: string[];
+  onStash: () => void;
+  onClose: () => void;
+}) {
   const { t } = useTranslation(["sync", "errors"]);
   return (
     <FormDialog
@@ -376,6 +390,17 @@ function PullBlockedDialog({ onStash, onClose }: { onStash: () => void; onClose:
       }
     >
       <p>{t("errors:pull_blocked_by_local_changes")}</p>
+      {/* Empty when git refuses over any staged change, touched or not. */}
+      {files.length > 0 && (
+        <div className={styles.blockedFiles}>
+          <p>{t("pullBlocked.files", { count: files.length })}</p>
+          <ul>
+            {files.map((path) => (
+              <li key={path}>{path}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <p>{t("pullBlocked.body")}</p>
     </FormDialog>
   );

@@ -35,3 +35,25 @@
 .side:focus-visible {
   outline-offset: -2px;
 }
+
+/* The files a blocked pull would overwrite; all listed, scrolling. */
+.blockedFiles {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.blockedFiles p {
+  margin: 0;
+}
+
+.blockedFiles ul {
+  max-height: 15em;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  -webkit-user-select: text;
+  user-select: text;
+}

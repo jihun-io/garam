@@ -195,6 +195,47 @@ describe("SyncButton", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("lists the files a blocked pull would overwrite", async () => {
+    const user = userEvent.setup();
+    vi.mocked(commands.remotePull).mockResolvedValueOnce({
+      status: "error",
+      error: {
+        kind: "pull_blocked_by_local_changes",
+        params: { files: "new/a.txt\0new/b.txt" },
+        detail: null,
+      },
+    });
+    setup({ behind: 1 });
+
+    await user.click(await screen.findByRole("button", { name: /Pull origin/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Can't Pull" });
+    expect(within(dialog).getByText("2 files would be overwritten:")).toBeVisible();
+    const items = within(dialog).getAllByRole("listitem");
+    expect(items.map((li) => li.textContent)).toEqual(["new/a.txt", "new/b.txt"]);
+  });
+
+  it("doesn't offer stashing again when the stashed pull is still blocked", async () => {
+    const user = userEvent.setup();
+    const blocked = {
+      status: "error" as const,
+      error: { kind: "pull_blocked_by_local_changes" as const, params: {}, detail: "error: x" },
+    };
+    vi.mocked(commands.remotePull).mockResolvedValueOnce(blocked).mockResolvedValueOnce(blocked);
+    setup({ behind: 1 });
+
+    await user.click(await screen.findByRole("button", { name: /Pull origin/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Can't Pull" });
+    // Nothing touched by the upstream: no list.
+    expect(within(dialog).queryByRole("list")).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: "Stash Changes and Pull" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /Uncommitted changes are in the way/,
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(commands.remotePull).toHaveBeenCalledTimes(2);
+  });
+
   it("offers sync commands to the menu and shortcuts", async () => {
     vi.mocked(commands.remotePush).mockResolvedValue(ok(null));
     setup({ ahead: 2 });
