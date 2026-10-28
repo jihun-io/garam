@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use garam_git::commit::{self, CoAuthor};
 use garam_git::diff::{self, FileDiff, LineKind};
@@ -25,6 +25,10 @@ fn delete_file(path: &Path) -> std::io::Result<()> {
     } else {
         fs::remove_file(path)
     }
+}
+
+fn delete_files(paths: &[PathBuf]) -> std::io::Result<()> {
+    paths.iter().try_for_each(|p| delete_file(p))
 }
 
 #[test]
@@ -132,12 +136,20 @@ fn discard_restores_head_and_hands_files_to_remover() {
     repo.write("added.txt", "added\n");
     repo.git(["add", "added.txt"]);
 
+    let mut calls = 0;
     let mut removed = Vec::new();
-    index::discard(repo.git_handle(), repo.path(), &files(&repo), |p| {
-        removed.push(p.file_name().unwrap().to_string_lossy().into_owned());
-        delete_file(p)
+    index::discard(repo.git_handle(), repo.path(), &files(&repo), |paths| {
+        calls += 1;
+        removed.extend(
+            paths
+                .iter()
+                .map(|p| p.file_name().unwrap().to_string_lossy().into_owned()),
+        );
+        delete_files(paths)
     })
     .unwrap();
+    // All paths arrive together so the remover can batch them.
+    assert_eq!(calls, 1);
 
     assert!(files(&repo).is_empty(), "{:?}", files(&repo));
     let read = |p: &str| fs::read_to_string(repo.path().join(p)).unwrap();
@@ -162,7 +174,7 @@ fn discard_undoes_a_staged_rename() {
     repo.commit_all("initial");
     repo.git(["mv", "old.txt", "new.txt"]);
 
-    index::discard(repo.git_handle(), repo.path(), &files(&repo), delete_file).unwrap();
+    index::discard(repo.git_handle(), repo.path(), &files(&repo), delete_files).unwrap();
     assert!(files(&repo).is_empty());
     assert!(repo.path().join("old.txt").exists());
     assert!(!repo.path().join("new.txt").exists());
@@ -183,10 +195,88 @@ fn a_file_named_star_touches_only_itself() {
     index::stage(repo.git_handle(), repo.path(), std::slice::from_ref(&star)).unwrap();
     assert_eq!(find(&files(&repo), "other.txt").staged, None);
 
-    index::discard(repo.git_handle(), repo.path(), &[star], delete_file).unwrap();
+    index::discard(repo.git_handle(), repo.path(), &[star], delete_files).unwrap();
     let read = |p: &str| fs::read_to_string(repo.path().join(p)).unwrap();
     assert_eq!(read("*"), "original\n");
     assert_eq!(read("other.txt"), "precious\n");
+}
+
+/// Runs `discard` on every change and returns what the remover was given,
+/// relative to the repository.
+fn discard_all(repo: &TestRepo) -> Vec<String> {
+    let mut removed = Vec::new();
+    index::discard(repo.git_handle(), repo.path(), &files(repo), |paths| {
+        removed.extend(paths.iter().map(|p| {
+            p.strip_prefix(repo.path())
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/")
+        }));
+        delete_files(paths)
+    })
+    .unwrap();
+    removed.sort();
+    removed
+}
+
+#[test]
+fn discard_hands_over_a_wholly_discarded_directory_once() {
+    let repo = TestRepo::new();
+    repo.write("keep.txt", "original\n");
+    repo.commit_all("initial");
+    for i in 0..50 {
+        repo.write(format!("build/out/{i}.o"), "obj\n");
+    }
+    repo.write("build/log.txt", "log\n");
+    fs::create_dir_all(repo.path().join("build/empty")).unwrap();
+    repo.write("loose.txt", "new\n");
+
+    assert_eq!(discard_all(&repo), ["build", "loose.txt"]);
+    assert!(!repo.path().join("build").exists());
+    assert!(files(&repo).is_empty(), "{:?}", files(&repo));
+}
+
+#[test]
+fn discard_never_sweeps_up_files_it_was_not_given() {
+    let repo = TestRepo::new();
+    repo.write(".gitignore", "*.cache\n");
+    repo.write("src/tracked.txt", "original\n");
+    repo.write("src/edited.txt", "original\n");
+    repo.commit_all("initial");
+    repo.write("src/edited.txt", "changed\n");
+    repo.write("src/new/a.txt", "new\n");
+    repo.write("src/new/b.txt", "new\n");
+    repo.write("gen/out.txt", "new\n");
+    repo.write("gen/kept.cache", "ignored\n");
+
+    // `src` still holds an unchanged tracked file and `gen` an ignored one,
+    // so only `src/new` can go as a whole.
+    assert_eq!(
+        discard_all(&repo),
+        ["gen/out.txt", "src/edited.txt", "src/new"]
+    );
+    let read = |p: &str| fs::read_to_string(repo.path().join(p)).unwrap();
+    assert_eq!(read("src/tracked.txt"), "original\n");
+    assert_eq!(read("src/edited.txt"), "original\n");
+    assert_eq!(read("gen/kept.cache"), "ignored\n");
+    assert!(files(&repo).is_empty(), "{:?}", files(&repo));
+}
+
+#[test]
+fn discard_skips_remover_when_no_file_exists() {
+    let repo = TestRepo::new();
+    repo.write("gone.txt", "original\n");
+    repo.commit_all("initial");
+    fs::remove_file(repo.path().join("gone.txt")).unwrap();
+
+    index::discard(repo.git_handle(), repo.path(), &files(&repo), |_| {
+        panic!("nothing to keep, so the remover must not run")
+    })
+    .unwrap();
+    assert_eq!(
+        fs::read_to_string(repo.path().join("gone.txt")).unwrap(),
+        "original\n"
+    );
 }
 
 #[test]

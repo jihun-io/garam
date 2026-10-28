@@ -107,17 +107,26 @@ pub async fn changes_stage_lines(
     .await
 }
 
+/// How many paths go to the system trash per request.
+const TRASH_BATCH: usize = 500;
+
 /// Reverts files to HEAD. Current contents go to the system trash first.
 #[tauri::command]
 #[specta::specta]
 pub async fn changes_discard(repo: String, files: Vec<FileChange>) -> AppResult<()> {
     blocking(move || {
         let mut trash_error = None;
-        let result = index::discard(&Git::locate()?, Path::new(&repo), &files, |path| {
-            trash::delete(path).map_err(|e| {
-                trash_error = Some(e.to_string());
-                std::io::Error::other(e.to_string())
-            })
+        let result = index::discard(&Git::locate()?, Path::new(&repo), &files, |paths| {
+            // On macOS every trash call is a separate Finder request, so
+            // trashing files one at a time crawls once there are thousands.
+            // Chunks keep each request's argument list well below OS limits.
+            for chunk in paths.chunks(TRASH_BATCH) {
+                trash::delete_all(chunk).map_err(|e| {
+                    trash_error = Some(e.to_string());
+                    std::io::Error::other(e.to_string())
+                })?;
+            }
+            Ok(())
         });
         if let Some(detail) = trash_error {
             return Err(AppError::app(AppErrorKind::TrashFailed, Some(detail)));
