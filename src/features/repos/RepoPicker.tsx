@@ -1,9 +1,9 @@
-import { ContextMenu, Popover } from "radix-ui";
+import { Popover } from "radix-ui";
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "../../components/ui/Button";
-import menu from "../../components/ui/Menu.module.css";
+import { ContextMenu } from "../../components/ui/ContextMenu";
 import type { RepositoryEntry } from "../../ipc";
 import { displayPath } from "../../lib/paths";
 import { useNotify } from "../notify/notifyStore";
@@ -25,6 +25,7 @@ export function RepoPicker({
 }) {
   const { t } = useTranslation("repos");
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   useCommand("view.repositories", () => setOpen(true));
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLUListElement>(null);
@@ -63,6 +64,7 @@ export function RepoPicker({
 
   const openFromPicker = (kind: "add" | "clone" | "create") => {
     setOpen(false);
+    triggerRef.current?.focus({ preventScroll: true });
     openDialog({ kind });
   };
 
@@ -75,7 +77,7 @@ export function RepoPicker({
       }}
     >
       <Tooltip content={t("picker.tooltip")} shortcut={shortcutFor("view.repositories")}>
-        <Popover.Trigger asChild>
+        <Popover.Trigger asChild ref={triggerRef}>
           <ToolbarButton
             icon="repository"
             className={styles.trigger}
@@ -87,6 +89,10 @@ export function RepoPicker({
       </Tooltip>
       <Popover.Portal>
         <Popover.Content
+          onCloseAutoFocus={(event) => {
+            // Closing this picker must not steal a newly opened dialog's focus.
+            if (document.activeElement?.closest('[role="dialog"]')) event.preventDefault();
+          }}
           className={styles.content}
           align="start"
           sideOffset={4}
@@ -118,44 +124,37 @@ export function RepoPicker({
             <ul ref={listRef} className={styles.list} onKeyDown={onListKeyDown}>
               {matches.map((repo) => (
                 <li key={repo.path}>
-                  <ContextMenu.Root>
-                    <ContextMenu.Trigger asChild>
-                      <button
-                        type="button"
-                        data-repo-item
-                        className={styles.item}
-                        aria-current={repo.path === selected?.path ? "true" : undefined}
-                        onClick={() => choose(repo)}
-                      >
-                        <span className={styles.itemName}>{repo.name}</span>
-                        {repo.missing && (
-                          <span className={styles.missing}>{t("picker.missing")}</span>
-                        )}
-                        <span className={styles.itemPath}>{displayPath(repo.path)}</span>
-                      </button>
-                    </ContextMenu.Trigger>
-                    <ContextMenu.Portal>
-                      <ContextMenu.Content className={menu.content}>
-                        <ContextMenu.Item
-                          className={menu.item}
-                          disabled={repo.path === selected?.path}
-                          onSelect={() => {
-                            setOpen(false);
-                            setQuery("");
-                            openIn(repo.path, "new_window").catch(showError);
-                          }}
-                        >
-                          {t("picker.openInNewWindow")}
-                        </ContextMenu.Item>
-                        <ContextMenu.Item
-                          className={menu.item}
-                          onSelect={() => remove.mutate(repo.path, { onError: showError })}
-                        >
-                          {t("picker.remove")}
-                        </ContextMenu.Item>
-                      </ContextMenu.Content>
-                    </ContextMenu.Portal>
-                  </ContextMenu.Root>
+                  <ContextMenu
+                    items={[
+                      {
+                        label: t("picker.openInNewWindow"),
+                        disabled: repo.path === selected?.path,
+                        action: () => {
+                          setOpen(false);
+                          setQuery("");
+                          return openIn(repo.path, "new_window").catch(showError);
+                        },
+                      },
+                      {
+                        label: t("picker.remove"),
+                        action: () => remove.mutate(repo.path, { onError: showError }),
+                      },
+                    ]}
+                  >
+                    <button
+                      type="button"
+                      data-repo-item
+                      className={styles.item}
+                      aria-current={repo.path === selected?.path ? "true" : undefined}
+                      onClick={() => choose(repo)}
+                    >
+                      <span className={styles.itemName}>{repo.name}</span>
+                      {repo.missing && (
+                        <span className={styles.missing}>{t("picker.missing")}</span>
+                      )}
+                      <span className={styles.itemPath}>{displayPath(repo.path)}</span>
+                    </button>
+                  </ContextMenu>
                 </li>
               ))}
             </ul>

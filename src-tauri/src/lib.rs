@@ -32,6 +32,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
     };
     Builder::<tauri::Wry>::new().commands(collect_commands![
         git::git_info,
+        commands::menu::context_menu_popup,
         repo::repo_list,
         repo::repo_add,
         repo::repo_init_existing,

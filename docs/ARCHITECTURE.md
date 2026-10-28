@@ -49,6 +49,11 @@ Garam/
 
 `garam-git`을 Tauri와 분리하는 이유는 두 가지다. Git 로직을 Tauri 없이 `cargo test`로 빠르게 테스트할 수 있고, 나중에 CLI나 다른 프론트엔드에서도 재사용할 수 있다.
 
+### 네이티브 컨텍스트 메뉴
+
+- 메뉴 문구와 동작·활성 상태는 프론트의 `ContextMenu`가 전달하고, 창마다 팝업 하나만 유지한다. 다음 메뉴를 열거나 행이 사라지면 이전 리소스를 해제하며, 늦게 도착한 생성 결과·이전 메뉴의 동작은 실행하지 않는다. 항목 ID는 창 이름과 위치로 재사용해 Tauri의 동작 채널이 오른쪽 클릭마다 쌓이지 않게 한다.
+- 표시는 얇은 `context_menu_popup` 명령을 거친다. 웹뷰 리소스 테이블에서 메뉴의 `Arc`를 얻은 뒤 잠금을 풀고 호출 창에 띄운다. Tauri 2.11의 기본 popup 명령은 잠금을 잡은 채 AppKit의 중첩 메뉴 이벤트 루프를 돌아, 메뉴 막대 갱신 등 다른 메뉴 명령과 교착될 수 있다. 메뉴 정의·번역·Git 로직을 Rust로 옮기지는 않는다.
+
 ### 개발 앱 식별과 서명
 
 - `pnpm tauri dev`는 `scripts/tauri.mjs`가 `tauri.dev.conf.json`을 자동으로 병합한다. 이름은 `Garam Dev`, 앱 ID는 `io.jihun.garam.dev`이며 개발용 아이콘을 쓴다. `tauri dev --release`도 같은 개발 앱이다. `tauri build`와 릴리스 워크플로는 기존 설정을 쓴다.

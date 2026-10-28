@@ -1,11 +1,11 @@
-import { ContextMenu, Popover, RadioGroup } from "radix-ui";
-import { useMemo, useState } from "react";
+import { Popover, RadioGroup } from "radix-ui";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icon } from "../../components/Icon";
 import { Button } from "../../components/ui/Button";
 import { IconButton } from "../../components/ui/IconButton";
-import menu from "../../components/ui/Menu.module.css";
+import { ContextMenu } from "../../components/ui/ContextMenu";
 import segmented from "../../components/ui/Segmented.module.css";
 import { Tooltip } from "../../components/ui/Tooltip";
 import type { Tag, TagOrder } from "../../ipc";
@@ -27,6 +27,7 @@ export function TagsButton({ repo, states }: { repo: string; states: TagStates }
   const [order, setOrder] = useState<TagOrder>("version");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const tags = useTags(repo, order);
   const update = useHistoryFilters((s) => s.update);
   const openDialog = useHistoryDialog((s) => s.open);
@@ -49,6 +50,12 @@ export function TagsButton({ repo, states }: { repo: string; states: TagStates }
   const sync = (tag: Tag) => states.states?.get(tag.name) ?? null;
   const missing = tags.data.filter((tag) => sync(tag) === "missing").map((tag) => tag.name);
 
+  const fromPicker = (action: () => void) => {
+    setOpen(false);
+    // Capture a surviving return target before the dialog takes focus.
+    triggerRef.current?.focus({ preventScroll: true });
+    action();
+  };
   const showHistory = (tag: Tag) => {
     update(repo, { scope: { kind: "ref", refname: `refs/tags/${tag.name}` }, query: "" });
     setOpen(false);
@@ -70,11 +77,15 @@ export function TagsButton({ repo, states }: { repo: string; states: TagStates }
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger asChild>
+      <Popover.Trigger asChild ref={triggerRef}>
         <IconButton icon="tag" size={16} label={t("tags.label")} />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
+          onCloseAutoFocus={(event) => {
+            // Closing this picker must not steal a newly opened dialog's focus.
+            if (document.activeElement?.closest('[role="dialog"]')) event.preventDefault();
+          }}
           className={styles.panel}
           align="end"
           sideOffset={4}
@@ -125,66 +136,31 @@ export function TagsButton({ repo, states }: { repo: string; states: TagStates }
               const state = sync(tag);
               return (
                 <li key={tag.name}>
-                  <ContextMenu.Root>
-                    <ContextMenu.Trigger asChild>
-                      <button type="button" className={styles.row} onClick={() => showHistory(tag)}>
-                        <span className={styles.rowMain}>
-                          <span className={styles.name}>
-                            <Icon name="tag" size={12} />
-                            {tag.name}
-                            {state === "missing" && (
-                              <Tooltip content={t("refs.tagMissing")}>
-                                <span className={styles.state}>
-                                  <Icon name="notOnRemote" size={12} label={t("refs.tagMissing")} />
-                                </span>
-                              </Tooltip>
-                            )}
-                            {state === "differs" && (
-                              <Tooltip content={t("refs.tagDiffers")}>
-                                <span className={styles.state}>
-                                  <Icon
-                                    name="differsOnRemote"
-                                    size={12}
-                                    label={t("refs.tagDiffers")}
-                                  />
-                                </span>
-                              </Tooltip>
-                            )}
-                          </span>
-                          <span className={styles.message}>{tag.message ?? tag.summary}</span>
-                        </span>
-                        <span className={styles.date}>{relativeTime(tag.createdAt)}</span>
-                      </button>
-                    </ContextMenu.Trigger>
-                    <ContextMenu.Portal>
-                      <ContextMenu.Content className={menu.content}>
-                        <ContextMenu.Item className={menu.item} onSelect={() => showHistory(tag)}>
-                          {t("tags.showHistory")}
-                        </ContextMenu.Item>
-                        {remote && state !== "same" && (
-                          <ContextMenu.Item
-                            className={menu.item}
-                            onSelect={() =>
-                              state === "differs"
-                                ? openDialog({ kind: "overwriteTag", tag: tag.name, remote })
-                                : pushTags([tag.name])
-                            }
-                          >
-                            {state === "differs"
+                  <ContextMenu
+                    items={[
+                      { label: t("tags.showHistory"), action: () => showHistory(tag) },
+                      !!remote &&
+                        state !== "same" && {
+                          label:
+                            state === "differs"
                               ? t("menu.overwriteTag", { name: tag.name })
-                              : t("menu.pushTag", { name: tag.name })}
-                          </ContextMenu.Item>
-                        )}
-                        <ContextMenu.Item
-                          className={menu.item}
-                          onSelect={() => void navigator.clipboard.writeText(tag.name)}
-                        >
-                          {t("tags.copyName")}
-                        </ContextMenu.Item>
-                        <ContextMenu.Separator className={menu.separator} />
-                        <ContextMenu.Item
-                          className={menu.item}
-                          onSelect={() =>
+                              : t("menu.pushTag", { name: tag.name }),
+                          action: () =>
+                            state === "differs"
+                              ? fromPicker(() =>
+                                  openDialog({ kind: "overwriteTag", tag: tag.name, remote }),
+                                )
+                              : pushTags([tag.name]),
+                        },
+                      {
+                        label: t("tags.copyName"),
+                        action: () => navigator.clipboard.writeText(tag.name),
+                      },
+                      "separator",
+                      {
+                        label: t("menu.deleteTag", { name: tag.name }),
+                        action: () =>
+                          fromPicker(() =>
                             openDialog({
                               kind: "deleteTag",
                               tag: tag.name,
@@ -196,14 +172,40 @@ export function TagsButton({ repo, states }: { repo: string; states: TagStates }
                                 authoredAt: 0,
                                 summary: tag.summary,
                               },
-                            })
-                          }
-                        >
-                          {t("menu.deleteTag", { name: tag.name })}
-                        </ContextMenu.Item>
-                      </ContextMenu.Content>
-                    </ContextMenu.Portal>
-                  </ContextMenu.Root>
+                            }),
+                          ),
+                      },
+                    ]}
+                  >
+                    <button type="button" className={styles.row} onClick={() => showHistory(tag)}>
+                      <span className={styles.rowMain}>
+                        <span className={styles.name}>
+                          <Icon name="tag" size={12} />
+                          {tag.name}
+                          {state === "missing" && (
+                            <Tooltip content={t("refs.tagMissing")}>
+                              <span className={styles.state}>
+                                <Icon name="notOnRemote" size={12} label={t("refs.tagMissing")} />
+                              </span>
+                            </Tooltip>
+                          )}
+                          {state === "differs" && (
+                            <Tooltip content={t("refs.tagDiffers")}>
+                              <span className={styles.state}>
+                                <Icon
+                                  name="differsOnRemote"
+                                  size={12}
+                                  label={t("refs.tagDiffers")}
+                                />
+                              </span>
+                            </Tooltip>
+                          )}
+                        </span>
+                        <span className={styles.message}>{tag.message ?? tag.summary}</span>
+                      </span>
+                      <span className={styles.date}>{relativeTime(tag.createdAt)}</span>
+                    </button>
+                  </ContextMenu>
                 </li>
               );
             })}

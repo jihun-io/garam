@@ -15,6 +15,8 @@ pub enum AppErrorKind {
     WatchFailed,
     /// A new window couldn't be opened.
     WindowFailed,
+    /// The OS context menu could not be shown.
+    MenuFailed,
     /// A file the user chose to save couldn't be written.
     SaveFailed,
     /// The OS keychain refused to store or read a token.

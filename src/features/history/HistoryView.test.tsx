@@ -29,6 +29,7 @@ import { squashUndoKey, useSquashUndoDialog } from "./squashUndoStore";
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => {}) }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ save: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({
+  isTauri: () => false,
   Channel: class {
     onmessage = () => {};
   },

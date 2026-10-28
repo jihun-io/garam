@@ -1,10 +1,9 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ContextMenu } from "radix-ui";
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CheckMark } from "../../components/ui/Checkbox";
-import menu from "../../components/ui/Menu.module.css";
+import { ContextMenu, openListContextMenu } from "../../components/ui/ContextMenu";
 import { commands, type FileChange } from "../../ipc";
 import {
   isSelectAll,
@@ -74,6 +73,7 @@ export function FileList({
   // Arrow keys move the selection (Shift extends it); Space includes or
   // excludes the selected files; ⌘⌫ / Ctrl+Backspace asks to discard them.
   const onKeyDown = (e: KeyboardEvent) => {
+    if (openListContextMenu(e, focusIndex >= 0 ? `file-${focusIndex}` : null)) return;
     if (files.length === 0) return;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
@@ -120,97 +120,84 @@ export function FileList({
           const targets = menuTargets(file);
           const several = targets.length > 1;
           return (
-            <ContextMenu.Root key={file.path}>
-              <ContextMenu.Trigger asChild>
-                <div
-                  id={`file-${item.index}`}
-                  role="option"
-                  aria-selected={selected}
-                  // The row reports inclusion itself (Space toggles it); the
-                  // box inside is only for the mouse, so it isn't a control
-                  // nested in an option for screen readers.
-                  aria-checked={state === "mixed" ? "mixed" : state === "checked"}
-                  className={styles.row}
-                  style={{ transform: `translateY(${item.start}px)`, height: ROW_HEIGHT }}
-                  onMouseDown={(e) => {
-                    // A right click keeps a selection it lands in, so the
-                    // menu acts on all of it.
-                    if (e.button !== 0) {
-                      if (!selected) onSelect(file.path, "single");
-                      return;
-                    }
-                    const how = selectHow(e);
-                    // Shift-click would also select the text in between.
-                    if (how === "range") e.preventDefault();
-                    onSelect(file.path, how);
-                  }}
+            <ContextMenu
+              key={file.path}
+              items={[
+                onDiscard && {
+                  label: several
+                    ? t("fileMenu.discardSelected", { count: targets.length })
+                    : t("fileMenu.discard"),
+                  action: () => onDiscard(targets),
+                },
+                onStash && {
+                  label: several
+                    ? t("fileMenu.stashSelected", { count: targets.length })
+                    : t("fileMenu.stash"),
+                  disabled: targets.some((f) => f.staged === "conflicted"),
+                  action: () => onStash(targets),
+                },
+                (onDiscard || onStash) && "separator",
+                {
+                  label: several
+                    ? t("fileMenu.copyPaths", { count: targets.length })
+                    : t("fileMenu.copyPath"),
+                  action: () =>
+                    navigator.clipboard.writeText(targets.map((f) => f.path).join("\n")),
+                },
+                {
+                  label: t(`fileMenu.reveal_${currentPlatform()}`),
+                  disabled: several || kind === "deleted",
+                  action: () =>
+                    commands
+                      .externalReveal(joinPath(repo, file.path))
+                      .then((r) => r.status === "error" && showError(r.error)),
+                },
+              ]}
+            >
+              <div
+                id={`file-${item.index}`}
+                role="option"
+                aria-selected={selected}
+                // The row reports inclusion itself (Space toggles it); the
+                // box inside is only for the mouse, so it isn't a control
+                // nested in an option for screen readers.
+                aria-checked={state === "mixed" ? "mixed" : state === "checked"}
+                className={styles.row}
+                style={{ transform: `translateY(${item.start}px)`, height: ROW_HEIGHT }}
+                onMouseDown={(e) => {
+                  // A right click keeps a selection it lands in, so the
+                  // menu acts on all of it.
+                  if (e.button !== 0 || (currentPlatform() === "macos" && e.ctrlKey)) {
+                    if (!selected) onSelect(file.path, "single");
+                    return;
+                  }
+                  const how = selectHow(e);
+                  // Shift-click would also select the text in between.
+                  if (how === "range") e.preventDefault();
+                  onSelect(file.path, how);
+                }}
+              >
+                <CheckMark
+                  state={state}
+                  disabled={kind === "conflicted"}
+                  onToggle={() => onToggle([file])}
+                />
+                <Tooltip
+                  content={file.origPath ? `${file.origPath} → ${file.path}` : file.path}
+                  whenTruncated
                 >
-                  <CheckMark
-                    state={state}
-                    disabled={kind === "conflicted"}
-                    onToggle={() => onToggle([file])}
-                  />
-                  <Tooltip
-                    content={file.origPath ? `${file.origPath} → ${file.path}` : file.path}
-                    whenTruncated
-                  >
-                    <span className={styles.path}>
-                      {dir && <span className={styles.dir}>{dir}</span>}
-                      <span className={styles.name}>{name}</span>
-                    </span>
-                  </Tooltip>
-                  <Tooltip content={t(`kind.${kind}`)} side="right">
-                    <span className={`${styles.kind} ${styles[kind]}`}>
-                      <Icon name={kind} label={t(`kind.${kind}`)} />
-                    </span>
-                  </Tooltip>
-                </div>
-              </ContextMenu.Trigger>
-              <ContextMenu.Portal>
-                <ContextMenu.Content className={menu.content}>
-                  {onDiscard && (
-                    <ContextMenu.Item className={menu.item} onSelect={() => onDiscard(targets)}>
-                      {several
-                        ? t("fileMenu.discardSelected", { count: targets.length })
-                        : t("fileMenu.discard")}
-                    </ContextMenu.Item>
-                  )}
-                  {onStash && (
-                    <ContextMenu.Item
-                      className={menu.item}
-                      disabled={targets.some((f) => f.staged === "conflicted")}
-                      onSelect={() => onStash(targets)}
-                    >
-                      {several
-                        ? t("fileMenu.stashSelected", { count: targets.length })
-                        : t("fileMenu.stash")}
-                    </ContextMenu.Item>
-                  )}
-                  {(onDiscard || onStash) && <ContextMenu.Separator className={menu.separator} />}
-                  <ContextMenu.Item
-                    className={menu.item}
-                    onSelect={() =>
-                      void navigator.clipboard.writeText(targets.map((f) => f.path).join("\n"))
-                    }
-                  >
-                    {several
-                      ? t("fileMenu.copyPaths", { count: targets.length })
-                      : t("fileMenu.copyPath")}
-                  </ContextMenu.Item>
-                  <ContextMenu.Item
-                    className={menu.item}
-                    disabled={several || kind === "deleted"}
-                    onSelect={() =>
-                      void commands
-                        .externalReveal(joinPath(repo, file.path))
-                        .then((r) => r.status === "error" && showError(r.error))
-                    }
-                  >
-                    {t(`fileMenu.reveal_${currentPlatform()}`)}
-                  </ContextMenu.Item>
-                </ContextMenu.Content>
-              </ContextMenu.Portal>
-            </ContextMenu.Root>
+                  <span className={styles.path}>
+                    {dir && <span className={styles.dir}>{dir}</span>}
+                    <span className={styles.name}>{name}</span>
+                  </span>
+                </Tooltip>
+                <Tooltip content={t(`kind.${kind}`)} side="right">
+                  <span className={`${styles.kind} ${styles[kind]}`}>
+                    <Icon name={kind} label={t(`kind.${kind}`)} />
+                  </span>
+                </Tooltip>
+              </div>
+            </ContextMenu>
           );
         })}
       </div>

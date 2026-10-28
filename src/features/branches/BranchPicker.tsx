@@ -1,9 +1,9 @@
-import { ContextMenu, Popover } from "radix-ui";
+import { Popover } from "radix-ui";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "../../components/ui/Button";
-import menu from "../../components/ui/Menu.module.css";
+import { ContextMenu } from "../../components/ui/ContextMenu";
 import type { Branch, BranchStatus } from "../../ipc";
 import { useRelativeTime } from "../../lib/time";
 import { dropTarget, useCommitDrag } from "../history/commitDragStore";
@@ -47,6 +47,7 @@ export function BranchPicker({
   const showError = useNotify((s) => s.showError);
   const showPane = useHistoryPane((s) => s.show);
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   useCommand("view.branches", () => setOpen(true));
   // Looked up while the list is open, for the footer's "n to clean up".
   const cleanupCount = useCleanupCandidates(repo, open).data?.length ?? 0;
@@ -106,6 +107,8 @@ export function BranchPicker({
 
   const fromPicker = (action: () => void) => {
     setOpen(false);
+    // Capture a surviving return target before the dialog takes focus.
+    triggerRef.current?.focus({ preventScroll: true });
     action();
   };
 
@@ -126,90 +129,64 @@ export function BranchPicker({
 
   const row = (branch: Branch) => (
     <li key={branch.name}>
-      <ContextMenu.Root>
-        <ContextMenu.Trigger asChild>
-          <button
-            type="button"
-            data-branch-item
-            {...(branch.kind === "local" ? dropTarget(branch.name) : {})}
-            data-drop-over={(branch.kind === "local" && dropOver === branch.name) || undefined}
-            className={styles.item}
-            aria-current={branch.isHead ? "true" : undefined}
-            onClick={() => choose(branch)}
-          >
-            <span className={styles.itemName}>{branch.name}</span>
-            <span className={styles.itemMeta}>
-              {branch.kind === "local" && pullRequests.has(branch.name) && (
-                <PullRequestTag pr={pullRequests.get(branch.name)!} />
-              )}
-              {branch.upstreamGone && <span className={styles.gone}>{t("picker.gone")}</span>}
-              <CommitCounts ahead={branch.ahead} behind={branch.behind} />
-              <span>{relativeTime(branch.committedAt)}</span>
-            </span>
-          </button>
-        </ContextMenu.Trigger>
-        <ContextMenu.Portal>
-          <ContextMenu.Content className={menu.content}>
-            {canCompare(branch) && (
-              <ContextMenu.Item
-                className={menu.item}
-                onSelect={() => fromPicker(() => compareWithCurrent(branch))}
-              >
-                {t("picker.compareThis", { branch: current ?? t("picker.detached") })}
-              </ContextMenu.Item>
+      <ContextMenu
+        items={[
+          canCompare(branch) && {
+            label: t("picker.compareThis", { branch: current ?? t("picker.detached") }),
+            action: () => fromPicker(() => compareWithCurrent(branch)),
+          },
+          branch.kind === "local" && "separator",
+          branch.kind === "local" && {
+            label: t("picker.rename"),
+            action: () => fromPicker(() => openDialog({ kind: "rename", branch })),
+          },
+          branch.kind === "local" &&
+            !branch.isHead &&
+            !!current && {
+              label: t("picker.mergeThis", { branch: current ?? t("picker.detached") }),
+              action: () => fromPicker(() => openDialog({ kind: "merge", branch })),
+            },
+          branch.kind === "local" &&
+            pullRequests.has(branch.name) && {
+              label: t("picker.viewPullRequest", { number: pullRequests.get(branch.name)!.number }),
+              action: () =>
+                fromPicker(() => void openUrl(pullRequests.get(branch.name)!.url).catch(showError)),
+            },
+          branch.kind === "local" &&
+            !pullRequests.has(branch.name) &&
+            prSupported &&
+            canOpenFor(branch, defaultRemote) && {
+              label: t("picker.createPullRequest"),
+              action: () => fromPicker(() => openPullRequestDialog(branch.name)),
+            },
+          branch.kind === "local" && "separator",
+          branch.kind === "local" && {
+            label: t("picker.delete"),
+            disabled: branch.isHead,
+            action: () => fromPicker(() => openDialog({ kind: "delete", branch })),
+          },
+        ]}
+      >
+        <button
+          type="button"
+          data-branch-item
+          {...(branch.kind === "local" ? dropTarget(branch.name) : {})}
+          data-drop-over={(branch.kind === "local" && dropOver === branch.name) || undefined}
+          className={styles.item}
+          aria-current={branch.isHead ? "true" : undefined}
+          onClick={() => choose(branch)}
+        >
+          <span className={styles.itemName}>{branch.name}</span>
+          <span className={styles.itemMeta}>
+            {branch.kind === "local" && pullRequests.has(branch.name) && (
+              <PullRequestTag pr={pullRequests.get(branch.name)!} />
             )}
-            {branch.kind === "local" && (
-              <>
-                {canCompare(branch) && <ContextMenu.Separator className={menu.separator} />}
-                <ContextMenu.Item
-                  className={menu.item}
-                  onSelect={() => fromPicker(() => openDialog({ kind: "rename", branch }))}
-                >
-                  {t("picker.rename")}
-                </ContextMenu.Item>
-                {!branch.isHead && current && (
-                  <ContextMenu.Item
-                    className={menu.item}
-                    onSelect={() => fromPicker(() => openDialog({ kind: "merge", branch }))}
-                  >
-                    {t("picker.mergeThis", { branch: current })}
-                  </ContextMenu.Item>
-                )}
-                {pullRequests.has(branch.name) ? (
-                  <ContextMenu.Item
-                    className={menu.item}
-                    onSelect={() =>
-                      fromPicker(
-                        () => void openUrl(pullRequests.get(branch.name)!.url).catch(showError),
-                      )
-                    }
-                  >
-                    {t("picker.viewPullRequest", { number: pullRequests.get(branch.name)!.number })}
-                  </ContextMenu.Item>
-                ) : (
-                  prSupported &&
-                  canOpenFor(branch, defaultRemote) && (
-                    <ContextMenu.Item
-                      className={menu.item}
-                      onSelect={() => fromPicker(() => openPullRequestDialog(branch.name))}
-                    >
-                      {t("picker.createPullRequest")}
-                    </ContextMenu.Item>
-                  )
-                )}
-                <ContextMenu.Separator className={menu.separator} />
-                <ContextMenu.Item
-                  className={menu.item}
-                  disabled={branch.isHead}
-                  onSelect={() => fromPicker(() => openDialog({ kind: "delete", branch }))}
-                >
-                  {t("picker.delete")}
-                </ContextMenu.Item>
-              </>
-            )}
-          </ContextMenu.Content>
-        </ContextMenu.Portal>
-      </ContextMenu.Root>
+            {branch.upstreamGone && <span className={styles.gone}>{t("picker.gone")}</span>}
+            <CommitCounts ahead={branch.ahead} behind={branch.behind} />
+            <span>{relativeTime(branch.committedAt)}</span>
+          </span>
+        </button>
+      </ContextMenu>
     </li>
   );
 
@@ -223,7 +200,7 @@ export function BranchPicker({
       }}
     >
       <Tooltip content={t("picker.tooltip")} shortcut={shortcutFor("view.branches")}>
-        <Popover.Trigger asChild>
+        <Popover.Trigger asChild ref={triggerRef}>
           <ToolbarButton
             {...(current ? dropTarget(current) : {})}
             data-drop-over={(current !== null && dropOver === current) || undefined}
@@ -245,6 +222,10 @@ export function BranchPicker({
       </Tooltip>
       <Popover.Portal>
         <Popover.Content
+          onCloseAutoFocus={(event) => {
+            // Closing this picker must not steal a newly opened dialog's focus.
+            if (document.activeElement?.closest('[role="dialog"]')) event.preventDefault();
+          }}
           className={styles.content}
           align="start"
           sideOffset={4}
