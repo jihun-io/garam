@@ -57,7 +57,7 @@ export function SettingsWindow() {
       </header>
       <Tabs.Root asChild orientation="vertical" defaultValue="general">
         <main className={styles.body}>
-          <Tabs.List className={styles.nav} aria-label={t("sections")}>
+          <Tabs.List data-selection-list className={styles.nav} aria-label={t("sections")}>
             {SECTIONS.map(({ id }) => (
               <Tabs.Trigger
                 key={id}
