@@ -2,14 +2,22 @@ use std::sync::Arc;
 
 use garam_github::Client;
 use serde::Serialize;
-use tauri::State;
 use tauri::ipc::Channel;
+use tauri::{AppHandle, Emitter, State};
 
 use crate::accounts::{Account, AccountStore};
 use crate::error::{AppError, AppErrorKind, AppResult, blocking};
 use crate::operations::Operations;
 
 type Store<'a> = State<'a, Arc<AccountStore>>;
+
+/// Tells every window the signed-in accounts changed, since each keeps its
+/// own copy of the list.
+pub const ACCOUNTS_CHANGED_EVENT: &str = "accounts-changed";
+
+fn accounts_changed(app: &AppHandle) {
+    let _ = app.emit(ACCOUNTS_CHANGED_EVENT, ());
+}
 
 /// The one-time code the user enters on GitHub.
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -44,6 +52,7 @@ pub fn github_accounts(store: Store<'_>) -> AccountList {
 #[tauri::command]
 #[specta::specta]
 pub async fn github_sign_in(
+    app: AppHandle,
     store: Store<'_>,
     operations: State<'_, Arc<Operations>>,
     operation_id: String,
@@ -51,7 +60,7 @@ pub async fn github_sign_in(
 ) -> AppResult<Account> {
     let store = Arc::clone(&store);
     let operations = Arc::clone(&operations);
-    blocking(move || {
+    let account = blocking(move || {
         let guard = operations.start(operation_id);
         let client = Client::github_com();
         let code = client.request_device_code(garam_github::SCOPES)?;
@@ -70,7 +79,9 @@ pub async fn github_sign_in(
         store.save(account.clone(), &token)?;
         Ok(account)
     })
-    .await
+    .await?;
+    accounts_changed(&app);
+    Ok(account)
 }
 
 /// Signs in to a GitHub Enterprise Server with a personal access token.
@@ -80,12 +91,13 @@ pub async fn github_sign_in(
 #[tauri::command]
 #[specta::specta]
 pub async fn github_sign_in_with_token(
+    app: AppHandle,
     store: Store<'_>,
     host: String,
     token: String,
 ) -> AppResult<Account> {
     let store = Arc::clone(&store);
-    blocking(move || {
+    let account = blocking(move || {
         let host = enterprise_host(&host)?;
         let token = token.trim();
         let client = Client::for_host(&host);
@@ -98,7 +110,9 @@ pub async fn github_sign_in_with_token(
         store.save(account.clone(), token)?;
         Ok(account)
     })
-    .await
+    .await?;
+    accounts_changed(&app);
+    Ok(account)
 }
 
 /// The page on `host` that makes a token with the scopes Garam needs.
@@ -135,9 +149,11 @@ fn enterprise_host(input: &str) -> AppResult<String> {
 /// The authorization stays on GitHub until the user revokes it there.
 #[tauri::command]
 #[specta::specta]
-pub async fn github_sign_out(store: Store<'_>, key: String) -> AppResult<()> {
+pub async fn github_sign_out(app: AppHandle, store: Store<'_>, key: String) -> AppResult<()> {
     let store = Arc::clone(&store);
-    blocking(move || store.remove(&key)).await
+    blocking(move || store.remove(&key)).await?;
+    accounts_changed(&app);
+    Ok(())
 }
 
 #[cfg(test)]
