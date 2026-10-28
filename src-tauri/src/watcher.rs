@@ -6,7 +6,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
 
-use notify_debouncer_full::notify::{self, RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::notify::{self, Event, RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{DebounceEventResult, Debouncer, NoCache, new_debouncer_opt};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
@@ -55,11 +55,7 @@ impl RepoWatcher {
             None,
             move |result: DebounceEventResult| {
                 let Ok(events) = result else { return };
-                let relevant = events
-                    .iter()
-                    .flat_map(|e| e.paths.iter())
-                    .any(|p| is_relevant(&event_root, p));
-                if relevant {
+                if events.iter().any(|e| is_relevant_event(&event_root, e)) {
                     let _ = app.emit(REPO_CHANGED_EVENT, payload.clone());
                 }
             },
@@ -70,6 +66,13 @@ impl RepoWatcher {
         watchers.insert(window.to_owned(), (repo, debouncer));
         Ok(())
     }
+}
+
+/// Access events (inotify reports every open and close on Linux) never
+/// count: refreshing runs `git status`, which opens files in the working
+/// tree, so counting them would refresh again forever.
+fn is_relevant_event(root: &Path, event: &Event) -> bool {
+    !event.kind.is_access() && event.paths.iter().any(|p| is_relevant(root, p))
 }
 
 /// Working tree files always count. Inside `.git`, only files that change
@@ -111,8 +114,41 @@ fn is_relevant(root: &Path, path: &Path) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::is_relevant;
+    use super::{is_relevant, is_relevant_event};
+    use notify_debouncer_full::notify::Event;
+    use notify_debouncer_full::notify::event::{
+        AccessKind, AccessMode, CreateKind, DataChange, EventKind, ModifyKind,
+    };
     use std::path::Path;
+
+    #[test]
+    fn ignores_access_events() {
+        let root = Path::new("/repo");
+        let event = |kind| Event::new(kind).add_path("/repo/src/main.rs".into());
+        assert!(!is_relevant_event(
+            root,
+            &event(EventKind::Access(AccessKind::Open(AccessMode::Any)))
+        ));
+        assert!(!is_relevant_event(
+            root,
+            &event(EventKind::Access(AccessKind::Close(AccessMode::Read)))
+        ));
+        assert!(!is_relevant_event(
+            root,
+            &event(EventKind::Access(AccessKind::Close(AccessMode::Write)))
+        ));
+        assert!(is_relevant_event(
+            root,
+            &event(EventKind::Modify(ModifyKind::Data(DataChange::Any)))
+        ));
+        assert!(is_relevant_event(
+            root,
+            &event(EventKind::Create(CreateKind::File))
+        ));
+        let objects = Event::new(EventKind::Create(CreateKind::File))
+            .add_path("/repo/.git/objects/ab/cdef".into());
+        assert!(!is_relevant_event(root, &objects));
+    }
 
     #[test]
     fn filters_git_internals() {
