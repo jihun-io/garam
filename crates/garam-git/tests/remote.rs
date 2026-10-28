@@ -544,8 +544,8 @@ fn local_changes_in_the_way_block_a_pull_until_stashed() {
     s.local.git(["add", "notes.txt"]);
     s.local.write("file.txt", "edited\n");
 
-    let err = pull(&s.local).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::PullBlockedByLocalChanges);
+    // Neither file is one the upstream touches.
+    assert_eq!(blocking_files(pull(&s.local)), Vec::<String>::new());
 
     assert_eq!(pull_stashing(&s.local).unwrap(), PullOutcome::Updated);
     assert_eq!(ahead_behind(&s.local), (2, 0));
@@ -592,4 +592,102 @@ fn stashed_changes_that_clash_are_left_conflicted_and_kept() {
             .stdout_str()
             .contains("autostash")
     );
+}
+
+/// The files a blocked pull reports.
+fn blocking_files(result: Result<PullOutcome, garam_git::GitError>) -> Vec<String> {
+    match result {
+        Err(garam_git::GitError::PullBlocked { files, .. }) => files,
+        other => panic!("expected a blocked pull, got {other:?}"),
+    }
+}
+
+/// The upstream adds `same.txt` and `diff.txt` under `new/`; the local
+/// clone has untracked files at both paths (one with the same contents)
+/// and one the upstream doesn't have.
+fn untracked_in_the_way() -> Setup {
+    let s = Setup::new();
+    let other = TestRepo::clone_of(&s.remote);
+    other.write("new/same.txt", "same\n");
+    other.write("new/diff.txt", "theirs\n");
+    other.commit_all("upstream adds files");
+    other.git(["push", "--quiet", "origin", "HEAD"]);
+    s.local.write("new/same.txt", "same\n");
+    s.local.write("new/diff.txt", "mine\n");
+    s.local.write("new/extra.txt", "extra\n");
+    s
+}
+
+fn read(repo: &TestRepo, path: &str) -> String {
+    std::fs::read_to_string(repo.path().join(path)).unwrap()
+}
+
+#[test]
+fn untracked_files_in_the_way_block_a_pull_and_are_listed() {
+    let s = untracked_in_the_way();
+    assert_eq!(
+        blocking_files(pull(&s.local)),
+        ["new/diff.txt", "new/same.txt"]
+    );
+    // Nothing was touched.
+    assert_eq!(ahead_behind(&s.local), (0, 1));
+    assert_eq!(read(&s.local, "new/diff.txt"), "mine\n");
+}
+
+#[test]
+fn stashing_carries_untracked_files_in_the_way() {
+    let s = untracked_in_the_way();
+    assert_eq!(
+        pull_stashing(&s.local).unwrap(),
+        PullOutcome::UpdatedWithConflicts
+    );
+    assert_eq!(ahead_behind(&s.local), (0, 0));
+    // Same contents come back cleanly; different ones conflict, and the
+    // stash stays.
+    let state = garam_git::conflict::state(s.local.git_handle(), s.local.path()).unwrap();
+    let conflicted: Vec<_> = state.files.iter().map(|f| f.path.as_str()).collect();
+    assert_eq!(conflicted, ["new/diff.txt"]);
+    assert!(read(&s.local, "new/diff.txt").contains("mine"));
+    assert_eq!(read(&s.local, "new/same.txt"), "same\n");
+    assert!(
+        s.local
+            .git(["stash", "list"])
+            .stdout_str()
+            .contains("autostash")
+    );
+    // The file the upstream doesn't have is left untracked.
+    let status = status::status(s.local.git_handle(), s.local.path()).unwrap();
+    let extra = status
+        .files
+        .iter()
+        .find(|f| f.path == "new/extra.txt")
+        .unwrap();
+    assert_eq!(extra.unstaged, Some(garam_git::ChangeKind::Untracked));
+}
+
+#[test]
+fn untracked_files_matching_the_upstream_are_pulled_over() {
+    let s = untracked_in_the_way();
+    s.local.write("new/diff.txt", "theirs\n");
+    assert_eq!(pull_stashing(&s.local).unwrap(), PullOutcome::Updated);
+    let status = status::status(s.local.git_handle(), s.local.path()).unwrap();
+    let paths: Vec<_> = status.files.iter().map(|f| f.path.as_str()).collect();
+    assert_eq!(paths, ["new/extra.txt"]);
+    assert!(s.local.git(["stash", "list"]).stdout_str().is_empty());
+}
+
+#[test]
+fn a_rebase_pull_carries_untracked_files_in_the_way_too() {
+    let s = untracked_in_the_way();
+    s.local.git(["config", "pull.rebase", "true"]);
+    assert_eq!(
+        blocking_files(pull(&s.local)),
+        ["new/diff.txt", "new/same.txt"]
+    );
+    assert_eq!(
+        pull_stashing(&s.local).unwrap(),
+        PullOutcome::UpdatedWithConflicts
+    );
+    assert_eq!(ahead_behind(&s.local), (0, 0));
+    assert_eq!(read(&s.local, "new/same.txt"), "same\n");
 }

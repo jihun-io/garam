@@ -35,6 +35,8 @@
   "pullBlocked": {
     "title": "Can't Pull",
     "body": "Your changes can be stashed for the pull and put back afterwards. If putting them back conflicts, they stay in the stash and the conflicted files are shown.",
+    "files_one": "{{count}} file would be overwritten:",
+    "files_other": "{{count}} files would be overwritten:",
     "cancel": "Cancel",
     "submit": "Stash Changes and Pull"
   },

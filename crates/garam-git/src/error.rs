@@ -159,6 +159,12 @@ pub enum GitError {
     #[error("tracked files have uncommitted changes")]
     UncommittedChanges,
 
+    /// A pull stopped before merging because of local changes; `files` are
+    /// the changed ones the incoming commits also touch (possibly none:
+    /// git refuses a merge over any staged change).
+    #[error("local changes block the pull: {stderr}")]
+    PullBlocked { files: Vec<String>, stderr: String },
+
     #[error("HEAD is detached")]
     DetachedHead,
 
@@ -223,6 +229,7 @@ impl GitError {
             Self::IndexChanged => ErrorKind::IndexChanged,
             Self::FixupIncomplete(_) => ErrorKind::FixupIncomplete,
             Self::UncommittedChanges => ErrorKind::UncommittedChanges,
+            Self::PullBlocked { .. } => ErrorKind::PullBlockedByLocalChanges,
             Self::DetachedHead => ErrorKind::DetachedHead,
             Self::NoUpstream => ErrorKind::NoUpstream,
             Self::RemoteBranchNotFound => ErrorKind::RemoteBranchNotFound,
@@ -258,7 +265,9 @@ impl GitError {
             | Self::NothingToStash
             | Self::StashNotFound
             | Self::NothingInProgress => None,
-            Self::Failed { stderr, .. } => Some(stderr.trim().to_owned()),
+            Self::Failed { stderr, .. } | Self::PullBlocked { stderr, .. } => {
+                Some(stderr.trim().to_owned())
+            }
             Self::FixupIncomplete(detail) => Some(detail.clone()),
             Self::SquashUndoLocalFiles(paths) => Some(paths.join("\n")),
             Self::StashUntrackedExists(paths) => Some(paths.join("\n")),

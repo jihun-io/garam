@@ -149,8 +149,9 @@ pub enum PullOutcome {
 /// reconcile" question.
 ///
 /// Local changes that would get in the way stop it with
-/// [`crate::ErrorKind::PullBlockedByLocalChanges`]; with `autostash` they
-/// are stashed first and put back afterwards.
+/// [`GitError::PullBlocked`]; with `autostash` they are stashed first and
+/// put back afterwards. git's autostash leaves untracked files alone, so
+/// those where the upstream adds files are staged first to go with it.
 pub fn pull(
     git: &Git,
     repo: &Path,
@@ -192,11 +193,25 @@ pub fn pull(
         }
     };
     let command = if autostash {
+        stage_untracked_in_the_way(git, repo, before.is_some())?;
         command.arg("--autostash")
     } else {
         command
     };
-    command.run().map_err(blocked_by_local_changes)?;
+    if let Err(err) = command.run() {
+        return Err(match err {
+            GitError::Failed { kind, stderr, .. } if blocked_by_local_changes(kind, &stderr) => {
+                GitError::PullBlocked {
+                    files: changes_in_the_way(git, repo, before.is_some())?
+                        .into_iter()
+                        .map(|f| f.path)
+                        .collect(),
+                    stderr,
+                }
+            }
+            other => other,
+        });
+    }
 
     let after = rev_parse(git, repo, "HEAD")?;
     // git words the autostash conflict differently across versions, so
@@ -215,20 +230,59 @@ pub fn pull(
 
 /// git refuses a merge over local changes it would touch (or any staged
 /// ones), and a rebase over any change at all; both say so differently.
-fn blocked_by_local_changes(err: GitError) -> GitError {
-    match err {
-        GitError::Failed { kind, code, stderr }
-            if kind == crate::ErrorKind::LocalChangesWouldBeOverwritten
-                || stderr.to_ascii_lowercase().contains("cannot rebase:") =>
-        {
-            GitError::Failed {
-                kind: crate::ErrorKind::PullBlockedByLocalChanges,
-                code,
-                stderr,
-            }
-        }
-        other => other,
-    }
+fn blocked_by_local_changes(kind: crate::ErrorKind, stderr: &str) -> bool {
+    kind == crate::ErrorKind::LocalChangesWouldBeOverwritten
+        || stderr.to_ascii_lowercase().contains("cannot rebase:")
+}
+
+/// Local changes to paths the upstream changes since the branches split
+/// (every path of the upstream on an unborn branch): the files a pull
+/// would overwrite.
+fn changes_in_the_way(
+    git: &Git,
+    repo: &Path,
+    has_head: bool,
+) -> Result<Vec<crate::FileChange>, GitError> {
+    // Three dots: since the merge base, so local commits don't count.
+    let range = if has_head {
+        vec!["HEAD...@{upstream}".to_owned()]
+    } else {
+        vec![
+            crate::diff::empty_tree(git, repo)?,
+            "@{upstream}".to_owned(),
+        ]
+    };
+    // Without renames, a renamed file's old path is listed too.
+    let output = git
+        .command()
+        .cwd(repo)
+        .read_only()
+        .args(["diff", "--name-only", "--no-renames", "-z"])
+        .args(range)
+        .run()?;
+    let stdout = output.stdout_str();
+    let incoming: std::collections::HashSet<&str> =
+        stdout.split('\0').filter(|p| !p.is_empty()).collect();
+    Ok(crate::status::status(git, repo)?
+        .files
+        .into_iter()
+        .filter(|f| {
+            incoming.contains(f.path.as_str())
+                || f.orig_path.as_deref().is_some_and(|p| incoming.contains(p))
+        })
+        .collect())
+}
+
+/// Stages untracked files where the upstream has files, so a pull's
+/// autostash carries them as new files: putting them back keeps the same
+/// contents and leaves different ones conflicted. (`stash -u` would set
+/// them aside too, but then can't put them back over the pulled files.)
+fn stage_untracked_in_the_way(git: &Git, repo: &Path, has_head: bool) -> Result<(), GitError> {
+    let untracked: Vec<_> = changes_in_the_way(git, repo, has_head)?
+        .into_iter()
+        .filter(|f| f.unstaged == Some(crate::ChangeKind::Untracked))
+        .collect();
+    crate::index::stage(git, repo, &untracked)
 }
 
 /// Pushes the current branch to its upstream branch.
