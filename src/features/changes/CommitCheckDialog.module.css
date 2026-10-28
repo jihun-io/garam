@@ -48,6 +48,7 @@
   white-space: nowrap;
   -webkit-user-select: text;
   user-select: text;
+  cursor: text;
 }
 
 .dir {
@@ -58,6 +59,7 @@
   font-weight: 550;
   -webkit-user-select: text;
   user-select: text;
+  cursor: text;
 }
 
 .detail {
@@ -65,6 +67,7 @@
   overflow-wrap: anywhere;
   -webkit-user-select: text;
   user-select: text;
+  cursor: text;
 }
 
 .actions {
