@@ -62,6 +62,7 @@
   "cannot_squash": "These commits can’t be squashed. Use commits on the current branch with no merge commit among or after them, and finish any operation in progress first. Squashing from the selection menu also requires consecutive commits.",
   "uncommitted_changes": "There are uncommitted changes. Commit or stash them first.",
   "cannot_reorder": "These commits can't be reordered. They must be the latest on the current branch, with no merge commit among them.",
+  "menu_failed": "Couldn't open the context menu. Try again.",
   "window_failed": "Couldn't open a new window.",
   "update_check_failed": "Couldn't check for updates. Check your internet connection and try again.",
   "update_install_failed": "Couldn't install the update. Try again, or download the new version from the releases page.",

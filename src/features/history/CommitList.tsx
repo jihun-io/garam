@@ -1,11 +1,15 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ContextMenu } from "radix-ui";
 import { Fragment, useEffect, useRef, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { Icon } from "../../components/Icon";
-import menu from "../../components/ui/Menu.module.css";
+import {
+  ContextMenu,
+  openListContextMenu,
+  type ContextMenuEntry,
+} from "../../components/ui/ContextMenu";
+import type { TFunction } from "i18next";
 import { Tooltip } from "../../components/ui/Tooltip";
 import type { CommitSummary, TagSync } from "../../ipc";
 import { currentPlatform } from "../../lib/platform";
@@ -218,6 +222,7 @@ export function CommitList({
   }, [selectedIndex, virtualizer]);
 
   const onKeyDown = (e: KeyboardEvent) => {
+    if (openListContextMenu(e, selectedIndex >= 0 ? `commit-${selectedIndex}` : null)) return;
     if (rows.length === 0 || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
     e.preventDefault();
     const delta = e.key === "ArrowDown" ? 1 : -1;
@@ -266,7 +271,7 @@ export function CommitList({
               onMouseDown={(e) => {
                 // A right click opens the menu and keeps the selection, so
                 // the menu can act on it.
-                if (e.button !== 0) return;
+                if (e.button !== 0 || (currentPlatform() === "macos" && e.ctrlKey)) return;
                 // On macOS, Ctrl-click is a right click.
                 const toggle = currentPlatform() === "macos" ? e.metaKey : e.ctrlKey;
                 if (e.shiftKey) e.preventDefault();
@@ -292,16 +297,16 @@ export function CommitList({
           );
           if (row.kind !== "commit") return <Fragment key={row.id}>{option}</Fragment>;
           return (
-            <ContextMenu.Root key={row.id}>
-              <ContextMenu.Trigger asChild>{option}</ContextMenu.Trigger>
-              <ContextMenu.Portal>
-                {selection.length > 1 && selectedIds.has(row.id) ? (
-                  <ManyMenu commits={selection} actions={actions} />
-                ) : (
-                  <CommitMenu commit={row.commit} actions={actions} />
-                )}
-              </ContextMenu.Portal>
-            </ContextMenu.Root>
+            <ContextMenu
+              key={row.id}
+              items={
+                selection.length > 1 && selectedIds.has(row.id)
+                  ? manyMenu(t, selection, actions)
+                  : commitMenu(t, row.commit, actions)
+              }
+            >
+              {option}
+            </ContextMenu>
           );
         })}
       </div>
@@ -369,83 +374,72 @@ function RowText({ row, marks }: { row: HistoryRow; marks: HistoryMarks }) {
   );
 }
 
-function CommitMenu({ commit, actions }: { commit: CommitSummary; actions: CommitActions }) {
-  const { t } = useTranslation("history");
+function commitMenu(
+  t: TFunction<"history">,
+  commit: CommitSummary,
+  actions: CommitActions,
+): ContextMenuEntry[] {
   const can = actions.available(commit);
-  const item = (label: string, action: Action) => (
-    <ContextMenu.Item className={menu.item} onSelect={() => action(commit)}>
-      {label}
-    </ContextMenu.Item>
-  );
-  return (
-    <ContextMenu.Content className={menu.content}>
-      {item(t("menu.copyHash"), actions.copyHash)}
-      {item(t("menu.copyPatch"), actions.copyPatch)}
-      {item(t("menu.savePatch"), actions.savePatch)}
-      {can.openOnRemote && item(t("menu.openOnRemote"), actions.openOnRemote)}
-      {can.compare && item(t("menu.compare"), actions.compare)}
-      <ContextMenu.Separator className={menu.separator} />
-      {item(t("menu.createBranch"), actions.createBranch)}
-      {item(t("menu.createTag"), actions.createTag)}
-      {actions.tagsAt(commit).map(({ name, sync }) => (
-        <Fragment key={name}>
-          {actions.hasRemote && sync !== "same" && (
-            <ContextMenu.Item
-              className={menu.item}
-              onSelect={() => actions.pushTag(name, sync === "differs")}
-            >
-              {sync === "differs" ? t("menu.overwriteTag", { name }) : t("menu.pushTag", { name })}
-            </ContextMenu.Item>
-          )}
-          <ContextMenu.Item className={menu.item} onSelect={() => actions.deleteTag(commit, name)}>
-            {t("menu.deleteTag", { name })}
-          </ContextMenu.Item>
-        </Fragment>
-      ))}
-      {item(t("menu.checkout"), actions.checkout)}
-      <ContextMenu.Separator className={menu.separator} />
-      {can.cherryPick && item(t("menu.cherryPick"), actions.cherryPick)}
-      {item(t("menu.cherryPickOnto"), actions.cherryPickOnto)}
-      {can.revert && item(t("menu.revert"), actions.revert)}
-      {can.amend && item(t("menu.amend"), actions.amend)}
-      {can.reword && item(t("menu.reword"), actions.reword)}
-      {can.fixup && item(t("menu.fixup"), actions.fixup)}
-      {can.undo && item(t("menu.undo"), actions.undo)}
-      {actions.undoSquash?.head === commit.oid && (
-        <ContextMenu.Item className={menu.item} onSelect={actions.undoSquash.run}>
-          {t("undoSquash.menu", { count: actions.undoSquash.count })}
-        </ContextMenu.Item>
-      )}
-      {item(t("menu.reset"), actions.reset)}
-    </ContextMenu.Content>
-  );
+  const item = (label: string, action: Action) => ({ label, action: () => action(commit) });
+  return [
+    item(t("menu.copyHash"), actions.copyHash),
+    item(t("menu.copyPatch"), actions.copyPatch),
+    item(t("menu.savePatch"), actions.savePatch),
+    can.openOnRemote && item(t("menu.openOnRemote"), actions.openOnRemote),
+    can.compare && item(t("menu.compare"), actions.compare),
+    "separator",
+    item(t("menu.createBranch"), actions.createBranch),
+    item(t("menu.createTag"), actions.createTag),
+    ...actions.tagsAt(commit).flatMap(({ name, sync }): ContextMenuEntry[] => [
+      actions.hasRemote &&
+        sync !== "same" && {
+          label:
+            sync === "differs" ? t("menu.overwriteTag", { name }) : t("menu.pushTag", { name }),
+          action: () => actions.pushTag(name, sync === "differs"),
+        },
+      { label: t("menu.deleteTag", { name }), action: () => actions.deleteTag(commit, name) },
+    ]),
+    item(t("menu.checkout"), actions.checkout),
+    "separator",
+    can.cherryPick && item(t("menu.cherryPick"), actions.cherryPick),
+    item(t("menu.cherryPickOnto"), actions.cherryPickOnto),
+    can.revert && item(t("menu.revert"), actions.revert),
+    can.amend && item(t("menu.amend"), actions.amend),
+    can.reword && item(t("menu.reword"), actions.reword),
+    can.fixup && item(t("menu.fixup"), actions.fixup),
+    can.undo && item(t("menu.undo"), actions.undo),
+    actions.undoSquash?.head === commit.oid && {
+      label: t("undoSquash.menu", { count: actions.undoSquash.count }),
+      action: actions.undoSquash.run,
+    },
+    item(t("menu.reset"), actions.reset),
+  ];
 }
 
 /** The menu on one of several selected commits: acts on all of them. */
-function ManyMenu({ commits, actions }: { commits: CommitSummary[]; actions: CommitActions }) {
-  const { t } = useTranslation("history");
+function manyMenu(
+  t: TFunction<"history">,
+  commits: CommitSummary[],
+  actions: CommitActions,
+): ContextMenuEntry[] {
   const can = actions.many.available(commits);
   const count = commits.length;
-  return (
-    <ContextMenu.Content className={menu.content}>
-      {can.cherryPick && (
-        <ContextMenu.Item className={menu.item} onSelect={() => actions.many.cherryPick(commits)}>
-          {t("menu.cherryPickMany", { count })}
-        </ContextMenu.Item>
-      )}
-      <ContextMenu.Item className={menu.item} onSelect={() => actions.many.cherryPickOnto(commits)}>
-        {t("menu.cherryPickOntoMany", { count })}
-      </ContextMenu.Item>
-      {can.revert && (
-        <ContextMenu.Item className={menu.item} onSelect={() => actions.many.revert(commits)}>
-          {t("menu.revertMany", { count })}
-        </ContextMenu.Item>
-      )}
-      {can.squash && (
-        <ContextMenu.Item className={menu.item} onSelect={() => actions.many.squash(commits)}>
-          {t("menu.squash", { count })}
-        </ContextMenu.Item>
-      )}
-    </ContextMenu.Content>
-  );
+  return [
+    can.cherryPick && {
+      label: t("menu.cherryPickMany", { count }),
+      action: () => actions.many.cherryPick(commits),
+    },
+    {
+      label: t("menu.cherryPickOntoMany", { count }),
+      action: () => actions.many.cherryPickOnto(commits),
+    },
+    can.revert && {
+      label: t("menu.revertMany", { count }),
+      action: () => actions.many.revert(commits),
+    },
+    can.squash && {
+      label: t("menu.squash", { count }),
+      action: () => actions.many.squash(commits),
+    },
+  ];
 }

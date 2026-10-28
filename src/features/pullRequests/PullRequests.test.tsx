@@ -27,7 +27,7 @@ import { usePullRequestDialog } from "./pullRequestDialogStore";
 const responses: Record<string, unknown> = {};
 const fns: Record<string, ReturnType<typeof vi.fn>> = {};
 
-vi.mock("@tauri-apps/api/core", () => ({ Channel: class {} }));
+vi.mock("@tauri-apps/api/core", () => ({ Channel: class {}, isTauri: () => false }));
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => {}) }));
 // Every command is a spy answering with its canned response, or null.
 vi.mock("../../ipc/bindings", () => ({

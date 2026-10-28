@@ -12,6 +12,12 @@ export const commands = {
 	 */
 	gitInfo: () => typedError<GitInfo, AppError>(__TAURI_INVOKE("git_info")),
 	/**
+	 *  Show a frontend-created menu without holding the webview's resource lock.
+	 *  Tauri's built-in popup command keeps that lock while AppKit runs its nested
+	 *  menu event loop. A concurrent menu update then deadlocks the main thread.
+	 */
+	contextMenuPopup: (rid: number, x: number | null, y: number | null) => typedError<null, AppError>(__TAURI_INVOKE("context_menu_popup", { rid, x, y })),
+	/**
 	 *  All repositories, with `selected` set to the one the calling window
 	 *  shows. A window that hasn't chosen one yet (the first window at launch)
 	 *  takes the repository open last, unless another window shows it.
@@ -444,6 +450,8 @@ export type AppError = {
 export type AppErrorKind = "invalid_repository_name" | "storage_failed" | "external_app_not_found" | "external_app_failed" | "trash_failed" | "watch_failed" | 
 /**  A new window couldn't be opened. */
 "window_failed" | 
+/**  The OS context menu could not be shown. */
+"menu_failed" | 
 /**  A file the user chose to save couldn't be written. */
 "save_failed" | 
 /**  The OS keychain refused to store or read a token. */

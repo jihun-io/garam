@@ -6,6 +6,7 @@ pub mod external;
 pub mod git;
 pub mod github;
 pub mod history;
+pub mod menu;
 pub mod pull_requests;
 pub mod remote;
 pub mod repo;
