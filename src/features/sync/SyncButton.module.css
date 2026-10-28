@@ -1,11 +1,17 @@
 .root {
   display: flex;
+  /* Fits the text, but no wider than a toolbar button (220px) plus the
+     side button (28px). */
+  max-width: 248px;
   align-items: stretch;
   height: 100%;
   border-right: 1px solid var(--color-line);
 }
 
-.main {
+/* Nested so it outranks ToolbarButton's own rule whatever the load order. */
+.root > .main {
+  /* Fills the group so no gap is left after the caret. */
+  flex: 1 1 auto;
   border-right: 0;
 }
 

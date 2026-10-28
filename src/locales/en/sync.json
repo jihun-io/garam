@@ -14,7 +14,8 @@
   "lastFetched": "Last fetched {{time}}",
   "neverFetched": "Never fetched",
   "publishHint": "Push this branch to {{remote}} for the first time",
-  "unbornHint": "Make a commit before publishing",
+  "publishState": "Not on {{remote}} yet",
+  "unbornState": "No commits yet",
   "cancel": "Cancel",
   "more": "More sync actions",
   "menu": {

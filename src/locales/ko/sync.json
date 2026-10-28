@@ -14,7 +14,8 @@
   "lastFetched": "마지막 가져오기: {{time}}",
   "neverFetched": "아직 가져오지 않음",
   "publishHint": "이 브랜치를 {{remote}}에 처음으로 푸시합니다",
-  "unbornHint": "게시하려면 먼저 커밋하세요",
+  "publishState": "{{remote}}에 아직 없음",
+  "unbornState": "아직 커밋 없음",
   "cancel": "취소",
   "more": "다른 동기화 작업",
   "menu": {
