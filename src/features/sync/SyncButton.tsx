@@ -191,24 +191,32 @@ export function SyncButton({ repo }: { repo: string }) {
           })
         : t("preview.commits", { count: pullPreview.commits })
       : null;
+  // The caption is a short state like the other actions'; the sentence
+  // explaining it goes in the tooltip, where it isn't cut off.
+  // (A disabled button shows no tooltip, so the unborn state has no hint.)
+  const publishHint =
+    primary.action === "publish" && !running && !primary.disabled
+      ? t("publishHint", { remote: remote ?? "" })
+      : null;
   const detail =
     primary.action === "publish" && !running
       ? primary.disabled
-        ? t("unbornHint")
-        : t("publishHint", { remote: remote ?? "" })
+        ? t("unbornState")
+        : t("publishState", { remote: remote ?? "" })
       : info.data.lastFetchedAt
         ? t("lastFetched", { time: relativeTime(info.data.lastFetchedAt) })
         : t("neverFetched");
+  const tooltipDetail = running ? null : (pullSummary ?? publishHint);
 
   return (
     <div className={styles.root}>
       <Tooltip
         content={
-          pullSummary && !running ? (
+          tooltipDetail ? (
             <>
               {label}
               <br />
-              {pullSummary}
+              {tooltipDetail}
             </>
           ) : (
             label
